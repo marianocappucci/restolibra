@@ -22,7 +22,7 @@ except Exception:
 
 REPO_ROOT    = Path(__file__).parent.parent.resolve()
 CLIENTES_DIR = REPO_ROOT / "clientes"
-IMAGE_NAME   = "contalibra:latest"
+IMAGE_NAME   = "restolibra:latest"
 BASE_PORT    = 8071
 
 
@@ -188,7 +188,7 @@ def crear_cliente(nombre: str, slug: str = "", domain: str = "", port: int = 0,
 services:
   contalibra:
     image: {IMAGE_NAME}
-    container_name: contalibra-{slug}
+    container_name: restolibra-{slug}
     restart: unless-stopped
     ports:
       - "{port}:8000"

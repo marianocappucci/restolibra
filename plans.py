@@ -1,5 +1,5 @@
 """
-Definición única de los planes comerciales de Contalibra y qué módulos habilita
+Definición única de los planes comerciales de Restolibra y qué módulos habilita
 cada uno. Fuente de verdad compartida entre:
 
 - `database.apply_plan()` (aplica el plan dentro de la instancia de un cliente).

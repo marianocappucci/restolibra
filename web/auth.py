@@ -3,7 +3,7 @@ from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from fastapi import Request, HTTPException
 from fastapi.responses import RedirectResponse
 
-SECRET_KEY  = os.environ.get("SECRET_KEY", "contalibra-secret-change-me")
+SECRET_KEY  = os.environ.get("SECRET_KEY", "restolibra-secret-change-me")
 COOKIE_NAME = "cl_session"
 
 _signer = URLSafeTimedSerializer(SECRET_KEY)

@@ -99,5 +99,5 @@ def logs_export(request: Request, user: Auth,
     return StreamingResponse(
         iter([buf.getvalue()]),
         media_type="text/csv",
-        headers={"Content-Disposition": "attachment; filename=logs_contalibra.csv"},
+        headers={"Content-Disposition": "attachment; filename=logs_restolibra.csv"},
     )

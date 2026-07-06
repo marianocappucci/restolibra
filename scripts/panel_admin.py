@@ -25,7 +25,7 @@ except Exception:
 
 REPO_ROOT    = Path(__file__).parent.parent.resolve()
 CLIENTES_DIR = REPO_ROOT / "clientes"
-IMAGE_NAME   = "contalibra:latest"
+IMAGE_NAME   = "restolibra:latest"
 
 
 # ── helpers Docker ────────────────────────────────────────────────────────────

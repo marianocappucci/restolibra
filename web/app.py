@@ -39,7 +39,7 @@ from web.routers import cuenta_corriente as cc_router
 from web.routers import listas_precio as listas_precio_router
 from web.routers import libros_iva as libros_iva_router
 
-app = FastAPI(title="Contalibra")
+app = FastAPI(title="Restolibra")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 

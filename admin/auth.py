@@ -9,7 +9,7 @@ import os
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from fastapi import Request, HTTPException
 
-SECRET_KEY   = os.environ.get("SECRET_KEY", "contalibra-admin-secret-change-me")
+SECRET_KEY   = os.environ.get("SECRET_KEY", "restolibra-admin-secret-change-me")
 PANEL_USER   = os.environ.get("ADMIN_PANEL_USER", "superadmin")
 PANEL_PASS   = os.environ.get("ADMIN_PANEL_PASSWORD", "")
 COOKIE_NAME  = "cladmin_session"

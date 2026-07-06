@@ -1,5 +1,5 @@
 """
-Backoffice Contalibra — panel de superadmin para gestionar clientes (alta, edición,
+Backoffice Restolibra — panel de superadmin para gestionar clientes (alta, edición,
 baja) y sus planes (asignar / upgrade / downgrade) a través de todos los contenedores.
 
 App separada host-level. Se ejecuta:
@@ -15,7 +15,7 @@ from admin import auth
 from admin.templates_config import templates
 from admin.routers import clientes as clientes_router
 
-app = FastAPI(title="Contalibra Backoffice", docs_url=None, redoc_url=None)
+app = FastAPI(title="Restolibra Backoffice", docs_url=None, redoc_url=None)
 
 
 @app.get("/login")

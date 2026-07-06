@@ -264,7 +264,7 @@ def _hacer_backup_automatico(motivo: str = "auto") -> str:
 @router.get("/config/backup-db")
 def config_backup_db(user: Auth):
     hoy      = datetime.date.today().strftime("%Y%m%d")
-    filename = f"contalibra_backup_{hoy}.db"
+    filename = f"restolibra_backup_{hoy}.db"
     # Checkpoint WAL antes de servir el archivo
     try:
         with db.get_connection() as conn:

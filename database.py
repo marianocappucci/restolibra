@@ -13,7 +13,7 @@ def _ar_now() -> str:
 
 
 _DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
-DB_PATH   = os.path.join(_DATA_DIR, "contalibra.db")
+DB_PATH   = os.path.join(_DATA_DIR, "restolibra.db")
 
 
 def get_connection():

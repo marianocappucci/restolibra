@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Interfaz gráfica — Contalibra (PyQt5)
+Interfaz gráfica — Restolibra (PyQt5)
 """
 import os
 import sys
@@ -1958,7 +1958,7 @@ class ConfiguracionPage(QWidget):
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Contalibra")
+        self.setWindowTitle("Restolibra")
         self.resize(1150, 740)
         self.setMinimumSize(900, 600)
 
@@ -1975,7 +1975,7 @@ class MainWindow(QMainWindow):
         sb_layout.setContentsMargins(0, 0, 0, 0)
         sb_layout.setSpacing(0)
 
-        lbl_title = QLabel("Contalibra")
+        lbl_title = QLabel("Restolibra")
         lbl_title.setObjectName("app_title")
         lbl_sub = QLabel("compulibra")
         lbl_sub.setObjectName("app_sub")

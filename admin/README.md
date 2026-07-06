@@ -1,4 +1,4 @@
-# Backoffice Contalibra (`admin/`)
+# Backoffice Restolibra (`admin/`)
 
 Panel web de **superadmin** para gestionar todos los clientes (contenedores) y sus planes
 desde un solo lugar: alta, edición, plan (asignar / subir / bajar), start/stop/restart,
@@ -24,26 +24,26 @@ admin/
 
 ## Deploy (systemd en el host)
 
-Requisitos: el venv `/root/contalibra/.venv-scripts` con `fastapi uvicorn jinja2
+Requisitos: el venv `/root/restolibra/.venv-scripts` con `fastapi uvicorn jinja2
 itsdangerous python-multipart httpx`.
 
 ```bash
 # 1) Secretos (root:root, 600)
-cp admin/deploy/contalibra-admin.env.example /etc/contalibra-admin.env
-#    editar /etc/contalibra-admin.env con SECRET_KEY y credenciales reales
-chmod 600 /etc/contalibra-admin.env
+cp admin/deploy/restolibra-admin.env.example /etc/restolibra-admin.env
+#    editar /etc/restolibra-admin.env con SECRET_KEY y credenciales reales
+chmod 600 /etc/restolibra-admin.env
 
 # 2) Servicio
-cp admin/deploy/contalibra-admin.service /etc/systemd/system/
+cp admin/deploy/restolibra-admin.service /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now contalibra-admin
-systemctl status contalibra-admin
-curl -s localhost:8060/health     # {"ok":true}
+systemctl enable --now restolibra-admin
+systemctl status restolibra-admin
+curl -s localhost:8062/health     # {"ok":true}
 
-# 3) Proxy + SSL en NPM → admin.contalibra.com.ar (forward al gateway del host:8060)
+# 3) Proxy + SSL en NPM → admin.restolibra.com.ar (forward al gateway del host:8062)
 ```
 
-Tras un `git pull` que toque `admin/`: `systemctl restart contalibra-admin`.
+Tras un `git pull` que toque `admin/`: `systemctl restart restolibra-admin`.
 
 ## Seguridad
 

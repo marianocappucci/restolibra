@@ -47,7 +47,7 @@ def _modulos_activos(db_path: Path) -> int | None:
 def _enrich(c: dict) -> dict:
     """Agrega estado del contenedor, plan y conteo de módulos a un cliente."""
     info = pa.container_status(c["container"])
-    db_path = c["dir"] / "data" / "contalibra.db"
+    db_path = c["dir"] / "data" / "restolibra.db"
     return {
         "nombre":      c.get("nombre", ""),
         "slug":        c["slug"],
@@ -116,7 +116,7 @@ def set_plan(slug: str, plan: str) -> None:
     c = pa.find_client(slug)
     if not c:
         raise ServiceError(f"Cliente '{slug}' no encontrado.")
-    db_path = c["dir"] / "data" / "contalibra.db"
+    db_path = c["dir"] / "data" / "restolibra.db"
     if not db_path.exists():
         raise ServiceError("La instancia todavía no inicializó su base de datos.")
     plans.aplicar_plan_en_db(str(db_path), plan)
