@@ -2,7 +2,7 @@
 """
 Sincronización automática de pagos MercadoPago con auto-facturación.
 Uso: python3 /app/scripts/sync_mp_auto.py [--dias N]
-Pensado para ejecutarse vía cron: docker exec contalibra python3 /app/scripts/sync_mp_auto.py
+Pensado para ejecutarse vía cron: docker exec restolibra python3 /app/scripts/sync_mp_auto.py
 """
 import sys
 import os

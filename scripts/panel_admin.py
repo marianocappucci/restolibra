@@ -69,7 +69,7 @@ def load_clients() -> list[dict]:
             continue
         meta = json.loads(meta_file.read_text())
         meta["slug"]      = d.name
-        meta["container"] = meta.get("container", f"contalibra-{d.name}")
+        meta["container"] = meta.get("container", f"restolibra-{d.name}")
         meta["dir"]       = d
         clients.append(meta)
     return clients
@@ -197,10 +197,10 @@ def cmd_backup(slug: str):
     print(f"[OK] Backup tar.gz: {out_file}  ({size_mb:.1f} MB)")
 
     # También copia rápida solo de la DB
-    db_src = data_dir / "contalibra.db"
+    db_src = data_dir / "restolibra.db"
     if db_src.exists():
         bdir   = _backups_dir(c)
-        db_dst = bdir / f"contalibra_{ts}.db"
+        db_dst = bdir / f"restolibra_{ts}.db"
         shutil.copy2(db_src, db_dst)
         print(f"[OK] Copia DB:       {db_dst}  ({db_dst.stat().st_size/1_048_576:.1f} MB)")
 
@@ -283,7 +283,7 @@ def cmd_restore_db(slug: str, backup_file: str | None = None):
         print("Cancelado.")
         return
 
-    db_dest = c["dir"] / "data" / "contalibra.db"
+    db_dest = c["dir"] / "data" / "restolibra.db"
 
     # Parar contenedor
     info = container_status(c["container"])

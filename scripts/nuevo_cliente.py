@@ -186,7 +186,7 @@ def crear_cliente(nombre: str, slug: str = "", domain: str = "", port: int = 0,
     # — docker-compose.yml —
     compose = f"""\
 services:
-  contalibra:
+  restolibra:
     image: {IMAGE_NAME}
     container_name: restolibra-{slug}
     restart: unless-stopped
@@ -207,7 +207,7 @@ services:
     (client_dir / "cliente.json").write_text(
         json.dumps({
             "nombre": nombre, "slug": slug, "domain": domain,
-            "port": port, "container": f"contalibra-{slug}",
+            "port": port, "container": f"restolibra-{slug}",
             "admin_user": admin_user, "admin_password": admin_password,
             "plan": plan,
         }, indent=2, ensure_ascii=False)
@@ -218,13 +218,13 @@ services:
         build_image()
 
     # — levantar —
-    log(f"[*] Iniciando contalibra-{slug} ...")
+    log(f"[*] Iniciando restolibra-{slug} ...")
     r = subprocess.run(["docker", "compose", "up", "-d"], cwd=str(client_dir))
     if r.returncode != 0:
         raise ClienteError("No se pudo iniciar el contenedor.")
 
     # — aplicar plan inicial (tras esperar a que la instancia cree su DB) —
-    db_path = data_dir / "contalibra.db"
+    db_path = data_dir / "restolibra.db"
     if _esperar_db_lista(db_path):
         plans.aplicar_plan_en_db(str(db_path), plan)
         log(f"[OK] Plan '{plan}' aplicado.")
@@ -247,7 +247,7 @@ services:
 
     return {
         "nombre": nombre, "slug": slug, "domain": domain, "port": port,
-        "container": f"contalibra-{slug}", "admin_user": admin_user,
+        "container": f"restolibra-{slug}", "admin_user": admin_user,
         "admin_password": admin_password, "plan": plan, "proxy_ok": proxy_ok,
         "dir": str(client_dir),
     }
