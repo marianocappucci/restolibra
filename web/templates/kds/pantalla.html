@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}KDS {{ estacion|capitalize }} — Restolibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>
+    <i class="bi {% if estacion == 'cocina' %}bi-fire text-danger{% else %}bi-cup-straw text-info{% endif %} me-2"></i>
+    KDS {{ estacion|capitalize }}
+  </h1>
+  <div class="btn-group btn-group-sm">
+    {% for e in estaciones %}
+    <a href="/kds/{{ e }}" class="btn btn-outline-secondary {% if e == estacion %}active{% endif %}">{{ e|capitalize }}</a>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <h6 class="text-danger"><i class="bi bi-hourglass-split"></i> Pendientes</h6>
+    <div id="col-pendiente" class="d-flex flex-column gap-2"></div>
+  </div>
+  <div class="col-md-4">
+    <h6 class="text-warning"><i class="bi bi-fire"></i> En preparación</h6>
+    <div id="col-preparacion" class="d-flex flex-column gap-2"></div>
+  </div>
+  <div class="col-md-4">
+    <h6 class="text-success"><i class="bi bi-check2-circle"></i> Listas</h6>
+    <div id="col-listo" class="d-flex flex-column gap-2"></div>
+  </div>
+</div>
+<p class="text-muted small mt-3" id="kds-status">Actualizando…</p>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ESTACION = "{{ estacion }}";
+const NEXT_LABEL = { pendiente: "Comenzar", preparacion: "Listo", listo: "Entregar" };
+const BORDER = { pendiente: "danger", preparacion: "warning", listo: "success" };
+
+function esc(s){ return (s||"").replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function horaDe(s){ return (s && s.length >= 16) ? s.substring(11,16) : ""; }
+
+function cardHTML(c){
+  const items = c.items.map(it => {
+    const q = Number(it.qty) % 1 === 0 ? parseInt(it.qty) : it.qty;
+    const nota = it.nota ? `<div class="small text-muted ms-3">» ${esc(it.nota)}</div>` : "";
+    return `<div><strong>${q}×</strong> ${esc(it.nombre)}${nota}</div>`;
+  }).join("");
+  return `
+    <div class="card border-${BORDER[c.estado]}">
+      <div class="card-header py-1 d-flex justify-content-between align-items-center">
+        <strong>${esc(c.mesa)}</strong>
+        <small class="text-muted">${esc(c.pedido_numero)} · ${horaDe(c.created_at)}</small>
+      </div>
+      <div class="card-body py-2">${items}</div>
+      <div class="card-footer py-1 d-flex gap-1">
+        <button class="btn btn-sm btn-${BORDER[c.estado]} flex-grow-1" onclick="avanzar(${c.id})">
+          ${NEXT_LABEL[c.estado] || "Avanzar"}
+        </button>
+        <a class="btn btn-sm btn-outline-secondary" href="/kds/comanda/${c.id}/ticket" target="_blank" title="Imprimir">
+          <i class="bi bi-printer"></i>
+        </a>
+      </div>
+    </div>`;
+}
+
+async function refrescar(){
+  try {
+    const r = await fetch(`/kds/${ESTACION}/feed`, {headers:{'Accept':'application/json'}});
+    const data = await r.json();
+    const cols = { pendiente: "", preparacion: "", listo: "" };
+    (data.comandas || []).forEach(c => { cols[c.estado] = (cols[c.estado] || "") + cardHTML(c); });
+    for (const est in cols){
+      document.getElementById("col-" + est).innerHTML =
+        cols[est] || `<div class="text-muted small">—</div>`;
+    }
+    document.getElementById("kds-status").textContent =
+      "Última actualización: " + new Date().toLocaleTimeString();
+  } catch(e){
+    document.getElementById("kds-status").textContent = "Sin conexión, reintentando…";
+  }
+}
+
+async function avanzar(id){
+  await fetch(`/kds/comanda/${id}/avanzar`, {method:"POST"});
+  refrescar();
+}
+
+refrescar();
+setInterval(refrescar, 5000);
+</script>
+{% endblock %}

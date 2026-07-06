@@ -27,6 +27,7 @@ PLAN_PRECIOS = {
 # Módulos base del plan Básico.
 _BASICO = {
     "clientes", "caja", "cajas", "ventas",
+    "restaurant",   # operación gastronómica (salón/mesas/comandas/KDS) — core de Restolibra
 }
 
 # Estándar = Básico + gestión completa (facturación, comprobantes, finanzas).
@@ -58,7 +59,7 @@ TODOS_LOS_MODULOS = set(PLAN_MODULOS["premium"])
 
 def aplicar_plan_en_db(db_path: str, plan: str):
     """Aplica un plan escribiendo el estado de módulos directo en la DB SQLite de un
-    cliente (`clientes/<slug>/data/contalibra.db`). Lo usa el backoffice para asignar /
+    cliente (`clientes/<slug>/data/restolibra.db`). Lo usa el backoffice para asignar /
     subir / bajar el plan de una instancia sin depender del contenedor.
 
     Es idempotente y crea las filas de módulos que falten (INSERT OR IGNORE + UPDATE),

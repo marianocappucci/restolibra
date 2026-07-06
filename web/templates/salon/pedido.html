@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block title %}Pedido {{ pedido.numero }} — Restolibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>
+    <i class="bi bi-receipt-cutoff me-2 text-primary"></i>
+    {% if pedido.mesa_nombre %}Mesa {{ pedido.mesa_nombre }}{% else %}{{ pedido.canal|capitalize }}{% endif %}
+    <small class="text-muted fs-6">· Pedido {{ pedido.numero }}</small>
+  </h1>
+  <a href="/salon?salon_id={{ pedido.salon_id or '' }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Salón
+  </a>
+</div>
+
+<div class="row g-3">
+  <!-- ── Pedido / cuenta ── -->
+  <div class="col-lg-5">
+    <div class="card mb-3">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-check me-1"></i>Pedido</span>
+        <small class="text-muted">{{ pedido.comensales }} comensales · {{ pedido.mozo or '—' }}</small>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-middle">
+          <tbody>
+            {% for it in pedido['items'] %}
+            <tr>
+              <td class="text-center" style="width:2.5rem">{{ it.qty|entero }}</td>
+              <td>
+                {{ it.nombre }}
+                {% if it.estacion == 'cocina' %}<i class="bi bi-fire text-danger" title="Cocina"></i>
+                {% elif it.estacion == 'barra' %}<i class="bi bi-cup-straw text-info" title="Barra"></i>{% endif %}
+                {% if it.nota %}<div class="small text-muted">{{ it.nota }}</div>{% endif %}
+                {% if it.estado == 'nuevo' %}<span class="badge bg-secondary">nuevo</span>
+                {% else %}<span class="badge bg-info">enviado</span>{% endif %}
+              </td>
+              <td class="text-end">${{ it.subtotal|moneda }}</td>
+              <td class="text-end" style="width:2.5rem">
+                {% if it.estado == 'nuevo' %}
+                <form method="post" action="/salon/pedido/{{ pedido.id }}/item/{{ it.id }}/eliminar">
+                  <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar"><i class="bi bi-x"></i></button>
+                </form>
+                {% endif %}
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Sin ítems todavía</td></tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr class="fw-bold border-top">
+              <td colspan="2">TOTAL</td>
+              <td class="text-end" colspan="2">${{ pedido.total|moneda }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="card-footer d-flex gap-2 flex-wrap">
+        <form method="post" action="/salon/pedido/{{ pedido.id }}/enviar">
+          <button class="btn btn-warning btn-sm" {% if not hay_nuevos %}disabled{% endif %}>
+            <i class="bi bi-send me-1"></i>Enviar a cocina/barra
+          </button>
+        </form>
+        <a href="/salon/pedido/{{ pedido.id }}/cobrar"
+           class="btn btn-success btn-sm {% if not pedido['items'] %}disabled{% endif %}">
+          <i class="bi bi-cash-coin me-1"></i>Cobrar
+        </a>
+        <form method="post" action="/salon/pedido/{{ pedido.id }}/anular"
+              onsubmit="return confirm('¿Anular el pedido y liberar la mesa?')">
+          <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Anular</button>
+        </form>
+      </div>
+    </div>
+
+    {% if pedido['comandas'] %}
+    <div class="card">
+      <div class="card-header"><i class="bi bi-printer me-1"></i>Comandas enviadas</div>
+      <ul class="list-group list-group-flush">
+        {% for c in pedido['comandas'] %}
+        <li class="list-group-item d-flex justify-content-between align-items-center">
+          <span>
+            <span class="text-uppercase fw-semibold">{{ c.estacion }}</span>
+            <small class="text-muted">ronda {{ c.numero }}</small>
+            <span class="badge bg-secondary">{{ c.estado }}</span>
+          </span>
+          <a href="/kds/comanda/{{ c.id }}/ticket" target="_blank" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-printer"></i>
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Menú de productos ── -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span><i class="bi bi-grid me-1"></i>Agregar productos</span>
+        <form class="d-flex" method="get" action="/salon/pedido/{{ pedido.id }}">
+          <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
+                 placeholder="Buscar producto…" style="max-width:220px">
+          <button class="btn btn-sm btn-outline-primary ms-1"><i class="bi bi-search"></i></button>
+        </form>
+      </div>
+      <div class="card-body">
+        <div class="row g-2">
+          {% for p in productos %}
+          <div class="col-6 col-md-4">
+            <form method="post" action="/salon/pedido/{{ pedido.id }}/item">
+              <input type="hidden" name="producto_id" value="{{ p.id }}">
+              <button class="btn btn-outline-primary w-100 text-start h-100 py-2">
+                <div class="fw-semibold small">{{ p.nombre }}</div>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span class="text-muted small">${{ p.precio_venta|moneda }}</span>
+                  {% if p.estacion == 'cocina' %}<i class="bi bi-fire text-danger"></i>
+                  {% elif p.estacion == 'barra' %}<i class="bi bi-cup-straw text-info"></i>{% endif %}
+                </div>
+              </button>
+            </form>
+          </div>
+          {% else %}
+          <div class="col-12 text-center text-muted py-3">
+            No hay productos{% if q %} para “{{ q }}”{% endif %}.
+            <a href="/productos">Cargá productos</a> y asignales estación.
+          </div>
+          {% endfor %}
+        </div>
+
+        <hr>
+        <details>
+          <summary class="text-muted small mb-2" style="cursor:pointer">Ítem libre (sin producto)</summary>
+          <form method="post" action="/salon/pedido/{{ pedido.id }}/item" class="row g-2 mt-1">
+            <div class="col-md-5"><input name="nombre" class="form-control form-control-sm" placeholder="Descripción" required></div>
+            <div class="col-md-3"><input name="precio" type="number" step="0.01" class="form-control form-control-sm" placeholder="Precio"></div>
+            <div class="col-md-2">
+              <select name="estacion" class="form-select form-select-sm">
+                <option value="">—</option><option value="cocina">Cocina</option><option value="barra">Barra</option>
+              </select>
+            </div>
+            <div class="col-md-2"><button class="btn btn-sm btn-primary w-100">Agregar</button></div>
+          </form>
+        </details>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

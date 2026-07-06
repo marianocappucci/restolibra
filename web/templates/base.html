@@ -224,6 +224,31 @@
         </a>
       </li>
 
+      {# ── SALÓN / RESTAURANT ── #}
+      {% if 'restaurant' in mods %}
+      <li><div class="sidebar-section">Salón</div></li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'salon' %}active{% endif %}" href="/salon">
+          <i class="bi bi-grid-3x3-gap"></i>Mesas
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'kds_cocina' %}active{% endif %}" href="/kds/cocina">
+          <i class="bi bi-fire"></i>KDS Cocina
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'kds_barra' %}active{% endif %}" href="/kds/barra">
+          <i class="bi bi-cup-straw"></i>KDS Barra
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'salon_config' %}active{% endif %}" href="/salon/config">
+          <i class="bi bi-gear"></i>Config. salón
+        </a>
+      </li>
+      {% endif %}
+
       {# ── VENTAS ── #}
       {% if has_ventas %}
       <li><div class="sidebar-section">Ventas</div></li>

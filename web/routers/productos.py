@@ -67,6 +67,7 @@ async def producto_nuevo_post(request: Request, user: Auth):
             unidad=str(form.get("unidad", "u")),
             categoria=str(form.get("categoria", "")).strip(),
             stock_minimo=float(form.get("stock_minimo") or 0),
+            estacion=str(form.get("estacion", "")).strip(),
         )
     except Exception as e:
         return templates.TemplateResponse(request, "productos/form.html", {
@@ -113,6 +114,7 @@ async def producto_editar_post(request: Request, pid: int, user: Auth):
             categoria=str(form.get("categoria", "")).strip(),
             activo=1 if form.get("activo") else 0,
             stock_minimo=float(form.get("stock_minimo") or 0),
+            estacion=str(form.get("estacion", "")).strip(),
         )
     except Exception as e:
         return templates.TemplateResponse(request, "productos/form.html", {

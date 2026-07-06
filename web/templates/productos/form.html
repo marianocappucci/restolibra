@@ -63,6 +63,18 @@
           </select>
         </div>
 
+        <!-- Estación de preparación (módulo restaurant) -->
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Estación (comanda)</label>
+          <select name="estacion" class="form-select">
+            {% set est = producto.estacion if producto else '' %}
+            <option value=""       {% if not est %}selected{% endif %}>— Sin comanda —</option>
+            <option value="cocina" {% if est == 'cocina' %}selected{% endif %}>Cocina</option>
+            <option value="barra"  {% if est == 'barra' %}selected{% endif %}>Barra</option>
+          </select>
+          <div class="form-text">A qué pantalla/comanda se envía este ítem.</div>
+        </div>
+
         <!-- Descripción -->
         <div class="col-12">
           <label class="form-label fw-semibold">Descripción</label>
