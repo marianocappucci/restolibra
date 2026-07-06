@@ -1,0 +1,1 @@
+# StaticFiles monta este directorio (web/app.py). Debe existir aunque este vacio (assets via CDN).
