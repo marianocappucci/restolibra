@@ -1,0 +1,74 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+venv39/
+.venv
+.venv-scripts
+
+# Base de datos
+*.db
+*.sqlite
+*.sqlite3
+
+# PDFs generados
+remitos_pdf/
+presupuestos_pdf/
+facturas_pdf/
+
+# Certificados digitales y claves privadas (SEGURIDAD)
+certs/
+arca_certs/
+*.key
+*.pem
+*.pfx
+*.p12
+*.crt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporales
+*.tmp
+*.temp
+
+# Variables de entorno
+.env
+
+# Configuración local (contiene datos de empresa)
+config.json
+
+# Logos subidos
+logos/
+
+# Claude Code
+.claude/
+
+# Datos por cliente (generados por scripts/nuevo_cliente.py)
+# Anclado a la raíz: no debe ignorar admin/templates/clientes/
+/clientes/
+
+# Base de datos y config de entorno de desarrollo
+dev-data/
+
+# Archivos de journal WAL de SQLite (temporales, no deben versionarse)
+*.db-shm
+*.db-wal
+
+# Config privada de Nginx Proxy Manager (credenciales)
+scripts/.npm_config.json
+
+# Scripts de infraestructura local (no van a producción)
+scripts/create_dev_proxy.py

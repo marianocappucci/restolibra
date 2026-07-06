@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Caja — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cash-stack me-2 text-success"></i>Caja</h1>
+  <a href="/caja/nuevo" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo movimiento</a>
+</div>
+
+<!-- Saldo total -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Saldo actual</div>
+        <div class="fw-bold fs-4 {% if resumen.saldo_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+          $ {{ resumen.saldo_total|moneda }}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Ingresos del período</div>
+        <div class="fw-bold fs-5 text-success">+ $ {{ resumen.ingresos|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Egresos del período</div>
+        <div class="fw-bold fs-5 text-danger">- $ {{ resumen.egresos|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Resultado del período</div>
+        <div class="fw-bold fs-5 {% if resumen.saldo_periodo >= 0 %}text-success{% else %}text-danger{% endif %}">
+          {% if resumen.saldo_periodo >= 0 %}+{% endif %}$ {{ resumen.saldo_periodo|moneda }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtro de período + caja -->
+<form class="card mb-3" method="get" action="/caja">
+  <div class="card-body py-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <span class="text-muted small fw-semibold">Período:</span>
+      <input type="date" class="form-control form-control-sm" name="desde" value="{{ desde }}" style="width:150px">
+      <span class="text-muted">—</span>
+      <input type="date" class="form-control form-control-sm" name="hasta" value="{{ hasta }}" style="width:150px">
+      {% if cajas|length > 1 %}
+      <select name="caja_id" class="form-select form-select-sm" style="width:180px">
+        <option value="0">Todas las cajas</option>
+        {% for c in cajas %}
+        <option value="{{ c.id }}" {% if caja_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+      {% endif %}
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-funnel"></i></button>
+      <a href="/caja" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></a>
+    </div>
+  </div>
+</form>
+
+<!-- Tabla de movimientos -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if movimientos %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Concepto</th>
+            <th>Usuario</th>
+            <th>Referencia</th>
+            {% if cajas|length > 1 %}<th>Caja / Medio</th>{% endif %}
+            <th class="text-end">Monto</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in movimientos %}
+          <tr>
+            <td class="text-nowrap">{{ m.fecha|fecha }}</td>
+            <td>
+              {% if m.tipo == 'ingreso' %}
+              <span class="badge bg-success">Ingreso</span>
+              {% else %}
+              <span class="badge bg-danger">Egreso</span>
+              {% endif %}
+            </td>
+            <td>
+              {{ m.concepto }}
+              {% if m.factura_id %}
+              <a href="/facturas/{{ m.factura_id }}" class="ms-1 text-muted small">
+                <i class="bi bi-receipt"></i>
+              </a>
+              {% endif %}
+            </td>
+            <td class="small">{{ m.usuario_nombre or '—' }}</td>
+            <td class="text-muted small">{{ m.referencia }}</td>
+            {% if cajas|length > 1 %}
+            <td class="small text-muted">
+              {% if m.caja_nombre %}<span class="d-block">{{ m.caja_nombre }}</span>{% endif %}
+              {% if m.medio_pago %}<span class="badge bg-light text-dark border">{{ m.medio_pago }}</span>{% endif %}
+            </td>
+            {% endif %}
+            <td class="text-end fw-semibold {% if m.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
+              {% if m.tipo == 'ingreso' %}+{% else %}-{% endif %}$ {{ m.monto|moneda }}
+            </td>
+            <td class="text-end">
+              <form method="post" action="/caja/{{ m.id }}/eliminar"
+                    onsubmit="return confirm('¿Eliminar este movimiento?')">
+                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">
+      No hay movimientos para el período seleccionado.
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

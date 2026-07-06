@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Contalibra{% endblock %}</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background: #f4f6fb; }
+    .sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      height: 100vh;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      width: 220px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+    }
+    .sidebar .brand {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      padding: 1.5rem 1.2rem 1rem;
+      letter-spacing: 0.03em;
+      border-bottom: 1px solid #2d2d4e;
+      line-height: 1.2;
+      flex-shrink: 0;
+      display: block;
+      text-decoration: none;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+    .sidebar .brand:hover {
+      opacity: 0.8;
+    }
+    .sidebar .brand-sub {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 400;
+      color: #8892aa;
+      letter-spacing: 0.01em;
+      margin-top: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding-bottom: 0.5rem;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: #2d2d4e; border-radius: 4px; }
+    .sidebar .sidebar-footer {
+      flex-shrink: 0;
+      border-top: 1px solid #2d2d4e;
+    }
+    .sidebar .nav-link {
+      color: #b0b8d4;
+      border-radius: 8px;
+      margin: 2px 8px;
+      padding: 0.55rem 1rem;
+      font-size: 0.95rem;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      background: #2d2d4e;
+      color: #fff;
+    }
+    .sidebar .nav-link i { margin-right: 8px; font-size: 1.05rem; }
+    .sidebar-section {
+      font-size: 0.67rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #4a5270;
+      padding: 0.65rem 1.2rem 0.2rem;
+      margin-top: 0.25rem;
+    }
+    .sidebar-divider {
+      border-top: 1px solid #2d2d4e;
+      margin: 0.5rem 1rem 0.25rem;
+    }
+    .main-content { flex: 1; min-width: 0; padding: 2rem; margin-left: 220px; }
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+    }
+    .page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.07); border-radius: 12px; }
+    .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
+    .table th { font-size: 0.82rem; text-transform: uppercase; letter-spacing: .04em; color: #666; }
+    /* Las tablas a ras del borde de su contenedor (card-body p-0, o los paneles
+       de un tab-content como la bandeja MercadoPago) usan el padding propio de
+       celda de Bootstrap (0.5rem), menor al gutter de 1rem del resto de los
+       encabezados de la página (buscador, pestañas) — se empareja acá. */
+    .card-body.p-0 .table > :not(caption) > * > *:first-child,
+    .tab-content   .table > :not(caption) > * > *:first-child { padding-left: 1rem; }
+    .card-body.p-0 .table > :not(caption) > * > *:last-child,
+    .tab-content   .table > :not(caption) > * > *:last-child  { padding-right: 1rem; }
+    .badge-borrador  { background: #e2e3e5; color: #41464b; }
+    .badge-enviado   { background: #cfe2ff; color: #084298; }
+    .badge-pendiente { background: #fff3cd; color: #856404; }
+    .badge-aceptado  { background: #d1e7dd; color: #0f5132; }
+    .badge-rechazado { background: #f8d7da; color: #842029; }
+    .badge-vencido   { background: #ffe5d0; color: #7c3f00; }
+    .badge-facturado { background: #d3d3f7; color: #2b2b8b; }
+    .logout-link { color: #b0b8d4; font-size: 0.85rem; padding: 0.5rem 1.2rem; display: block; }
+    .logout-link:hover { color: #fff; }
+    /* ── Mobile: topbar con hamburguesa + sidebar deslizante (off-canvas) ── */
+    .mobile-topbar {
+      background: #1a1a2e;
+      color: #fff;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      position: sticky;
+      top: 0;
+      z-index: 110;
+    }
+    .mobile-topbar .mobile-menu-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.4rem;
+      line-height: 1;
+      padding: 0;
+      cursor: pointer;
+    }
+    .mobile-topbar-brand { font-weight: 700; font-size: 1.05rem; }
+    .sidebar-backdrop { display: none; }
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+        transition: transform .25s ease;
+        z-index: 120;
+      }
+      .sidebar.open { transform: translateX(0); }
+      .sidebar-backdrop.show {
+        display: block;
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,.45);
+        z-index: 105;
+      }
+      .main-content { margin-left: 0; padding: 1rem; }
+      .page-header { flex-wrap: wrap; gap: 0.5rem; }
+      /* Encabezados de tarjeta con buscador + botones (ítems, POS, listas):
+         en escritorio van en una fila con justify-content-between; en móvil
+         no entran y desbordan, así que se apilan y el buscador ocupa el ancho. */
+      .card-header.d-flex { flex-wrap: wrap; gap: 0.5rem; }
+      .card-header .form-control,
+      .card-header .input-group { width: 100% !important; }
+      /* El buscador del POS y de la tabla de ítems usa width inline fijo. */
+      #buscador-producto, #buscador-prod { width: 100% !important; }
+      /* Modales: menos margen para aprovechar la pantalla angosta. */
+      .modal-dialog { margin: 0.5rem; }
+    }
+    /* ── Toggle switch CSS3 ── */
+    .toggle-switch {
+      display: inline-flex;
+      align-items: center;
+      width: 48px;
+      height: 26px;
+      border-radius: 13px;
+      background: #dee2e6;
+      border: none;
+      padding: 3px;
+      cursor: pointer;
+      transition: background .25s ease;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,.15);
+      vertical-align: middle;
+    }
+    .toggle-switch.on { background: #198754; }
+    .toggle-knob {
+      display: block;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 4px rgba(0,0,0,.25);
+      transition: transform .25s ease;
+      pointer-events: none;
+    }
+    .toggle-switch.on .toggle-knob { transform: translateX(22px); }
+  </style>
+</head>
+<body>
+<div class="mobile-topbar d-flex d-md-none">
+  <button type="button" class="mobile-menu-btn" id="mobileMenuToggle" aria-label="Abrir menú" aria-expanded="false">
+    <i class="bi bi-list"></i>
+  </button>
+  <span class="mobile-topbar-brand"><i class="bi bi-journal-bookmark-fill me-1"></i>Contalibra</span>
+</div>
+<div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+<div class="d-flex">
+  <nav class="sidebar">
+    <a href="/dashboard" class="brand">
+      <i class="bi bi-journal-bookmark-fill me-2"></i>Contalibra
+      {% if request.state.empresa_nombre %}
+      <span class="brand-sub">{{ request.state.empresa_nombre }}</span>
+      {% endif %}
+    </a>
+    {% set mods = request.state.modulos if request.state.modulos is defined else set() %}
+    {% set is_admin = request.state.current_user and request.state.current_user.role == 'admin' %}
+    {% set has_ventas = 'ventas' in mods or 'clientes' in mods or 'presupuestos' in mods or 'remitos' in mods or 'facturacion' in mods or 'cuenta_corriente' in mods %}
+    {% set has_inventario = 'productos' in mods or 'stock' in mods or 'depositos' in mods %}
+    {% set has_compras = 'egresos' in mods or 'proveedores' in mods %}
+    {% set has_caja_tes = 'caja' in mods or 'tesoreria' in mods %}
+    {% set has_reportes = 'reportes' in mods or 'libros_iva' in mods %}
+    <div class="sidebar-nav">
+    <ul class="nav flex-column mt-2">
+
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="/dashboard">
+          <i class="bi bi-speedometer2"></i>Dashboard
+        </a>
+      </li>
+
+      {# ── VENTAS ── #}
+      {% if has_ventas %}
+      <li><div class="sidebar-section">Ventas</div></li>
+      {% if 'facturacion' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'facturas' %}active{% endif %}" href="/facturas">
+          <i class="bi bi-receipt"></i>Comprobantes
+        </a>
+      </li>
+      {% endif %}
+      {% if 'presupuestos' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'presupuestos' %}active{% endif %}" href="/presupuestos">
+          <i class="bi bi-calculator"></i>Presupuestos
+        </a>
+      </li>
+      {% endif %}
+      {% if 'remitos' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'remitos' %}active{% endif %}" href="/remitos">
+          <i class="bi bi-file-earmark-text"></i>Remitos
+        </a>
+      </li>
+      {% endif %}
+      {% if 'ventas' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'ventas' %}active{% endif %}" href="/ventas">
+          <i class="bi bi-cart3"></i>Ventas POS
+        </a>
+      </li>
+      {% endif %}
+      {% if 'clientes' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'clientes' %}active{% endif %}" href="/clientes">
+          <i class="bi bi-people"></i>Clientes
+        </a>
+        {% if 'cuenta_corriente' in mods %}
+        <ul class="nav flex-column ms-3" style="font-size:.85em">
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'cuenta_corriente' %}active{% endif %}" href="/cuenta-corriente">
+              <i class="bi bi-journal-text me-1"></i>Cuenta Corriente
+            </a>
+          </li>
+        </ul>
+        {% endif %}
+      </li>
+      {% elif 'cuenta_corriente' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'cuenta_corriente' %}active{% endif %}" href="/cuenta-corriente">
+          <i class="bi bi-journal-text"></i>Cuenta Corriente
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+
+      {# ── COMPRAS ── #}
+      {% if has_compras %}
+      <li><div class="sidebar-section">Compras</div></li>
+      {% if 'egresos' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'egresos' %}active{% endif %}" href="/egresos">
+          <i class="bi bi-bag"></i>Egresos
+        </a>
+      </li>
+      {% endif %}
+      {% if 'proveedores' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'proveedores' %}active{% endif %}" href="/proveedores">
+          <i class="bi bi-truck"></i>Proveedores
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+
+      {# ── INVENTARIO ── #}
+      {% if has_inventario %}
+      <li><div class="sidebar-section">Inventario</div></li>
+      {% if 'productos' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'productos' %}active{% endif %}" href="/productos">
+          <i class="bi bi-box-seam"></i>Productos
+        </a>
+        <ul class="nav flex-column ms-3" style="font-size:.85em">
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'categorias_producto' %}active{% endif %}"
+               href="/config/categorias-producto">
+              <i class="bi bi-tags me-1"></i>Categorías
+            </a>
+          </li>
+          {% if 'listas_precio' in mods %}
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'listas_precio' %}active{% endif %}"
+               href="/listas-precio">
+              <i class="bi bi-tag me-1"></i>Listas de precios
+            </a>
+          </li>
+          {% endif %}
+        </ul>
+      </li>
+      {% endif %}
+      {% if 'stock' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'stock' %}active{% endif %}" href="/stock">
+          <i class="bi bi-archive"></i>Stock
+        </a>
+      </li>
+      {% endif %}
+      {% if 'depositos' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'depositos' %}active{% endif %}" href="/depositos">
+          <i class="bi bi-building"></i>Depósitos
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+
+      {# ── CAJA & TESORERÍA ── #}
+      {% if has_caja_tes %}
+      <li><div class="sidebar-section">Caja &amp; Tesorería</div></li>
+      {% if 'caja' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'caja' %}active{% endif %}" href="/caja">
+          <i class="bi bi-cash-stack"></i>Caja
+        </a>
+        <ul class="nav flex-column ms-3" style="font-size:.85em">
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'turnos' %}active{% endif %}" href="/turnos">
+              <i class="bi bi-person-badge me-1"></i>Turnos
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'cajas_config' %}active{% endif %}" href="/cajas">
+              <i class="bi bi-cash-coin me-1"></i>Gestionar cajas
+            </a>
+          </li>
+        </ul>
+      </li>
+      {% endif %}
+      {% if 'tesoreria' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'tesoreria' %}active{% endif %}" href="/tesoreria">
+          <i class="bi bi-bank"></i>Cuentas bancarias
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'mp_bandeja' %}active{% endif %}" href="/integraciones/mp/bandeja"
+           style="display:flex;align-items:center;justify-content:space-between">
+          <span><i class="bi bi-credit-card-2-front" style="color:#009ee3"></i>Pagos MercadoPago</span>
+          {% if request.state.mp_pending_count > 0 %}
+          <span class="badge rounded-pill bg-danger" style="font-size:.7rem;min-width:1.4rem">
+            {{ request.state.mp_pending_count }}
+          </span>
+          {% endif %}
+        </a>
+      </li>
+
+      {# ── REPORTES ── #}
+      {% if has_reportes %}
+      <li><div class="sidebar-section">Reportes</div></li>
+      {% if 'reportes' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'reportes' %}active{% endif %}" href="/reportes">
+          <i class="bi bi-bar-chart-line"></i>Reportes
+        </a>
+        <ul class="nav flex-column ms-3" style="font-size:.85em">
+          <li class="nav-item">
+            <a class="nav-link py-1 {% if active == 'reporte_caja_medios' %}active{% endif %}"
+               href="/reportes/caja-medios">
+              <i class="bi bi-cash-stack me-1"></i>Caja por medio
+            </a>
+          </li>
+        </ul>
+      </li>
+      {% endif %}
+      {% if 'libros_iva' in mods %}
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'libros_iva' %}active{% endif %}" href="/libros-iva">
+          <i class="bi bi-journal-text"></i>Libros IVA
+        </a>
+      </li>
+      {% endif %}
+      {% endif %}
+
+      {# ── CONFIGURACIÓN ── #}
+      <li><div class="sidebar-divider"></div></li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'config' %}active{% endif %}" href="/config">
+          <i class="bi bi-gear"></i>Configuración
+        </a>
+      </li>
+
+      {# ── ADMINISTRACIÓN ── #}
+      {% if is_admin %}
+      <li><div class="sidebar-section">Administración</div></li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'usuarios' %}active{% endif %}" href="/usuarios">
+          <i class="bi bi-person-gear"></i>Usuarios
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link {% if active == 'logs' %}active{% endif %}" href="/admin/logs">
+          <i class="bi bi-journal-text"></i>Logs
+        </a>
+      </li>
+      {% endif %}
+
+    </ul>
+    </div><!-- /sidebar-nav -->
+    {% set cu = request.state.current_user %}
+    <div class="sidebar-footer">
+      {% if cu %}
+      <div style="padding: 0.6rem 1.2rem 0.3rem; font-size: 0.8rem; color: #7a85a8;">
+        <a href="/mi-cuenta" style="color:#b0b8d4; text-decoration:none;">
+          <i class="bi bi-person-circle me-1"></i>{{ cu.nombre }}
+        </a>
+        <span class="ms-1" style="font-size:0.72rem; opacity:.7;">({{ cu.role }})</span>
+      </div>
+      {% endif %}
+      <a href="/logout" class="logout-link mb-2"><i class="bi bi-box-arrow-left me-1"></i>Cerrar sesión</a>
+      <div style="padding: 0.3rem 1.2rem 0.6rem; font-size: 0.68rem; color: #4a5270; display:flex; align-items:center; gap:0.4rem;">
+        <span>v{{ app_version }}</span>
+        {% if app_env == 'development' %}
+        <span style="background:#f59e0b;color:#000;border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:700;letter-spacing:.04em;">DEV</span>
+        {% endif %}
+      </div>
+    </div>
+  </nav>
+  <div class="main-content">
+    {% if request.state.servicio_estado == 'pausado' %}
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4 py-2 px-3" role="alert"
+         style="border-radius:8px;border-left:4px solid #ffc107">
+      <i class="bi bi-exclamation-triangle-fill flex-shrink-0"></i>
+      <div>
+        <strong>Servicio pausado.</strong>
+        {% if request.state.servicio_mensaje %}
+        {{ request.state.servicio_mensaje }}
+        {% else %}
+        El servicio está pendiente de regularización. Contactá al administrador.
+        {% endif %}
+        {% if request.state.current_user and request.state.current_user.role == 'admin' %}
+        <a href="/config?tab=servicio" class="ms-2 fw-semibold">Gestionar estado</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Menú hamburguesa mobile: abre/cierra el sidebar como panel deslizante.
+(function () {
+  var toggle   = document.getElementById('mobileMenuToggle');
+  var sidebar  = document.querySelector('.sidebar');
+  var backdrop = document.getElementById('sidebarBackdrop');
+  if (!toggle || !sidebar || !backdrop) return;
+
+  function open()  { sidebar.classList.add('open');  backdrop.classList.add('show');  toggle.setAttribute('aria-expanded', 'true'); }
+  function close() { sidebar.classList.remove('open'); backdrop.classList.remove('show'); toggle.setAttribute('aria-expanded', 'false'); }
+
+  toggle.addEventListener('click', function () {
+    sidebar.classList.contains('open') ? close() : open();
+  });
+  backdrop.addEventListener('click', close);
+  sidebar.querySelectorAll('a.nav-link').forEach(function (a) {
+    a.addEventListener('click', close);
+  });
+  window.addEventListener('resize', function () {
+    if (window.innerWidth > 768) close();
+  });
+})();
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

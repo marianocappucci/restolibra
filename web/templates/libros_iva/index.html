@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+{% block title %}Libros IVA — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-journal-text me-2 text-primary"></i>Libros IVA Digital</h1>
+</div>
+
+{# ── Selector de período ── #}
+<div class="card mb-3">
+  <div class="card-body py-2">
+    <form class="d-flex flex-wrap gap-2 align-items-end" method="get" action="/libros-iva">
+      <input type="hidden" name="tab" value="{{ tab }}">
+      <div>
+        <label class="form-label mb-0 small fw-semibold">Desde</label>
+        <input type="date" class="form-control form-control-sm" name="desde" value="{{ desde }}" required>
+      </div>
+      <div>
+        <label class="form-label mb-0 small fw-semibold">Hasta</label>
+        <input type="date" class="form-control form-control-sm" name="hasta" value="{{ hasta }}" required>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-funnel me-1"></i>Filtrar
+      </button>
+      <div class="ms-2 d-flex gap-1">
+        {% set y = desde[:4] %}{% set m = desde[5:7] %}
+        <a href="/libros-iva?desde={{ y }}-{{ m }}-01&hasta={{ y }}-{{ m }}-{{ hasta[8:] }}&tab={{ tab }}"
+           class="btn btn-outline-secondary btn-sm">Mes actual</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{# ── Tabs ── #}
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'ventas' %}active{% endif %}"
+       href="/libros-iva?desde={{ desde }}&hasta={{ hasta }}&tab=ventas">
+      <i class="bi bi-arrow-up-right-circle me-1"></i>IVA Ventas
+      <span class="badge bg-secondary ms-1">{{ facturas|length }}</span>
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'compras' %}active{% endif %}"
+       href="/libros-iva?desde={{ desde }}&hasta={{ hasta }}&tab=compras">
+      <i class="bi bi-arrow-down-left-circle me-1"></i>IVA Compras
+      <span class="badge bg-secondary ms-1">{{ egresos|length }}</span>
+    </a>
+  </li>
+</ul>
+
+{% if tab == 'ventas' %}
+{# ════════════════════ VENTAS ════════════════════ #}
+
+{# Resumen por alícuota #}
+{% if resumen_v.cbtes > 0 %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Comprobantes</div>
+        <div class="fw-bold fs-5">{{ resumen_v.cbtes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Neto Gravado</div>
+        <div class="fw-bold fs-5">$ {{ resumen_v.neto|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">IVA Total</div>
+        <div class="fw-bold fs-5 text-primary">$ {{ resumen_v.iva|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Total Facturado</div>
+        <div class="fw-bold fs-5">$ {{ resumen_v.total|moneda }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if resumen_v.por_tasa %}
+<div class="card mb-3">
+  <div class="card-header fw-semibold">Resumen por alícuota</div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Alícuota IVA</th>
+          <th class="text-center">Comprobantes</th>
+          <th class="text-end">Neto gravado</th>
+          <th class="text-end">IVA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tasa, datos in resumen_v.por_tasa.items() %}
+        <tr>
+          <td><span class="badge bg-light text-dark border">{{ tasa }}%</span></td>
+          <td class="text-center">{{ datos.cbtes }}</td>
+          <td class="text-end">$ {{ datos.neto|moneda }}</td>
+          <td class="text-end fw-semibold text-primary">$ {{ datos.iva|moneda }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-semibold">
+        <tr>
+          <td colspan="2" class="text-end">Total</td>
+          <td class="text-end">$ {{ resumen_v.neto|moneda }}</td>
+          <td class="text-end text-primary">$ {{ resumen_v.iva|moneda }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{# Detalle comprobantes #}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Comprobantes emitidos</span>
+    <div class="d-flex gap-2">
+      <a href="/libros-iva/export/ventas-cbte?desde={{ desde }}&hasta={{ hasta }}"
+         class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-download me-1"></i>REGINFO_VENTAS_CBTE.txt
+      </a>
+      <a href="/libros-iva/export/ventas-alicuotas?desde={{ desde }}&hasta={{ hasta }}"
+         class="btn btn-sm btn-outline-primary">
+        <i class="bi bi-download me-1"></i>REGINFO_VENTAS_ALICUOTAS.txt
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if facturas %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>PV-Nro</th>
+            <th>CAE</th>
+            <th>Cliente</th>
+            <th>CUIT</th>
+            <th class="text-end">Neto</th>
+            <th class="text-end">IVA</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set tipo_lbl = {1:'FAC A',2:'ND A',3:'NC A',6:'FAC B',7:'ND B',8:'NC B',11:'FAC C',12:'ND C',13:'NC C'} %}
+          {% for f in facturas %}
+          <tr>
+            <td class="text-muted small">{{ f.fecha|fecha }}</td>
+            <td><span class="badge bg-light text-dark border small">{{ tipo_lbl.get(f.tipo, f.tipo) }}</span></td>
+            <td class="font-monospace small">{{ '%04d'|format(f.punto_venta) }}-{{ '%08d'|format(f.numero) }}</td>
+            <td class="font-monospace small text-muted">{{ f.cae or '—' }}</td>
+            <td>{{ f.cliente_razon }}</td>
+            <td class="font-monospace small text-muted">{{ f.cliente_cuit|cuit if f.cliente_cuit else '—' }}</td>
+            <td class="text-end">$ {{ f.subtotal|moneda }}</td>
+            <td class="text-end {% if f.iva_amount > 0 %}text-primary{% else %}text-muted{% endif %}">
+              $ {{ f.iva_amount|moneda }}
+            </td>
+            <td class="text-end fw-semibold">$ {{ f.total|moneda }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-semibold">
+          <tr>
+            <td colspan="6" class="text-end">Totales</td>
+            <td class="text-end">$ {{ resumen_v.neto|moneda }}</td>
+            <td class="text-end text-primary">$ {{ resumen_v.iva|moneda }}</td>
+            <td class="text-end">$ {{ resumen_v.total|moneda }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5 text-center text-muted">
+      <i class="bi bi-receipt fs-1 d-block mb-2 opacity-25"></i>
+      No hay comprobantes en el período seleccionado.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="alert alert-info small">
+  <i class="bi bi-info-circle me-1"></i>
+  Los archivos <strong>REGINFO_VENTAS_CBTE</strong> y <strong>REGINFO_VENTAS_ALICUOTAS</strong>
+  se importan en el <strong>Aplicativo REGINFO</strong> de ARCA (RG 3685).
+  Comprobantes tipo C (Monotributista) van con <code>cantAlicuotas=0</code>.
+  Notas de Crédito se exportan con importes negativos.
+</div>
+
+{% else %}
+{# ════════════════════ COMPRAS ════════════════════ #}
+
+{% if resumen_c.cbtes > 0 %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Comprobantes</div>
+        <div class="fw-bold fs-5">{{ resumen_c.cbtes }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Neto Gravado</div>
+        <div class="fw-bold fs-5">$ {{ resumen_c.neto|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">IVA Crédito Fiscal</div>
+        <div class="fw-bold fs-5 text-success">$ {{ resumen_c.iva|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Total</div>
+        <div class="fw-bold fs-5">$ {{ resumen_c.total|moneda }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% if resumen_c.por_tasa %}
+<div class="card mb-3">
+  <div class="card-header fw-semibold">Resumen por alícuota</div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Alícuota IVA</th>
+          <th class="text-center">Comprobantes</th>
+          <th class="text-end">Neto gravado</th>
+          <th class="text-end">IVA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tasa, datos in resumen_c.por_tasa.items() %}
+        <tr>
+          <td><span class="badge bg-light text-dark border">{{ tasa }}%</span></td>
+          <td class="text-center">{{ datos.cbtes }}</td>
+          <td class="text-end">$ {{ datos.neto|moneda }}</td>
+          <td class="text-end fw-semibold text-success">$ {{ datos.iva|moneda }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-semibold">
+        <tr>
+          <td colspan="2" class="text-end">Total</td>
+          <td class="text-end">$ {{ resumen_c.neto|moneda }}</td>
+          <td class="text-end text-success">$ {{ resumen_c.iva|moneda }}</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">Comprobantes recibidos</span>
+    <div class="d-flex gap-2">
+      <a href="/libros-iva/export/compras-cbte?desde={{ desde }}&hasta={{ hasta }}"
+         class="btn btn-sm btn-outline-success">
+        <i class="bi bi-download me-1"></i>REGINFO_COMPRAS_CBTE.txt
+      </a>
+      <a href="/libros-iva/export/compras-alicuotas?desde={{ desde }}&hasta={{ hasta }}"
+         class="btn btn-sm btn-outline-success">
+        <i class="bi bi-download me-1"></i>REGINFO_COMPRAS_ALICUOTAS.txt
+      </a>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    {% if egresos %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Número</th>
+            <th>Proveedor</th>
+            <th>CUIT</th>
+            <th class="text-end">Neto</th>
+            <th class="text-end">IVA %</th>
+            <th class="text-end">IVA $</th>
+            <th class="text-end">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in egresos %}
+          <tr>
+            <td class="text-muted small">{{ e.fecha|fecha }}</td>
+            <td class="font-monospace small">{{ e.numero or '—' }}</td>
+            <td>{{ e.proveedor_nombre or '—' }}</td>
+            <td class="font-monospace small text-muted">{{ e.proveedor_cuit|cuit if e.proveedor_cuit else '—' }}</td>
+            <td class="text-end">$ {{ e.monto_neto|moneda }}</td>
+            <td class="text-end text-muted small">{{ e.iva_pct }}%</td>
+            <td class="text-end fw-semibold text-success">$ {{ e.iva_monto|moneda }}</td>
+            <td class="text-end fw-semibold">$ {{ e.total|moneda }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot class="table-light fw-semibold">
+          <tr>
+            <td colspan="4" class="text-end">Totales</td>
+            <td class="text-end">$ {{ resumen_c.neto|moneda }}</td>
+            <td></td>
+            <td class="text-end text-success">$ {{ resumen_c.iva|moneda }}</td>
+            <td class="text-end">$ {{ resumen_c.total|moneda }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5 text-center text-muted">
+      <i class="bi bi-truck fs-1 d-block mb-2 opacity-25"></i>
+      No hay facturas de compra en el período seleccionado.<br>
+      <small>Solo se incluyen egresos con tipo "Factura".</small>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="alert alert-info small">
+  <i class="bi bi-info-circle me-1"></i>
+  Los archivos <strong>REGINFO_COMPRAS_CBTE</strong> y <strong>REGINFO_COMPRAS_ALICUOTAS</strong>
+  se importan en el <strong>Aplicativo REGINFO</strong> de ARCA (RG 3685).
+  Solo se incluyen egresos registrados como <strong>Factura</strong>.
+  El tipo de comprobante AFIP se asume <code>01 (Factura A)</code> por defecto;
+  modificalo en el egreso si corresponde a otro tipo.
+</div>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{% if deposito %}Editar depósito{% else %}Nuevo depósito{% endif %} — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-building me-2 text-primary"></i>
+    {% if deposito %}Editar: {{ deposito.nombre }}{% else %}Nuevo depósito{% endif %}
+  </h1>
+  <a href="/depositos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="{% if deposito %}/depositos/{{ deposito.id }}/editar{% else %}/depositos/nuevo{% endif %}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control"
+                   value="{{ deposito.nombre if deposito else '' }}" required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <textarea name="descripcion" class="form-control" rows="2"
+                      placeholder="Ej: Almacén norte, Depósito de materias primas…">{{ deposito.descripcion if deposito else '' }}</textarea>
+          </div>
+          {% if deposito %}
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="activo" id="activo"
+                     {% if deposito.activo %}checked{% endif %}>
+              <label class="form-check-label" for="activo">Activo</label>
+            </div>
+          </div>
+          {% endif %}
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check2 me-1"></i>Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

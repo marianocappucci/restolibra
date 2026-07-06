@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{% if egreso %}Editar egreso{% else %}Nuevo egreso{% endif %} — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-arrow-up-circle me-2 text-danger"></i>
+    {% if egreso %}Editar egreso{% else %}Nuevo egreso{% endif %}
+  </h1>
+  <a href="/egresos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="{% if egreso %}/egresos/{{ egreso.id }}/editar{% else %}/egresos/nuevo{% endif %}">
+  <div class="row g-3">
+
+    <!-- Proveedor -->
+    <div class="col-md-8">
+      <div class="card h-100">
+        <div class="card-header">Proveedor</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Proveedor</label>
+            <div class="input-group">
+              <select class="form-select" id="sel-proveedor" name="proveedor_id">
+                <option value="">— Sin proveedor / ocasional —</option>
+                {% for p in proveedores %}
+                <option value="{{ p.id }}"
+                  data-cuit="{{ p.cuit_dni }}"
+                  {% if egreso and egreso.proveedor_id == p.id %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+              </select>
+              <a href="/proveedores/nuevo" class="btn btn-outline-secondary" target="_blank" title="Nuevo proveedor">
+                <i class="bi bi-person-plus"></i>
+              </a>
+            </div>
+          </div>
+          <div class="mb-0">
+            <label class="form-label">Nombre / Razón social (si no está en la lista)</label>
+            <input type="text" class="form-control" name="proveedor_nombre" id="input-prov-nombre"
+                   value="{{ egreso.proveedor_nombre if egreso else '' }}"
+                   placeholder="Ej: Empresa ocasional S.A.">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Comprobante -->
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">Comprobante</div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Tipo</label>
+            <select class="form-select" name="tipo_comprobante">
+              {% for t in tipos %}
+              <option value="{{ t.id }}"
+                {% if egreso and egreso.tipo_comprobante == t.id %}selected{% endif %}>{{ t.label }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-0">
+            <label class="form-label">Número</label>
+            <input type="text" class="form-control font-monospace" name="numero"
+                   value="{{ egreso.numero if egreso else '' }}"
+                   placeholder="Ej: 0001-00004523">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Concepto + categoría + fecha -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">Detalle</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-5">
+              <label class="form-label fw-semibold">Concepto <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="concepto" required
+                     value="{{ egreso.concepto if egreso else '' }}"
+                     placeholder="Ej: Alquiler depósito, Factura internet…">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Categoría</label>
+              <select class="form-select" name="categoria">
+                <option value="">— Sin categoría —</option>
+                {% for c in categorias %}
+                <option value="{{ c.nombre }}"
+                  {% if egreso and egreso.categoria == c.nombre %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label fw-semibold">Fecha <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="fecha" id="egreso-fecha" required
+                     value="{{ egreso.fecha if egreso else '' }}">
+            </div>
+          </div>
+          {% if categorias|length == 0 %}
+          <div class="form-text mt-2">
+            <a href="/config/categorias-egreso" target="_blank">Crear categorías de egreso</a>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Montos -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">Montos</div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Monto neto <span class="text-danger">*</span></label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" class="form-control" name="monto_neto" id="monto-neto"
+                       min="0" step="0.01" required
+                       value="{{ egreso.monto_neto if egreso else '' }}"
+                       oninput="calcTotal()">
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">IVA</label>
+              <select class="form-select" name="iva_pct" id="iva-pct" onchange="calcTotal()">
+                <option value="0"    {% if egreso and egreso.iva_pct == 0    %}selected{% endif %}>Sin IVA</option>
+                <option value="0.105" {% if egreso and egreso.iva_pct == 0.105 %}selected{% endif %}>10.5%</option>
+                <option value="0.21" {% if egreso and egreso.iva_pct == 0.21 %}selected{% endif %}>21%</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3 p-2 bg-light rounded">
+            <div class="d-flex justify-content-between small text-muted mb-1">
+              <span>IVA</span><span id="lbl-iva">$ 0,00</span>
+            </div>
+            <div class="d-flex justify-content-between fw-bold">
+              <span>Total</span><span id="lbl-total" class="text-danger fs-5">$ 0,00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observaciones -->
+    <div class="col-md-6">
+      <div class="card h-100">
+        <div class="card-header">Observaciones</div>
+        <div class="card-body">
+          <textarea class="form-control h-100" name="observaciones" rows="5"
+                    style="min-height:120px">{{ egreso.observaciones if egreso else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-12 d-flex justify-content-end gap-2 pb-4">
+      <a href="/egresos" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-danger fw-semibold px-4">
+        <i class="bi bi-save me-1"></i>Guardar egreso
+      </button>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const fmt = n => '$ ' + n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function calcTotal() {
+  const neto = parseFloat(document.getElementById('monto-neto').value) || 0;
+  const pct  = parseFloat(document.getElementById('iva-pct').value)   || 0;
+  const iva  = Math.round(neto * pct * 100) / 100;
+  document.getElementById('lbl-iva').textContent   = fmt(iva);
+  document.getElementById('lbl-total').textContent = fmt(neto + iva);
+}
+
+// Autocompletar nombre de proveedor al seleccionar del dropdown
+document.getElementById('sel-proveedor').addEventListener('change', function() {
+  const opt   = this.options[this.selectedIndex];
+  const campo = document.getElementById('input-prov-nombre');
+  if (opt.value) {
+    campo.value    = opt.text;
+    campo.readOnly = true;
+  } else {
+    campo.value    = '';
+    campo.readOnly = false;
+  }
+});
+
+const fechaInp = document.getElementById('egreso-fecha');
+if (fechaInp && !fechaInp.value) fechaInp.value = new Date().toISOString().slice(0, 10);
+
+calcTotal();
+</script>
+{% endblock %}

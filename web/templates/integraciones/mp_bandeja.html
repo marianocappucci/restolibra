@@ -1,0 +1,610 @@
+{% extends "base.html" %}
+{% block title %}Bandeja MercadoPago — Contalibra{% endblock %}
+
+{# ── Macros de traducción de tags de la API de MercadoPago ── #}
+{% macro label_metodo(metodo) %}{{ {
+  'cvu':            'CVU',
+  'cbu':            'CBU',
+  'visa':           'VISA',
+  'debvisa':        'VISA Débito',
+  'master':         'Mastercard',
+  'debmaster':      'Mastercard Débito',
+  'amex':           'AMEX',
+  'cabal':          'Cabal',
+  'debcabal':       'Cabal Débito',
+  'naranja':        'Naranja',
+  'pagofacil':      'Pago Fácil',
+  'rapipago':       'Rapipago',
+  'mercadopago':    'MercadoPago',
+  'account_money':  'Cuenta MP',
+  'bank_transfer':  'Transf. bancaria',
+  'digital_wallet': 'Billetera digital',
+  'cencosud':       'Cencosud',
+  'tarshop':        'Tarjeta Shopping',
+  'argencard':      'Argencard',
+  'cordial':        'Cordial',
+  'cordobesa':      'Cordobesa',
+}.get(metodo|lower, (metodo or '')|upper) }}{% endmacro %}
+
+{% macro label_tipo(tipo) %}{{ {
+  'bank_transfer':   'Transf. bancaria',
+  'account_money':   'Cuenta MP',
+  'credit_card':     'Tarjeta de crédito',
+  'debit_card':      'Tarjeta de débito',
+  'ticket':          'Efectivo',
+  'atm':             'Cajero automático',
+  'digital_wallet':  'Billetera digital',
+  'digital_currency':'Billetera digital',
+  'prepaid_card':    'Tarjeta prepaga',
+  'voucher_card':    'Voucher',
+}.get(tipo|lower, tipo or '—') }}{% endmacro %}
+
+{# ── Macro: etiqueta origen de pago MP ── #}
+{% macro origen_badge(payment_type, payment_method, descripcion_mp) %}
+  {% set tipo = payment_type or '' %}
+  {% set metodo = payment_method or '' %}
+  {% if tipo == 'account_money' %}
+    <span class="badge rounded-pill" style="background:#009ee3;font-size:.78rem"><i class="bi bi-wallet2 me-1"></i>Cuenta MP</span>
+  {% elif tipo == 'credit_card' %}
+    <span class="badge rounded-pill bg-success" style="font-size:.78rem"><i class="bi bi-credit-card me-1"></i>Tarjeta de crédito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+  {% elif tipo == 'debit_card' %}
+    <span class="badge rounded-pill bg-info text-dark" style="font-size:.78rem"><i class="bi bi-credit-card-2-back me-1"></i>Tarjeta de débito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+  {% elif tipo == 'ticket' %}
+    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.78rem"><i class="bi bi-cash me-1"></i>Efectivo{% if metodo and metodo not in ('pagofacil','rapipago') == False %} ({{ label_metodo(metodo) }}){% endif %}</span>
+  {% elif tipo == 'bank_transfer' %}
+    <span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="bi bi-bank me-1"></i>Transf. bancaria{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+  {% elif tipo %}
+    <span class="badge rounded-pill bg-light text-dark border" style="font-size:.78rem">{{ label_tipo(tipo) }}</span>
+  {% else %}
+    <span class="text-muted" style="font-size:.85rem">—</span>
+  {% endif %}
+  {% if descripcion_mp %}<br><small class="text-muted">{{ descripcion_mp }}</small>{% endif %}
+{% endmacro %}
+
+{# ── Macro: columna cliente (compartida) ── #}
+{% macro col_cliente(p, modal_prefix) %}
+  {% if p.cliente %}
+    <a href="/clientes/{{ p.cliente.id }}" class="text-decoration-none">
+      <i class="bi bi-person-fill me-1 text-success"></i>{{ p.cliente.name }}
+    </a>
+    {% if p.cliente.cuit_dni %}<br><small class="text-muted">{{ p.cliente.cuit_dni|cuit }}</small>{% endif %}
+    {% if not p.cliente.email %}
+      <br><span class="badge bg-warning text-dark" style="font-size:.72rem" title="El cliente no tiene email cargado"><i class="bi bi-envelope-slash me-1"></i>Sin email</span>
+    {% endif %}
+  {% else %}
+    <span class="text-muted" style="font-size:.85rem"><i class="bi bi-person-dash me-1"></i>Sin registro</span>
+    {% if (p.descripcion_mp or '').lower().startswith('hosting mensual') %}
+      <br><span class="badge bg-danger" style="font-size:.72rem" title="Se facturará automáticamente al dar de alta el cliente"><i class="bi bi-house-gear me-1"></i>Hosting Mensual</span>
+    {% endif %}
+    <br>
+    <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
+            data-bs-toggle="modal" data-bs-target="#modal{{ modal_prefix }}{{ p.id }}">
+      <i class="bi bi-person-plus me-1"></i>Dar de alta
+    </button>
+  {% endif %}
+{% endmacro %}
+
+{# ── Macro: modal alta de cliente ── #}
+{% macro modal_alta(p, modal_prefix, action_url, nombre_val, email_val, id_type_val, id_num_val) %}
+<div class="modal fade" id="modal{{ modal_prefix }}{{ p.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Dar de alta cliente</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="{{ action_url }}">
+        <div class="modal-body">
+          <p class="text-muted small mb-3">Completá los datos antes de guardar. Los campos marcados con * son obligatorios.</p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre / Razón social *</label>
+            <input type="text" name="nombre" class="form-control" value="{{ nombre_val }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email</label>
+            <input type="email" name="email" class="form-control" value="{{ email_val }}" placeholder="Para enviar la factura">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-4">
+              <label class="form-label fw-semibold">Tipo ID</label>
+              <input type="text" name="payer_id_type" class="form-control" value="{{ id_type_val or 'DNI' }}" placeholder="DNI / CUIT">
+            </div>
+            <div class="col-8">
+              <label class="form-label fw-semibold">CUIT / DNI</label>
+              <input type="text" name="cuit_dni" class="form-control" value="{{ id_num_val }}" placeholder="ej: 20-12345678-9">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Condición IVA</label>
+            <select name="iva_condition" class="form-select">
+              <option value="Consumidor Final" selected>Consumidor Final</option>
+              <option value="Monotributista">Monotributista</option>
+              <option value="Responsable Inscripto">Responsable Inscripto</option>
+              <option value="IVA Exento">IVA Exento</option>
+            </select>
+          </div>
+          <div class="mb-2">
+            <label class="form-label fw-semibold">Domicilio</label>
+            <input type="text" name="address" class="form-control" placeholder="Opcional">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-person-check me-1"></i>Dar de alta</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% block content %}
+
+<div class="page-header d-flex align-items-center justify-content-between mb-4">
+  <h1><i class="bi bi-credit-card-2-front me-2" style="color:#009ee3"></i>Pagos MercadoPago</h1>
+</div>
+
+{# ── Alertas ── #}
+{% if msg == 'facturado' %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-check-circle-fill"></i>
+  <div>Factura generada correctamente.{% if factura_id %} <a href="/facturas/{{ factura_id }}" class="fw-semibold ms-1">Ver factura</a>{% endif %}</div>
+</div>
+{% elif msg == 'ignorado' %}
+<div class="alert alert-secondary d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-x-circle"></i><div>Pago marcado como ignorado.</div>
+</div>
+{% elif msg == 'cliente_creado' %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-person-check-fill"></i><div>Cliente dado de alta correctamente.</div>
+</div>
+{% elif msg == 'datos_guardados' %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-check-circle-fill"></i><div>Datos del emisor guardados.</div>
+</div>
+{% elif msg == 'sync_ok' %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-arrow-repeat"></i>
+  <div>Sincronización completada.
+    {% if nuevos > 0 %}<strong>{{ nuevos }} transferencia{{ 's' if nuevos != 1 }} nueva{{ 's' if nuevos != 1 }}.</strong>
+    {% else %}No se encontraron nuevas transferencias.{% endif %}
+  </div>
+</div>
+{% elif msg == 'email_reenviado' %}
+<div class="alert alert-success d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-envelope-check-fill"></i><div>Email reenviado correctamente.</div>
+</div>
+{% elif error == 'no_token' %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>No hay Access Token de MercadoPago configurado. Configuralo en <a href="/config">Configuración</a>.</div>
+</div>
+{% elif error == 'sync_error' %}
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>Error al consultar los movimientos de MercadoPago. Revisá los logs.</div>
+</div>
+{% elif error == 'not_found' %}
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>El pago no existe o ya fue procesado.</div>
+</div>
+{% elif error == 'nombre_requerido' %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>El nombre es obligatorio para dar de alta el cliente.</div>
+</div>
+{% elif error == 'smtp_no_config' %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i>
+  <div>Email no configurado. Completá host, usuario y contraseña en <a href="/config">Configuración</a>.</div>
+</div>
+{% elif error == 'sin_email' %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-envelope-slash-fill"></i><div>La factura no tiene email de destino.</div>
+</div>
+{% elif error == 'sin_pdf' %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-file-earmark-x-fill"></i><div>No se encontró el PDF de la factura para reenviar.</div>
+</div>
+{% elif error == 'email_fallo' %}
+<div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-exclamation-triangle-fill"></i><div>Error al enviar el email. Verificá la configuración SMTP y revisá los logs.</div>
+</div>
+{% endif %}
+{% if email_error %}
+<div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
+  <i class="bi bi-envelope-exclamation-fill"></i>
+  <div>Factura generada, pero no se pudo enviar el email al cliente. Podés reenviar desde el historial.</div>
+</div>
+{% endif %}
+
+{# ══════════════════════════════════════════════════════════════════════
+   NAVEGACIÓN POR PESTAÑAS
+   ══════════════════════════════════════════════════════════════════════ #}
+<ul class="nav nav-tabs" id="mpTabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button class="nav-link active" id="tab-historial-btn" data-bs-toggle="tab"
+            data-bs-target="#tab-historial" type="button" role="tab">
+      <i class="bi bi-clock-history me-1"></i>Historial reciente
+      <span class="badge bg-light text-dark border ms-1">{{ (historial|length) + (transferencias_hist|length) }}</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-cobros-btn" data-bs-toggle="tab"
+            data-bs-target="#tab-cobros" type="button" role="tab">
+      <i class="bi bi-arrow-down-circle me-1 text-secondary"></i>Cobros sincronizados
+      <span class="badge bg-secondary ms-1">{{ transferencias|length }}</span>
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button class="nav-link" id="tab-pendientes-btn" data-bs-toggle="tab"
+            data-bs-target="#tab-pendientes" type="button" role="tab">
+      <i class="bi bi-hourglass-split me-1 text-warning"></i>Pendientes de factura
+      <span class="badge bg-warning text-dark ms-1">{{ pendientes|length }}</span>
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content border border-top-0 rounded-bottom bg-white mb-4">
+
+  {# ── Pestaña 1: Historial reciente ── #}
+  <div class="tab-pane fade show active" id="tab-historial" role="tabpanel" aria-labelledby="tab-historial-btn">
+    {% if historial or transferencias_hist %}
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" style="font-size:.88rem">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Tipo</th>
+            <th>Emisor / Pagador</th>
+            <th>Cliente</th>
+            <th class="text-end">Monto</th>
+            <th class="text-center">Estado</th>
+            <th class="text-center">Factura</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in historial %}
+          <tr>
+            <td class="text-muted">{{ p.created_at|fecha }}</td>
+            <td>{{ origen_badge(p.payment_type, p.payment_method, '') }}</td>
+            <td>{{ p.payer_name or p.payer_email or '—' }}</td>
+            <td>{% if p.cliente %}<a href="/clientes/{{ p.cliente.id }}">{{ p.cliente.name }}</a>{% else %}—{% endif %}</td>
+            <td class="text-end">${{ p.monto|moneda }}</td>
+            <td class="text-center">
+              <span class="badge bg-{{ 'success' if p.estado_factura == 'facturado' else 'secondary' }}">
+                {{ 'Facturado' if p.estado_factura == 'facturado' else 'Ignorado' }}
+              </span>
+            </td>
+            <td class="text-center" style="white-space:nowrap">
+              {% if p.factura_id %}
+                <a href="/facturas/{{ p.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="bi bi-receipt me-1"></i>Ver</a>
+                {% if p.cliente and p.cliente.email %}
+                <form method="post" action="/integraciones/mp/factura/{{ p.factura_id }}/reenviar" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="bi bi-envelope-arrow-up"></i></button>
+                </form>
+                {% else %}
+                <span class="badge bg-warning text-dark" style="font-size:.72rem" title="Agregá el email al cliente para poder reenviar la factura"><i class="bi bi-envelope-slash"></i> Sin email</span>
+                {% endif %}
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          {% for t in transferencias_hist %}
+          <tr>
+            <td class="text-muted">{{ (t.fecha or t.created_at)|fecha }}</td>
+            <td><span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="bi bi-bank me-1"></i>{{ label_tipo(t.tipo) }}{% if t.origen_banco %} · {{ label_metodo(t.origen_banco) }}{% endif %}</span></td>
+            <td>
+              {{ t.origen_nombre or t.payer_name or '—' }}
+              {% if t.origen_banco %}<br><small class="text-muted">{{ label_metodo(t.origen_banco) }}</small>{% endif %}
+            </td>
+            <td>{% if t.cliente %}<a href="/clientes/{{ t.cliente.id }}">{{ t.cliente.name }}</a>{% else %}—{% endif %}</td>
+            <td class="text-end">${{ t.monto|moneda }}</td>
+            <td class="text-center">
+              <span class="badge bg-{{ 'success' if t.estado_factura == 'facturado' else 'secondary' }}">
+                {{ 'Facturado' if t.estado_factura == 'facturado' else 'Ignorado' }}
+              </span>
+            </td>
+            <td class="text-center" style="white-space:nowrap">
+              {% if t.factura_id %}
+                <a href="/facturas/{{ t.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="bi bi-receipt me-1"></i>Ver</a>
+                <form method="post" action="/integraciones/mp/factura/{{ t.factura_id }}/reenviar" class="d-inline">
+                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="bi bi-envelope-arrow-up"></i></button>
+                </form>
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-clock-history fs-2 mb-1 d-block"></i>Todavía no hay movimientos en el historial.
+    </div>
+    {% endif %}
+  </div>{# /tab-historial #}
+
+  {# ── Pestaña 2: Cobros sincronizados (transferencias / billeteras) ── #}
+  <div class="tab-pane fade" id="tab-cobros" role="tabpanel" aria-labelledby="tab-cobros-btn">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-bottom">
+      <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Pagos aprobados no capturados por webhook.</small>
+      <form method="post" action="/integraciones/mp/sincronizar" class="d-flex align-items-center gap-2">
+        <select name="dias" class="form-select form-select-sm" style="width:auto">
+          <option value="7" selected>Últimos 7 días</option>
+          <option value="15">Últimos 15 días</option>
+          <option value="30">Últimos 30 días</option>
+          <option value="60">Últimos 60 días</option>
+        </select>
+        <button type="submit" class="btn btn-sm btn-outline-secondary">
+          <i class="bi bi-arrow-repeat me-1"></i>Sincronizar
+        </button>
+      </form>
+    </div>
+    {% if transferencias %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Emisor</th>
+            <th>Banco / Billetera</th>
+            <th>CBU/CVU origen</th>
+            <th>Cliente / Email</th>
+            <th class="text-end">Monto</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in transferencias %}
+          <tr>
+            <td class="text-muted" style="white-space:nowrap">{{ (t.fecha or t.created_at)|fecha }}</td>
+            <td>
+              <div class="fw-semibold">{{ t.origen_nombre or '—' }}</div>
+              {% if t.payer_id_number %}<small class="text-muted">{{ t.payer_id_type or 'ID' }}: {{ t.payer_id_number }}</small>{% endif %}
+            </td>
+            <td>
+              {% if t.origen_banco %}
+                <span class="badge bg-light text-dark border" style="font-size:.8rem">{{ label_metodo(t.origen_banco) }}</span>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+              {% if t.descripcion and t.descripcion|lower not in ('bank transfer', 'account money', 'bank_transfer', 'account_money', 'var', '') %}<br><small class="text-muted">{{ t.descripcion }}</small>{% endif %}
+            </td>
+            <td>
+              {% if t.origen_cbu %}
+                <code style="font-size:.8rem">{{ t.origen_cbu }}</code>
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if t.cliente %}
+                <a href="/clientes/{{ t.cliente.id }}" class="text-decoration-none">
+                  <i class="bi bi-person-fill me-1 text-success"></i>{{ t.cliente.name }}
+                </a>
+                {% if t.payer_email %}<br><small class="text-muted">{{ t.payer_email }}</small>{% endif %}
+              {% else %}
+                {# Mostrar email si ya fue cargado #}
+                {% if t.payer_email %}
+                  <small><i class="bi bi-envelope me-1"></i>{{ t.payer_email }}</small><br>
+                  <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
+                          data-bs-toggle="modal" data-bs-target="#modalAltaMov{{ t.id }}">
+                    <i class="bi bi-person-plus me-1"></i>Dar de alta
+                  </button>
+                {% else %}
+                  <span class="text-muted" style="font-size:.85rem"><i class="bi bi-envelope-slash me-1"></i>Sin email</span><br>
+                  <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
+                          data-bs-toggle="modal" data-bs-target="#modalEmailMov{{ t.id }}">
+                    <i class="bi bi-pencil me-1"></i>Cargar email
+                  </button>
+                  {% if t.origen_nombre %}
+                  · <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
+                          data-bs-toggle="modal" data-bs-target="#modalAltaMov{{ t.id }}">
+                    <i class="bi bi-person-plus me-1"></i>Dar de alta
+                  </button>
+                  {% endif %}
+                {% endif %}
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold">${{ t.monto|moneda }}</td>
+            <td class="text-center" style="white-space:nowrap">
+              <button type="button" class="btn btn-sm btn-primary me-1"
+                      onclick="abrirFacturar('/integraciones/mp/movimiento/{{ t.id }}/facturar', '${{ t.monto|moneda }}')">
+                <i class="bi bi-receipt me-1"></i>Factura
+              </button>
+              <form method="post" action="/integraciones/mp/movimiento/{{ t.id }}/ignorar" class="d-inline"
+                    onsubmit="return confirm('¿Ignorar esta transferencia?')">
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-arrow-repeat fs-2 mb-1 d-block"></i>
+      Usá el botón <strong>Sincronizar</strong> para traer las transferencias recibidas.
+    </div>
+    {% endif %}
+  </div>{# /tab-cobros #}
+
+  {# ── Pestaña 3: Pagos pendientes de factura (webhook) ── #}
+  <div class="tab-pane fade" id="tab-pendientes" role="tabpanel" aria-labelledby="tab-pendientes-btn">
+    {% if pendientes %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Pagador</th>
+            <th>Origen</th>
+            <th>Cliente</th>
+            <th class="text-end">Monto</th>
+            <th class="text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pendientes %}
+          <tr>
+            <td class="text-muted" style="white-space:nowrap">{{ p.created_at|fecha }}</td>
+            <td>
+              <div class="fw-semibold">{{ p.payer_name or '—' }}</div>
+              {% if p.payer_email %}<small class="text-muted">{{ p.payer_email }}</small>{% endif %}
+              {% if p.payer_id_number %}<br><small class="text-muted">{{ p.payer_id_type or 'ID' }}: {{ p.payer_id_number }}</small>{% endif %}
+            </td>
+            <td>{{ origen_badge(p.payment_type, p.payment_method, p.descripcion_mp) }}</td>
+            <td>{{ col_cliente(p, 'Pago') }}</td>
+            <td class="text-end fw-semibold">${{ p.monto|moneda }}</td>
+            <td class="text-center" style="white-space:nowrap">
+              <button type="button" class="btn btn-sm btn-primary me-1"
+                      onclick="abrirFacturar('/integraciones/mp/pago/{{ p.id }}/facturar', '${{ p.monto|moneda }}')">
+                <i class="bi bi-receipt me-1"></i>Factura
+              </button>
+              <form method="post" action="/integraciones/mp/pago/{{ p.id }}/ignorar" class="d-inline"
+                    onsubmit="return confirm('¿Ignorar este pago?')">
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center text-muted py-4">
+      <i class="bi bi-check2-all fs-2 mb-1 d-block text-success"></i>Sin pagos pendientes.
+    </div>
+    {% endif %}
+  </div>{# /tab-pendientes #}
+
+</div>{# /tab-content #}
+
+{# ══════════════════════════════════════════════════════════════════════
+   MODALES — pagos webhook
+   ══════════════════════════════════════════════════════════════════════ #}
+{% for p in pendientes %}{% if not p.cliente %}
+{{ modal_alta(p, 'Pago',
+   '/integraciones/mp/pago/' ~ p.id ~ '/crear-cliente',
+   p.payer_name or '', p.payer_email or '',
+   p.payer_id_type or '', p.payer_id_number or '') }}
+{% endif %}{% endfor %}
+
+{# ══════════════════════════════════════════════════════════════════════
+   MODALES — transferencias: cargar email y dar de alta
+   ══════════════════════════════════════════════════════════════════════ #}
+{% for t in transferencias %}
+
+{# Modal cargar email/datos emisor #}
+<div class="modal fade" id="modalEmailMov{{ t.id }}" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Datos del emisor</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="post" action="/integraciones/mp/movimiento/{{ t.id }}/guardar-datos">
+        <div class="modal-body">
+          <p class="text-muted small mb-3">
+            Las transferencias desde bancos/billeteras no incluyen email. Podés cargarlo manualmente para enviar la factura.
+          </p>
+          {% if t.origen_nombre %}
+          <div class="alert alert-light py-2 mb-3" style="font-size:.88rem">
+            <i class="bi bi-info-circle me-1"></i>
+            Banco informa: <strong>{{ t.origen_nombre }}</strong>{% if t.origen_banco %} desde <strong>{{ label_metodo(t.origen_banco) }}</strong>{% endif %}
+          </div>
+          {% endif %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre completo</label>
+            <input type="text" name="payer_name" class="form-control" value="{{ t.payer_name or t.origen_nombre or '' }}">
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Email *</label>
+            <input type="email" name="payer_email" class="form-control" value="{{ t.payer_email or '' }}" required placeholder="email@ejemplo.com">
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-4">
+              <label class="form-label fw-semibold">Tipo ID</label>
+              <input type="text" name="payer_id_type" class="form-control" value="{{ t.payer_id_type or 'DNI' }}">
+            </div>
+            <div class="col-8">
+              <label class="form-label fw-semibold">CUIT / DNI</label>
+              <input type="text" name="payer_id_number" class="form-control" value="{{ t.payer_id_number or '' }}">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-floppy me-1"></i>Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# Modal dar de alta como cliente #}
+{{ modal_alta(t, 'AltaMov',
+   '/integraciones/mp/movimiento/' ~ t.id ~ '/crear-cliente',
+   t.payer_name or t.origen_nombre or '',
+   t.payer_email or '',
+   t.payer_id_type or '', t.payer_id_number or '') }}
+
+{% endfor %}
+
+{# ══════════════════════════════════════════════════════════════════════
+   MODAL COMPARTIDO — Generar Factura (con concepto editable)
+   ══════════════════════════════════════════════════════════════════════ #}
+<div class="modal fade" id="modalFacturar" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Generar Factura</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="formFacturar" method="post" action="">
+        <div class="modal-body">
+          <p class="mb-3">¿Generar factura por <strong id="facturarMonto"></strong>?</p>
+          <div class="mb-1">
+            <label class="form-label fw-semibold">Concepto</label>
+            <input type="text" name="concepto" id="facturarConcepto" class="form-control"
+                   placeholder="{{ mp_concepto_default or 'Ej: Suscripcion mensual' }}">
+            <div class="form-text">Dejá vacío para usar el concepto por defecto configurado.</div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-receipt me-1"></i>Generar factura</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function abrirFacturar(url, monto) {
+  document.getElementById('formFacturar').action = url;
+  document.getElementById('facturarMonto').textContent = monto;
+  document.getElementById('facturarConcepto').value = '';
+  new bootstrap.Modal(document.getElementById('modalFacturar')).show();
+}
+
+// Recordar la pestaña activa entre recargas (ej: tras sincronizar o facturar).
+// Nota: bootstrap.bundle.min.js se carga en base.html DESPUÉS de este bloque de
+// contenido, así que la restauración (que necesita `bootstrap`) espera a
+// DOMContentLoaded para no fallar con "bootstrap is not defined".
+document.addEventListener('DOMContentLoaded', function () {
+  var KEY = 'mpBandejaTab';
+  document.querySelectorAll('#mpTabs button[data-bs-toggle="tab"]').forEach(function (btn) {
+    btn.addEventListener('shown.bs.tab', function (e) {
+      localStorage.setItem(KEY, e.target.getAttribute('data-bs-target'));
+    });
+  });
+  var saved = localStorage.getItem(KEY);
+  if (saved) {
+    var btn = document.querySelector('#mpTabs button[data-bs-target="' + saved + '"]');
+    if (btn) { new bootstrap.Tab(btn).show(); }
+  }
+});
+</script>
+
+{% endblock %}

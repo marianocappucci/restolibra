@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar cuenta' if cuenta else 'Nueva cuenta' }} — Tesorería{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-bank me-2"></i>{{ 'Editar cuenta' if cuenta else 'Nueva cuenta' }}</h1>
+  <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        <form method="post">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control"
+                   value="{{ cuenta.nombre if cuenta else '' }}"
+                   placeholder="Ej: Banco Galicia Cta. Cte., Caja chica, MercadoPago…"
+                   required autofocus>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <select name="tipo" class="form-select" id="tipo-select" onchange="toggleBanco()">
+              {% for val, lbl in tipos %}
+              <option value="{{ val }}" {{ 'selected' if cuenta and cuenta.tipo == val else '' }}>{{ lbl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div id="banco-fields">
+            <div class="row g-3 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Banco / Entidad</label>
+                <input type="text" name="banco" class="form-control"
+                       value="{{ cuenta.banco if cuenta else '' }}"
+                       placeholder="Ej: Galicia, BBVA, MP…">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">N° de cuenta / CBU / alias</label>
+                <input type="text" name="numero" class="form-control"
+                       value="{{ cuenta.numero if cuenta else '' }}"
+                       placeholder="Últimos 4 dígitos o alias">
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Saldo inicial</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" name="saldo_inicial" class="form-control" step="0.01"
+                     value="{{ '%.2f'|format(cuenta.saldo_inicial) if cuenta else '0.00' }}"
+                     placeholder="0.00">
+            </div>
+            <div class="form-text">Saldo al momento de dar de alta la cuenta en el sistema.</div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Descripción <span class="text-muted small">(opcional)</span></label>
+            <input type="text" name="descripcion" class="form-control"
+                   value="{{ cuenta.descripcion if cuenta else '' }}"
+                   placeholder="Nota interna sobre esta cuenta">
+          </div>
+          <div class="d-flex gap-2 justify-content-end">
+            <a href="/tesoreria" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>{{ 'Guardar cambios' if cuenta else 'Crear cuenta' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+    {% if cuenta %}
+    <div class="mt-3 text-end">
+      <form method="post" action="/tesoreria/{{ cuenta.id }}/eliminar"
+            onsubmit="return confirm('¿Archivar esta cuenta? Los movimientos se conservan.')">
+        <button type="submit" class="btn btn-sm btn-outline-danger">
+          <i class="bi bi-archive me-1"></i>Archivar cuenta
+        </button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleBanco() {
+  const t = document.getElementById('tipo-select').value;
+  document.getElementById('banco-fields').style.display = t === 'efectivo' ? 'none' : '';
+}
+toggleBanco();
+</script>
+{% endblock %}

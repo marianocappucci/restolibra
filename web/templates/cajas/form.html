@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{% if caja %}Editar caja{% else %}Nueva caja{% endif %} — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cash-coin me-2 text-primary"></i>
+    {% if caja %}Editar: {{ caja.nombre }}{% else %}Nueva caja{% endif %}
+  </h1>
+  <a href="/cajas" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row justify-content-center">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="{% if caja %}/cajas/{{ caja.id }}/editar{% else %}/cajas/nueva{% endif %}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control"
+                   value="{{ caja.nombre if caja else '' }}" required autofocus
+                   placeholder="Ej: Caja mostrador, Caja online…">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <input type="text" name="descripcion" class="form-control"
+                   value="{{ caja.descripcion if caja else '' }}"
+                   placeholder="Opcional">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Medios de pago habilitados</label>
+            <div class="border rounded p-3">
+              {% for m in todos_medios %}
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox"
+                       name="medios_pago" value="{{ m.id }}"
+                       id="medio-{{ m.id }}"
+                       {% if not caja or m.id in caja.medios_pago %}checked{% endif %}>
+                <label class="form-check-label" for="medio-{{ m.id }}">{{ m.label }}</label>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="form-text">Seleccioná qué medios acepta esta caja.</div>
+          </div>
+
+          {% if caja %}
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="activo" id="activo"
+                     {% if caja.activo %}checked{% endif %}>
+              <label class="form-check-label" for="activo">Activa</label>
+            </div>
+          </div>
+          {% endif %}
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check2 me-1"></i>Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}{% if proveedor %}Editar proveedor{% else %}Nuevo proveedor{% endif %} — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-truck me-2 text-secondary"></i>
+    {% if proveedor %}Editar: {{ proveedor.nombre }}{% else %}Nuevo proveedor{% endif %}
+  </h1>
+  <a href="/proveedores" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="{% if proveedor %}/proveedores/{{ proveedor.id }}/editar{% else %}/proveedores/nuevo{% endif %}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre / Razón social <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control" required autofocus
+                   value="{{ proveedor.nombre if proveedor else '' }}"
+                   placeholder="Ej: Distribuidora ABC S.A.">
+          </div>
+
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">CUIT / DNI</label>
+              <input type="text" name="cuit_dni" class="form-control font-monospace"
+                     value="{{ proveedor.cuit_dni if proveedor else '' }}"
+                     placeholder="30-12345678-9">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Condición IVA</label>
+              <select name="iva_condition" class="form-select">
+                <option value="">— Sin especificar —</option>
+                {% for opt in ['Responsable Inscripto','Monotributista','IVA Exento','No Alcanzado','IVA No Responsable'] %}
+                <option {% if proveedor and proveedor.iva_condition == opt %}selected{% endif %}>{{ opt }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Domicilio</label>
+            <input type="text" name="address" class="form-control"
+                   value="{{ proveedor.address if proveedor else '' }}"
+                   placeholder="Dirección del proveedor">
+          </div>
+
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control"
+                     value="{{ proveedor.email if proveedor else '' }}"
+                     placeholder="proveedor@ejemplo.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Teléfono</label>
+              <input type="text" name="phone" class="form-control"
+                     value="{{ proveedor.phone if proveedor else '' }}"
+                     placeholder="11 1234-5678">
+            </div>
+          </div>
+
+          <div class="d-grid">
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check2 me-1"></i>Guardar proveedor
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

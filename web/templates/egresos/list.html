@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+{% block title %}Egresos — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-arrow-up-circle me-2 text-danger"></i>Egresos</h1>
+  <a href="/egresos/nuevo" class="btn btn-danger"><i class="bi bi-plus-lg me-1"></i>Nuevo egreso</a>
+</div>
+
+<!-- Resumen -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Total del período</div>
+        <div class="fw-bold fs-4 text-danger">$ {{ resumen.total_periodo|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Pagado</div>
+        <div class="fw-bold fs-5 text-success">$ {{ resumen.pagado|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small mb-1">Pendiente / Parcial</div>
+        <div class="fw-bold fs-5 text-warning">$ {{ resumen.pendiente|moneda }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<form class="card mb-3" method="get" action="/egresos">
+  <div class="card-body py-2">
+    <div class="d-flex gap-2 align-items-center flex-wrap">
+      <span class="text-muted small fw-semibold">Período:</span>
+      <input type="date" class="form-control form-control-sm" name="desde" value="{{ desde }}" style="width:145px">
+      <span class="text-muted">—</span>
+      <input type="date" class="form-control form-control-sm" name="hasta" value="{{ hasta }}" style="width:145px">
+
+      <select name="categoria" class="form-select form-select-sm" style="width:200px">
+        <option value="">Todas las categorías</option>
+        {% for c in categorias %}
+        <option value="{{ c.nombre }}" {% if categoria == c.nombre %}selected{% endif %}>{{ c.nombre }}</option>
+        {% endfor %}
+      </select>
+
+      <select name="estado" class="form-select form-select-sm" style="width:140px">
+        <option value="">Todos los estados</option>
+        <option value="pendiente" {% if estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
+        <option value="parcial"   {% if estado == 'parcial'   %}selected{% endif %}>Parcial</option>
+        <option value="pagado"    {% if estado == 'pagado'    %}selected{% endif %}>Pagado</option>
+      </select>
+
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-funnel"></i></button>
+      <a href="/egresos" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></a>
+    </div>
+  </div>
+</form>
+
+<!-- Tabla -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if egresos %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha</th>
+            <th>Proveedor</th>
+            <th>Concepto</th>
+            <th>Categoría</th>
+            <th>Comprobante</th>
+            <th>Estado</th>
+            <th class="text-end">Total</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in egresos %}
+          <tr>
+            <td class="text-nowrap small">{{ e.fecha|fecha }}</td>
+            <td class="small">
+              {% if e.proveedor_id %}
+              <a href="/proveedores/{{ e.proveedor_id }}" class="text-decoration-none">{{ e.proveedor_nombre }}</a>
+              {% else %}
+              {{ e.proveedor_nombre or '—' }}
+              {% endif %}
+            </td>
+            <td>
+              <a href="/egresos/{{ e.id }}" class="text-decoration-none text-dark fw-semibold">{{ e.concepto }}</a>
+            </td>
+            <td class="small text-muted">{{ e.categoria or '—' }}</td>
+            <td class="small text-muted">
+              {% if e.numero %}
+              <span class="font-monospace">{{ e.numero }}</span>
+              {% else %}—{% endif %}
+            </td>
+            <td>
+              {% if e.estado == 'pagado' %}
+              <span class="badge bg-success">Pagado</span>
+              {% elif e.estado == 'parcial' %}
+              <span class="badge bg-warning text-dark">Parcial</span>
+              {% else %}
+              <span class="badge bg-secondary">Pendiente</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold text-danger">$ {{ e.total|moneda }}</td>
+            <td class="text-end">
+              <a href="/egresos/{{ e.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">No hay egresos para el período seleccionado.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

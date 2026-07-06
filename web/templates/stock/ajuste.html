@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Ajuste de stock — {{ producto.nombre }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-pencil-square me-2 text-primary"></i>Ajuste de stock</h1>
+  <a href="/stock" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row g-4">
+  <div class="col-md-5">
+    <!-- Info producto -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <h5 class="card-title mb-1">{{ producto.nombre }}</h5>
+        {% if producto.codigo %}
+        <div class="text-muted small mb-2">Código: {{ producto.codigo }}</div>
+        {% endif %}
+        <div class="d-flex gap-3 mt-3">
+          <div class="text-center">
+            <div class="fs-2 fw-bold {% if stock_actual <= 0 %}text-danger{% elif stock_actual <= producto.stock_minimo and producto.stock_minimo > 0 %}text-warning{% else %}text-success{% endif %}">
+              {{ stock_actual|entero }}
+            </div>
+            <div class="text-muted small">Stock actual ({{ producto.unidad }})</div>
+          </div>
+          {% if producto.stock_minimo > 0 %}
+          <div class="text-center">
+            <div class="fs-2 fw-bold text-muted">{{ producto.stock_minimo|entero }}</div>
+            <div class="text-muted small">Mínimo</div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulario de ajuste -->
+    <div class="card">
+      <div class="card-header">Registrar movimiento</div>
+      <div class="card-body">
+        <form method="post" action="/stock/{{ producto.id }}/ajuste">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo de ajuste</label>
+            <div class="d-flex gap-2 flex-wrap">
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="modo" id="modo-absoluto"
+                       value="absoluto" checked onchange="updateLabel()">
+                <label class="form-check-label" for="modo-absoluto">
+                  <i class="bi bi-arrow-repeat me-1"></i>Fijar en…
+                </label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="modo" id="modo-entrada"
+                       value="entrada" onchange="updateLabel()">
+                <label class="form-check-label" for="modo-entrada">
+                  <i class="bi bi-box-arrow-in-down me-1"></i>Entrada
+                </label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="modo" id="modo-salida"
+                       value="salida" onchange="updateLabel()">
+                <label class="form-check-label" for="modo-salida">
+                  <i class="bi bi-box-arrow-up me-1"></i>Salida
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold" id="lbl-cantidad">Stock nuevo ({{ producto.unidad }})</label>
+            <input type="number" name="cantidad" id="input-cantidad" class="form-control"
+                   step="0.001" min="0" value="{{ stock_actual }}" required
+                   oninput="calcResultado()">
+            <div class="form-text" id="resultado-text"></div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Fecha</label>
+            <input type="date" name="fecha" class="form-control" value="{{ hoy }}">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Motivo / Referencia</label>
+            <input type="text" name="referencia" class="form-control"
+                   placeholder="Ej: Compra, conteo físico, rotura…">
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            <i class="bi bi-check-lg me-1"></i>Guardar movimiento
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historial reciente -->
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between">
+        <span>Últimos movimientos</span>
+        <a href="/stock/movimientos?producto_id={{ producto.id }}" class="small text-muted">Ver todos</a>
+      </div>
+      <div class="card-body p-0">
+        <div id="historial-container">
+          <div class="p-3 text-center text-muted small">Cargando…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const stockActual = {{ stock_actual }};
+const unidad = "{{ producto.unidad }}";
+
+function updateLabel() {
+  const modo = document.querySelector('[name="modo"]:checked').value;
+  const inp  = document.getElementById('input-cantidad');
+  const lbl  = document.getElementById('lbl-cantidad');
+  if (modo === 'absoluto') {
+    lbl.textContent = `Stock nuevo (${unidad})`;
+    inp.value = stockActual;
+  } else if (modo === 'entrada') {
+    lbl.textContent = `Cantidad a ingresar (${unidad})`;
+    inp.value = '';
+  } else {
+    lbl.textContent = `Cantidad a retirar (${unidad})`;
+    inp.value = '';
+  }
+  calcResultado();
+}
+
+function calcResultado() {
+  const modo = document.querySelector('[name="modo"]:checked').value;
+  const val  = parseFloat(document.getElementById('input-cantidad').value) || 0;
+  const txt  = document.getElementById('resultado-text');
+  let resultado;
+  if (modo === 'absoluto') resultado = val;
+  else if (modo === 'entrada') resultado = stockActual + val;
+  else resultado = stockActual - val;
+  txt.textContent = `Stock resultante: ${resultado.toFixed(3)} ${unidad}`;
+  txt.style.color = resultado < 0 ? '#842029' : '#0f5132';
+}
+
+// Cargar historial vía fetch
+fetch('/stock/movimientos?producto_id={{ producto.id }}')
+  .then(r => r.text())
+  .catch(() => '');
+
+// Tabla liviana desde el mismo endpoint
+async function cargarHistorial() {
+  const res = await fetch('/stock/movimientos?producto_id={{ producto.id }}&limit=10');
+  // Para no duplicar la pantalla completa, construimos la tabla directo
+  document.getElementById('historial-container').innerHTML =
+    '<div class="p-3 text-center text-muted small">Ver historial completo en la página de movimientos.</div>';
+}
+cargarHistorial();
+calcResultado();
+</script>
+{% endblock %}

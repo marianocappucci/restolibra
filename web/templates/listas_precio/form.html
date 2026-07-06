@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Nueva lista de precios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-tag me-2 text-primary"></i>Nueva lista de precios</h1>
+  <a href="/listas-precio" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-md-7">
+    <div class="card">
+      <div class="card-body">
+        <form method="post" action="/listas-precio/nueva">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+            <input type="text" name="nombre" class="form-control" placeholder="Ej: Lista mayorista, Precio 2, VIP…" required autofocus>
+          </div>
+          <div class="mb-4">
+            <label class="form-label fw-semibold">Descripción <span class="text-muted fw-normal small">(opcional)</span></label>
+            <input type="text" name="descripcion" class="form-control" placeholder="Ej: Precios para distribuidores con volumen">
+          </div>
+
+          <hr>
+          <div class="mb-1 fw-semibold">Importar precios iniciales <span class="text-muted fw-normal small">(opcional)</span></div>
+          <p class="text-muted small mb-3">Podés partir de precios existentes y ajustarlos luego.</p>
+
+          <div class="mb-3">
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp-ninguno" value="" checked>
+              <label class="form-check-label" for="imp-ninguno">Empezar vacía (cargar precios manualmente)</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp-venta" value="venta">
+              <label class="form-check-label" for="imp-venta">Copiar precio de venta actual de cada producto</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp-costo" value="costo">
+              <label class="form-check-label" for="imp-costo">Copiar precio de costo de cada producto</label>
+            </div>
+            {% if listas_existentes %}
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp-lista" value="lista">
+              <label class="form-check-label" for="imp-lista">Copiar desde otra lista:</label>
+            </div>
+            <div class="ms-4 mt-1" id="sel-lista-fuente" style="display:none">
+              <select name="fuente_lista_id" class="form-select form-select-sm" style="max-width:280px">
+                {% for l in listas_existentes %}
+                <option value="{{ l.id }}">{{ l.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="d-flex gap-2 justify-content-end mt-4">
+            <a href="/listas-precio" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">
+              <i class="bi bi-check-lg me-1"></i>Crear lista
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelectorAll('input[name="importar_desde"]').forEach(r => {
+    r.addEventListener('change', () => {
+      const sel = document.getElementById('sel-lista-fuente');
+      if (sel) sel.style.display = r.value === 'lista' ? '' : 'none';
+    });
+  });
+</script>
+{% endblock %}

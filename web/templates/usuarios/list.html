@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Usuarios — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-people me-2"></i>Usuarios</h1>
+  <a href="/usuarios/nuevo" class="btn btn-primary btn-sm">
+    <i class="bi bi-plus-lg me-1"></i>Nuevo usuario
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <table class="table table-hover mb-0">
+      <thead>
+        <tr>
+          <th>Usuario</th>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td class="fw-semibold">{{ u.username }}</td>
+          <td>{{ u.nombre }}</td>
+          <td class="text-muted small">{{ u.email or '—' }}</td>
+          <td>
+            {% if u.role == 'admin' %}
+              <span class="badge bg-primary">Admin</span>
+            {% else %}
+              <span class="badge bg-secondary">Operador</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if u.activo %}
+              <span class="badge" style="background:#d1e7dd;color:#0f5132">Activo</span>
+            {% else %}
+              <span class="badge" style="background:#f8d7da;color:#842029">Inactivo</span>
+            {% endif %}
+          </td>
+          <td class="text-end">
+            <a href="/usuarios/{{ u.id }}/editar" class="btn btn-sm btn-outline-secondary me-1">
+              <i class="bi bi-pencil"></i>
+            </a>
+            {% if u.username != me %}
+            <form method="post" action="/usuarios/{{ u.id }}/eliminar" class="d-inline"
+                  onsubmit="return confirm('¿Eliminar usuario {{ u.username }}?')">
+              <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6" class="text-center text-muted py-4">No hay usuarios registrados.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

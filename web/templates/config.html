@@ -1,0 +1,943 @@
+{% extends "base.html" %}
+{% block title %}Configuración — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-gear me-2 text-primary"></i>Configuración</h1>
+</div>
+
+{% if saved == 'empresa' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Datos de empresa guardados.</div>
+{% elif saved == 'arca' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Configuración ARCA guardada.</div>
+{% elif saved == 'mp' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Configuración de MercadoPago guardada.</div>
+{% elif saved == 'mail' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Configuración de email guardada.</div>
+{% elif saved == 'integraciones' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Configuración de integraciones guardada.</div>
+{% endif %}
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-4" id="configTabs" style="position:sticky;top:0;z-index:10;background:#f4f6fb;padding-top:0.5rem;margin-left:-0.5rem;margin-right:-0.5rem;padding-left:0.5rem;padding-right:0.5rem;">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'empresa' %}active{% endif %}" href="/config?tab=empresa">
+      <i class="bi bi-building me-1"></i>Empresa
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'integraciones' %}active{% endif %}" href="/config?tab=integraciones">
+      <i class="bi bi-plug me-1"></i>Integraciones
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'servicio' %}active{% endif %}" href="/config?tab=servicio">
+      <i class="bi bi-toggle-on me-1"></i>Servicio
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'ticket' %}active{% endif %}" href="/config?tab=ticket">
+      <i class="bi bi-printer me-1"></i>Ticket / Impresora
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'datos' %}active{% endif %}" href="/config?tab=datos">
+      <i class="bi bi-database me-1"></i>Datos / Backup
+    </a>
+  </li>
+  <li class="nav-item ms-auto">
+    <a href="/config/backup-db" class="btn btn-outline-secondary btn-sm mt-1" download>
+      <i class="bi bi-download me-1"></i>Backup rápido
+    </a>
+  </li>
+</ul>
+
+<!-- ── TAB EMPRESA ─────────────────────────────────────────────────────── -->
+{% if tab == 'empresa' %}
+<div class="card" style="max-width: 620px;">
+  <div class="card-body">
+    <form method="post" action="/config/empresa" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nombre / Razón social</label>
+        <input type="text" class="form-control" name="empresa_nombre" value="{{ cfg.empresa_nombre }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Domicilio</label>
+        <input type="text" class="form-control" name="empresa_direccion" value="{{ cfg.empresa_direccion }}">
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">CUIT</label>
+          <input type="text" class="form-control" name="empresa_cuit" value="{{ cfg.empresa_cuit }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">IIBB</label>
+          <input type="text" class="form-control" name="empresa_iibb" value="{{ cfg.empresa_iibb }}">
+        </div>
+      </div>
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" class="form-control" name="empresa_telefono" value="{{ cfg.empresa_telefono }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" class="form-control" name="empresa_email" value="{{ cfg.empresa_email }}">
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Fecha de inicio de actividades</label>
+        <input type="date" class="form-control" name="empresa_inicio_actividades"
+               value="{{ cfg.empresa_inicio_actividades }}">
+        <div class="form-text">Aparece en el encabezado de las facturas.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Condición IVA del emisor <span class="text-danger">*</span></label>
+        <select class="form-select" name="empresa_iva_condition">
+          {% set cond = cfg.empresa_iva_condition %}
+          <option value="Monotributista"         {% if cond == 'Monotributista' %}selected{% endif %}>Monotributista (emite Factura C)</option>
+          <option value="Responsable Inscripto"  {% if cond == 'Responsable Inscripto' %}selected{% endif %}>Responsable Inscripto (emite Factura A y B)</option>
+          <option value="IVA Exento"             {% if cond == 'IVA Exento' %}selected{% endif %}>IVA Exento (emite Factura B)</option>
+        </select>
+        <div class="form-text">Determina qué tipos de comprobante podés emitir.</div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Logo de la empresa</label>
+        {% if cfg.logo_path %}
+        <div class="mb-3 d-flex align-items-center gap-3">
+          <img src="/config/empresa/logo" alt="Logo actual"
+               style="max-height:72px;max-width:200px;object-fit:contain;border:1px solid #dee2e6;border-radius:8px;padding:6px;background:#fff;">
+          <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Logo cargado</span>
+        </div>
+        {% endif %}
+        <input type="file" class="form-control" name="logo" accept=".png,.jpg,.jpeg">
+        <div class="form-text">PNG o JPG. Dejalo vacío para mantener el logo actual.</div>
+      </div>
+      <button type="submit" class="btn btn-primary fw-semibold px-4">
+        <i class="bi bi-save me-1"></i>Guardar datos de empresa
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── TAB INTEGRACIONES ────────────────────────────────────────────── -->
+{% if tab == 'integraciones' %}
+<div class="d-flex gap-0" style="min-height:500px">
+
+  <!-- Sub-sidebar -->
+  <div style="width:200px;flex-shrink:0;border-right:1px solid #dee2e6;padding-top:.25rem">
+    <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:#64748b;padding:.75rem 1rem .3rem">Integraciones</div>
+    <a href="/config?tab=integraciones&seccion=mp"
+       class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none rounded-0"
+       style="font-size:.9rem;border-left:3px solid {% if seccion == 'mp' %}var(--bs-primary){% else %}transparent{% endif %};background:{% if seccion == 'mp' %}#eff6ff{% else %}transparent{% endif %};color:{% if seccion == 'mp' %}var(--bs-primary){% else %}#1e293b{% endif %};font-weight:{% if seccion == 'mp' %}600{% else %}400{% endif %}">
+      <i class="bi bi-phone"></i> MercadoPago
+    </a>
+    <a href="/config?tab=integraciones&seccion=arca"
+       class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none rounded-0"
+       style="font-size:.9rem;border-left:3px solid {% if seccion == 'arca' %}var(--bs-primary){% else %}transparent{% endif %};background:{% if seccion == 'arca' %}#eff6ff{% else %}transparent{% endif %};color:{% if seccion == 'arca' %}var(--bs-primary){% else %}#1e293b{% endif %};font-weight:{% if seccion == 'arca' %}600{% else %}400{% endif %}">
+      <i class="bi bi-shield-lock"></i> ARCA / AFIP
+    </a>
+    <a href="/config?tab=integraciones&seccion=mail"
+       class="d-flex align-items-center gap-2 px-3 py-2 text-decoration-none rounded-0"
+       style="font-size:.9rem;border-left:3px solid {% if seccion == 'mail' %}var(--bs-primary){% else %}transparent{% endif %};background:{% if seccion == 'mail' %}#eff6ff{% else %}transparent{% endif %};color:{% if seccion == 'mail' %}var(--bs-primary){% else %}#1e293b{% endif %};font-weight:{% if seccion == 'mail' %}600{% else %}400{% endif %}">
+      <i class="bi bi-envelope"></i> Email / SMTP
+    </a>
+  </div>
+
+  <!-- Contenido -->
+  <div class="flex-grow-1 ps-4" style="max-width:660px">
+
+    {# ── SECCIÓN MERCADOPAGO ── #}
+    {% if seccion == 'mp' %}
+    <h5 class="fw-bold mb-1"><i class="bi bi-phone me-2 text-primary"></i>MercadoPago</h5>
+    <p class="text-muted small mb-4">Configurá la integración para cobros por QR y pagos online.</p>
+
+    {# ── Status MP ── #}
+    {% if cfg.mp_access_token %}
+    {% set mp_token = cfg.mp_access_token %}
+    {% set mp_es_test = mp_token.startswith('TEST-') %}
+    <div class="alert {% if mp_es_test %}alert-warning{% else %}alert-success{% endif %} d-flex align-items-start gap-3 mb-4 py-2">
+      <i class="bi bi-{% if mp_es_test %}exclamation-triangle-fill{% else %}check-circle-fill{% endif %} mt-1"></i>
+      <div class="small">
+        <span class="badge {% if mp_es_test %}bg-warning text-dark{% else %}bg-success{% endif %} me-2">
+          {% if mp_es_test %}Sandbox / Pruebas{% else %}Producción{% endif %}
+        </span>
+        Token: <i class="bi bi-check-circle text-success"></i>
+        &nbsp;·&nbsp;
+        Webhook secret: {% if cfg.mp_webhook_secret %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+        &nbsp;·&nbsp;
+        QR (User ID + POS): {% if cfg.mp_user_id and cfg.mp_pos_id %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-dash-circle text-secondary"></i>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning mb-4 small">
+      <i class="bi bi-exclamation-triangle me-2"></i>MercadoPago no configurado. Completá el Access Token para habilitar la integración.
+    </div>
+    {% endif %}
+
+    {# Tutorial MP #}
+    <div class="card border-0 bg-light mb-4">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-2 mb-2" data-bs-toggle="collapse" data-bs-target="#tutorialMP" style="cursor:pointer">
+          <span class="badge text-white" style="background:#009ee3;font-size:.7rem"><i class="bi bi-credit-card me-1"></i>MercadoPago</span>
+          <span class="fw-semibold small">¿Cómo obtener el Access Token, User ID, POS ID y Webhook Secret?</span>
+          <i class="bi bi-chevron-down ms-auto text-muted"></i>
+        </div>
+        <div class="collapse" id="tutorialMP">
+          <hr class="my-2">
+
+          <p class="small fw-semibold mb-1 mt-2">1 — Access Token (token de producción)</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Ingresá a <a href="https://www.mercadopago.com.ar/developers/panel/app" target="_blank" class="text-decoration-none fw-semibold">mercadopago.com.ar/developers/panel/app <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>Creá una nueva aplicación (o seleccioná una existente)</li>
+            <li>En la aplicación, andá a la pestaña <strong>Credenciales de producción</strong></li>
+            <li>Copiá el <strong>Access token</strong> (empieza con <code>APP_USR-</code>) y pegalo abajo</li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">2 — User ID del vendedor</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Iniciá sesión en <a href="https://www.mercadopago.com.ar" target="_blank" class="text-decoration-none fw-semibold">mercadopago.com.ar <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>Hacé clic en tu avatar (arriba a la derecha) → <strong>Tu perfil</strong></li>
+            <li>El <strong>User ID</strong> es el número que aparece abajo de tu nombre (ej: <code>123456789</code>)</li>
+            <li>También lo encontrás en el panel de desarrolladores al ver las credenciales de tu app</li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">3 — POS ID (External ID del punto de venta)</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>En <a href="https://www.mercadopago.com.ar/stores" target="_blank" class="text-decoration-none fw-semibold">mercadopago.com.ar/stores <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a> creá o seleccioná una <strong>Sucursal</strong></li>
+            <li>Dentro de la sucursal, creá un <strong>Punto de venta</strong> (tipo: <em>PDV</em>)</li>
+            <li>Al crearlo, completá el campo <strong>External ID</strong> con un código propio (ej: <code>CAJA01</code>) — ese valor es el que va acá</li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">4 — Webhook Secret</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>En el panel de desarrolladores, entrá a tu aplicación y luego a <strong>Webhooks</strong></li>
+            <li>Registrá la URL: <code>https://tu-dominio/webhooks/mercadopago</code> y seleccioná el evento <strong>Pagos (payment)</strong></li>
+            <li>MercadoPago te mostrará una <strong>firma secreta (secret)</strong> — copiala y pegala en el campo Webhook Secret</li>
+          </ol>
+
+          <div class="alert alert-warning py-2 px-3 mb-0 small">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Usá siempre las credenciales de <strong>producción</strong>, no las de prueba, para cobros reales.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="/config/mp">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Access Token</label>
+        <input type="password" class="form-control font-monospace" name="mp_access_token"
+               value="{{ cfg.mp_access_token }}" placeholder="APP_USR-... o TEST-...">
+        <div class="form-text">Token de producción de tu aplicación en MercadoPago.</div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">User ID del vendedor</label>
+          <input type="text" class="form-control font-monospace" name="mp_user_id"
+                 value="{{ cfg.mp_user_id }}" placeholder="123456789">
+          <div class="form-text">ID numérico de tu cuenta MP. Lo encontrás en <em>Tu cuenta → Datos</em>.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">POS ID (External ID)</label>
+          <input type="text" class="form-control font-monospace" name="mp_pos_id"
+                 value="{{ cfg.mp_pos_id }}" placeholder="CAJA01">
+          <div class="form-text">External ID del POS. Crealo en <em>Tu negocio → Puntos de venta</em>.</div>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Webhook Secret</label>
+        <input type="password" class="form-control font-monospace" name="mp_webhook_secret"
+               value="{{ cfg.mp_webhook_secret }}" placeholder="Secret HMAC">
+        <div class="form-text">En MercadoPago → Tus integraciones → Webhooks.</div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Descripción del servicio</label>
+        <input type="text" class="form-control" name="mp_concepto_descripcion"
+               value="{{ cfg.mp_concepto_descripcion }}" placeholder="Cobro con Mercadopago">
+        <div class="form-text">Aparece en la factura generada automáticamente.</div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Alícuota IVA</label>
+        <select class="form-select" name="mp_iva_rate" style="max-width:240px">
+          {% set rate = cfg.mp_iva_rate | string %}
+          <option value="0"     {% if rate in ('0','0.0','') %}selected{% endif %}>Sin IVA (Monotributista / Exento)</option>
+          <option value="0.21"  {% if rate == '0.21'  %}selected{% endif %}>21%</option>
+          <option value="0.105" {% if rate == '0.105' %}selected{% endif %}>10,5%</option>
+        </select>
+      </div>
+      <div class="p-3 rounded mb-4 small" style="background:#f0f7ff;border:1px solid #c8dff8">
+        <p class="fw-semibold mb-2"><i class="bi bi-link-45deg me-1"></i>URL del webhook para registrar en MercadoPago</p>
+        {% set webhook_url = request.url.scheme ~ '://' ~ request.url.hostname ~ ((':' ~ request.url.port) if request.url.port and request.url.port not in (80, 443) else '') ~ '/webhooks/mercadopago' %}
+        <div class="input-group mb-2">
+          <input type="text" class="form-control form-control-sm font-monospace"
+                 id="webhookUrlInput" value="{{ webhook_url }}" readonly>
+          <button class="btn btn-sm btn-outline-secondary" type="button"
+                  onclick="navigator.clipboard.writeText('{{ webhook_url }}').then(()=>{this.innerHTML='<i class=\'bi bi-check-lg\'></i> Copiado';setTimeout(()=>{this.innerHTML='<i class=\'bi bi-copy\'></i> Copiar'},2000)})">
+            <i class="bi bi-copy"></i> Copiar
+          </button>
+        </div>
+        <div class="text-muted">Evento a suscribir: <strong>Pagos (payment)</strong>. El Webhook Secret lo genera MP al guardar el webhook.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary fw-semibold px-4">
+          <i class="bi bi-save me-1"></i>Guardar MercadoPago
+        </button>
+        {% if cfg.mp_access_token %}
+        <button type="button" class="btn btn-outline-secondary" id="btn-probar-mp" onclick="probarMP()">
+          <i class="bi bi-send me-1"></i>Probar conexión
+        </button>
+        {% endif %}
+      </div>
+    </form>
+    {% if cfg.mp_access_token %}
+    <div id="mp-resultado" class="mt-3" style="display:none"></div>
+    {% endif %}
+    {% endif %}
+
+    {# ── SECCIÓN ARCA ── #}
+    {% if seccion == 'arca' %}
+    <h5 class="fw-bold mb-1"><i class="bi bi-shield-lock me-2 text-primary"></i>ARCA / Facturación electrónica</h5>
+    <p class="text-muted small mb-4">Certificados y punto de venta para emitir facturas ante AFIP/ARCA.</p>
+
+    {# ── Status ARCA ── #}
+    {% if arca %}
+    <div class="alert alert-info d-flex align-items-start gap-3 mb-4 py-2">
+      <i class="bi bi-info-circle-fill mt-1"></i>
+      <div class="small">
+        CUIT: <code>{{ arca.cuit }}</code> &nbsp;·&nbsp;
+        PV: <code>{{ arca.punto_venta }}</code> &nbsp;·&nbsp;
+        <span class="badge {% if arca.ambiente == 'produccion' %}bg-danger{% else %}bg-warning text-dark{% endif %}">{{ arca.ambiente | capitalize }}</span><br>
+        Cert: {% if arca.certificado_path %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+        &nbsp; Clave: {% if arca.clave_path %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning mb-4 small">
+      <i class="bi bi-exclamation-triangle me-2"></i>ARCA no configurado. Completá el formulario para habilitar la facturación electrónica.
+    </div>
+    {% endif %}
+
+    {# Tutorial ARCA #}
+    <div class="card border-0 bg-light mb-4">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-2 mb-2" data-bs-toggle="collapse" data-bs-target="#tutorialArca" style="cursor:pointer">
+          <span class="badge text-white" style="background:#1a3a5c;font-size:.7rem"><i class="bi bi-shield-lock me-1"></i>ARCA / AFIP</span>
+          <span class="fw-semibold small">¿Cómo obtener el certificado digital y la clave privada?</span>
+          <i class="bi bi-chevron-down ms-auto text-muted"></i>
+        </div>
+        <div class="collapse" id="tutorialArca">
+          <hr class="my-2">
+
+          <p class="small fw-semibold mb-1 mt-2">1 — Generar la clave privada y el CSR (en tu PC)</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Instalá <strong>OpenSSL</strong> (en Windows podés usar Git Bash o WSL; en Linux/Mac ya viene incluido)</li>
+            <li>Abrí una terminal y ejecutá:<br>
+              <code class="d-block bg-white border rounded px-2 py-1 mt-1 mb-1" style="font-size:.78rem">openssl genrsa -out clave_privada.key 2048</code>
+            </li>
+            <li>Luego generá el CSR (pedido de certificado):<br>
+              <code class="d-block bg-white border rounded px-2 py-1 mt-1 mb-1" style="font-size:.78rem">openssl req -new -key clave_privada.key -subj "/C=AR/O=Mi Empresa/CN=CUIT 20123456789" -out mi_empresa.csr</code>
+              Reemplazá <em>CUIT 20123456789</em> con tu CUIT sin guiones.
+            </li>
+            <li>Guardá bien el archivo <strong>clave_privada.key</strong> — es el que subís al campo <em>Clave privada</em> de abajo</li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">2 — Obtener el certificado desde el portal ARCA</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Ingresá con CUIT y Clave Fiscal (nivel 3 o superior) a <a href="https://auth.afip.gob.ar" target="_blank" class="text-decoration-none fw-semibold">auth.afip.gob.ar <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>Buscá el servicio <strong>"Administración de Certificados Digitales"</strong> en el listado de servicios habilitados</li>
+            <li>Hacé clic en <strong>Nueva solicitud de certificado</strong></li>
+            <li>Pegá el contenido del archivo <code>mi_empresa.csr</code> generado en el paso anterior</li>
+            <li>Descargá el certificado resultante (<code>.crt</code> o <code>.pem</code>) — ese archivo es el que subís al campo <em>Certificado</em> de abajo</li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">3 — Punto de venta</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>En el portal ARCA / AFIP, buscá el servicio <strong>"ABM de Puntos de Venta"</strong></li>
+            <li>Creá un punto de venta de tipo <strong>Facturación electrónica — Web Services</strong></li>
+            <li>El número asignado es el que ingresás en el campo <em>Punto de venta</em> de abajo (ej: <code>5</code>)</li>
+          </ol>
+
+          <div class="alert alert-info py-2 px-3 mb-1 small">
+            <i class="bi bi-info-circle me-1"></i>
+            Usá el ambiente <strong>Homologación</strong> para hacer pruebas sin emitir comprobantes reales. Cambiá a <strong>Producción</strong> recién cuando todo funcione correctamente.
+          </div>
+          <div class="alert alert-warning py-2 px-3 mb-0 small">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            La <strong>clave privada</strong> nunca se comparte ni se sube a ningún sitio externo. Solo la subís una vez a este servidor, que es tuyo.
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    {# Tutorial Padron A13 #}
+    <div class="card border-0 bg-light mb-4">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-2 mb-2" data-bs-toggle="collapse" data-bs-target="#tutorialPadron" style="cursor:pointer">
+          <span class="badge text-white" style="background:#1a3a5c;font-size:.7rem"><i class="bi bi-person-vcard me-1"></i>ARCA / AFIP</span>
+          <span class="fw-semibold small">¿Qué servicio debo habilitar para consultar datos de clientes por CUIT?</span>
+          <i class="bi bi-chevron-down ms-auto text-muted"></i>
+        </div>
+        <div class="collapse" id="tutorialPadron">
+          <hr class="my-2">
+          <p class="small mb-3">El botón <strong>"Consultar ARCA"</strong> en el formulario de clientes completa automáticamente nombre, domicilio y condición de IVA a partir del CUIT. Para que funcione, tu certificado debe tener acceso al webservice de Padrón Alcance 13.</p>
+
+          <p class="small fw-semibold mb-1">1 — Ingresar al Administrador de Relaciones</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Ingresá con CUIT y Clave Fiscal a <a href="https://auth.afip.gob.ar" target="_blank" class="text-decoration-none fw-semibold">auth.afip.gob.ar <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>Buscá y abrí el servicio <strong>"Administrador de Relaciones de Clave Fiscal"</strong></li>
+            <li>Hacé clic en <strong>Nueva Relación</strong></li>
+          </ol>
+
+          <p class="small fw-semibold mb-1">2 — Crear la relación para Padrón Alcance 13</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>En <em>Servicio</em>, buscá y seleccioná: <strong>Consulta a Padrón Alcance 13</strong> (ws_sr_padron_a13)</li>
+            <li>En <em>Representante</em>, seleccioná el certificado que ya configuraste en Contalibra</li>
+            <li>Confirmá la relación</li>
+          </ol>
+
+          <div class="alert alert-success py-2 px-3 mb-1 small">
+            <i class="bi bi-check-circle me-1"></i>
+            Una vez habilitado, el botón <strong>"Consultar ARCA"</strong> en el alta de clientes funcionará automáticamente.
+          </div>
+          <div class="alert alert-info py-2 px-3 mb-0 small">
+            <i class="bi bi-info-circle me-1"></i>
+            Este servicio es distinto al de facturación (WSFE). Necesitás habilitarlos por separado usando el mismo certificado.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="/config/arca" enctype="multipart/form-data">
+      <div class="row g-3 mb-3">
+        <div class="col-md-5">
+          <label class="form-label fw-semibold">CUIT <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" name="cuit"
+                 value="{{ arca.cuit if arca else cfg.empresa_cuit }}" placeholder="20-12345678-9" required>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Punto de venta <span class="text-danger">*</span></label>
+          <input type="number" class="form-control" name="punto_venta"
+                 value="{{ arca.punto_venta if arca else 1 }}" min="1" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Ambiente</label>
+          <select class="form-select" name="ambiente">
+            <option value="homologacion" {% if not arca or arca.ambiente == 'homologacion' %}selected{% endif %}>Homologación (pruebas)</option>
+            <option value="produccion"   {% if arca and arca.ambiente == 'produccion'    %}selected{% endif %}>Producción</option>
+          </select>
+        </div>
+      </div>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Alias / Descripción</label>
+        <input type="text" class="form-control" name="alias"
+               value="{{ arca.alias if arca else '' }}" placeholder="Ej: Mi empresa SRL">
+      </div>
+      <input type="hidden" name="empresa" value="{{ arca.empresa if arca else 'default' }}">
+      <hr class="my-3">
+      <p class="fw-semibold mb-3 small"><i class="bi bi-file-lock2 me-1"></i>Certificados digitales — ambos archivos se obtienen desde el portal ARCA.</p>
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Certificado (.crt / .pem)</label>
+        {% if arca and arca.certificado_path %}
+        <div class="mb-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Cargado</span> <span class="text-muted small">{{ arca.certificado_path | replace('/app/', '') }}</span></div>
+        {% endif %}
+        <input type="file" class="form-control" name="certificado" accept=".crt,.pem,.cer">
+        <div class="form-text">Dejalo vacío para mantener el actual.</div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Clave privada (.key / .pem)</label>
+        {% if arca and arca.clave_path %}
+        <div class="mb-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Cargada</span> <span class="text-muted small">{{ arca.clave_path | replace('/app/', '') }}</span></div>
+        {% endif %}
+        <input type="file" class="form-control" name="clave_privada" accept=".key,.pem">
+        <div class="form-text">Dejalo vacío para mantener la actual.</div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary fw-semibold px-4">
+          <i class="bi bi-save me-1"></i>Guardar ARCA
+        </button>
+        {% if arca and arca.certificado_path and arca.clave_path %}
+        <button type="button" class="btn btn-outline-secondary" id="btn-probar" onclick="probarArca()">
+          <i class="bi bi-send me-1"></i>Probar conexión
+        </button>
+        {% endif %}
+      </div>
+    </form>
+    {% if arca and arca.certificado_path and arca.clave_path %}
+    <div id="arca-resultado" class="mt-3" style="display:none"></div>
+    {% endif %}
+    {% endif %}
+
+    {# ── SECCIÓN EMAIL ── #}
+    {% if seccion == 'mail' %}
+    <h5 class="fw-bold mb-1"><i class="bi bi-envelope me-2 text-primary"></i>Email / SMTP</h5>
+    <p class="text-muted small mb-4">Configurá el servidor de email para enviar comprobantes a los clientes.</p>
+
+    {# ── Status Email ── #}
+    {% if cfg.email_smtp_host and cfg.email_smtp_user %}
+    <div class="alert {% if cfg.email_smtp_password %}alert-success{% else %}alert-warning{% endif %} d-flex align-items-start gap-3 mb-4 py-2">
+      <i class="bi bi-{% if cfg.email_smtp_password %}check-circle-fill{% else %}exclamation-triangle-fill{% endif %} mt-1"></i>
+      <div class="small">
+        Servidor: <code>{{ cfg.email_smtp_host }}:{{ cfg.email_smtp_port }}</code>
+        &nbsp;·&nbsp;
+        Usuario: <i class="bi bi-check-circle text-success"></i>
+        &nbsp;·&nbsp;
+        Contraseña: {% if cfg.email_smtp_password %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-x-circle text-danger"></i>{% endif %}
+        &nbsp;·&nbsp;
+        Remitente: {% if cfg.email_from %}<i class="bi bi-check-circle text-success"></i>{% else %}<i class="bi bi-dash-circle text-secondary"></i>{% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-warning mb-4 small">
+      <i class="bi bi-exclamation-triangle me-2"></i>Email no configurado. Completá el servidor SMTP para habilitar el envío de comprobantes.
+    </div>
+    {% endif %}
+
+    {# Tutorial Gmail #}
+    <div class="card border-0 bg-light mb-4">
+      <div class="card-body py-3 px-4">
+        <div class="d-flex align-items-center gap-2 mb-2" data-bs-toggle="collapse" data-bs-target="#tutorialGmail" style="cursor:pointer">
+          <span class="badge bg-danger" style="font-size:.7rem"><i class="bi bi-google me-1"></i>Gmail</span>
+          <span class="fw-semibold small">¿Cómo configurar Gmail con una contraseña de aplicación?</span>
+          <i class="bi bi-chevron-down ms-auto text-muted"></i>
+        </div>
+        <div class="collapse" id="tutorialGmail">
+          <hr class="my-2">
+          <p class="small text-muted mb-2">Gmail <strong>no permite usar tu contraseña normal</strong> para enviar emails desde apps externas. Necesitás generar una <strong>contraseña de aplicación</strong> de 16 caracteres. Seguí estos pasos:</p>
+          <ol class="small mb-3" style="line-height:1.9">
+            <li>Ingresá a tu cuenta de Google en <a href="https://myaccount.google.com" target="_blank" class="text-decoration-none fw-semibold">myaccount.google.com <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>En el menú izquierdo hacé clic en <strong>Seguridad</strong></li>
+            <li>Asegurate de tener activada la <strong>Verificación en dos pasos</strong> (es un requisito de Google)</li>
+            <li>Buscá <em>"contraseñas de aplicación"</em> en el buscador de configuración de Google o ingresá directamente a <a href="https://myaccount.google.com/apppasswords" target="_blank" class="text-decoration-none fw-semibold">myaccount.google.com/apppasswords <i class="bi bi-box-arrow-up-right" style="font-size:.65rem"></i></a></li>
+            <li>En el campo <strong>Nombre de la app</strong> escribí <em>Contalibra</em> y hacé clic en <strong>Crear</strong></li>
+            <li>Google te mostrará una contraseña de <strong>16 caracteres</strong> — copiala en ese momento (no se vuelve a mostrar)</li>
+            <li>Pegá esa contraseña en el campo <strong>Contraseña</strong> del formulario de abajo y guardá</li>
+          </ol>
+          <div class="alert alert-info py-2 px-3 mb-0 small">
+            <i class="bi bi-info-circle me-1"></i>
+            <strong>Valores recomendados para Gmail:</strong>&nbsp; Servidor: <code>smtp.gmail.com</code> &nbsp;·&nbsp; Puerto: <code>587</code> &nbsp;·&nbsp; Usuario: tu dirección de Gmail completa
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <form method="post" action="/config/email">
+      <div class="row g-3 mb-3">
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Servidor SMTP</label>
+          <input type="text" class="form-control" name="email_smtp_host"
+                 value="{{ cfg.email_smtp_host }}" placeholder="smtp.gmail.com">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Puerto</label>
+          <input type="number" class="form-control" name="email_smtp_port"
+                 value="{{ cfg.email_smtp_port }}" placeholder="587">
+        </div>
+      </div>
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Usuario SMTP</label>
+          <input type="text" class="form-control" name="email_smtp_user"
+                 value="{{ cfg.email_smtp_user }}" placeholder="tu@gmail.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Contraseña</label>
+          <input type="password" class="form-control" name="email_smtp_password"
+                 value="" placeholder="Dejar vacío para no cambiar">
+          <div class="form-text">
+            {% if cfg.email_smtp_password %}<span class="text-success"><i class="bi bi-check-circle me-1"></i>Contraseña guardada.</span>{% endif %}
+          </div>
+        </div>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email del remitente</label>
+          <input type="email" class="form-control" name="email_from"
+                 value="{{ cfg.email_from }}" placeholder="tu@gmail.com">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Nombre del remitente</label>
+          <input type="text" class="form-control" name="email_from_name"
+                 value="{{ cfg.email_from_name }}" placeholder="Mi Empresa">
+        </div>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <button type="submit" class="btn btn-primary fw-semibold px-4">
+          <i class="bi bi-save me-1"></i>Guardar email
+        </button>
+        {% if cfg.email_smtp_host and cfg.email_smtp_user and cfg.email_smtp_password %}
+        <button type="button" class="btn btn-outline-secondary" id="btn-probar-email" onclick="probarEmail()">
+          <i class="bi bi-send me-1"></i>Probar conexión
+        </button>
+        {% endif %}
+      </div>
+    </form>
+    {% if cfg.email_smtp_host and cfg.email_smtp_user and cfg.email_smtp_password %}
+    <div id="email-resultado" class="mt-3" style="display:none"></div>
+    {% endif %}
+    {% endif %}
+
+  </div>{# /contenido #}
+</div>
+{% endif %}
+
+{% if tab == 'servicio' %}
+{% if saved == 'servicio' %}
+<div class="alert alert-success">Estado del servicio actualizado.</div>
+{% endif %}
+
+<div class="card" style="max-width:560px">
+  <div class="card-header"><i class="bi bi-toggle-on me-1"></i>Estado del servicio</div>
+  <div class="card-body">
+    <p class="text-muted small mb-4">
+      Controlá el acceso al sistema para esta instancia.
+      Este ajuste también puede cambiarse desde <code>panel_admin.py</code> en el servidor.
+    </p>
+    <form method="post" action="/config/servicio">
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Estado actual</label>
+        <div class="d-flex flex-column gap-2">
+
+          <div class="form-check p-3 border rounded {% if cfg.servicio_estado == 'activo' %}border-success bg-light{% endif %}">
+            <input class="form-check-input" type="radio" name="servicio_estado" id="est-activo"
+                   value="activo" {% if cfg.servicio_estado == 'activo' %}checked{% endif %}>
+            <label class="form-check-label" for="est-activo">
+              <span class="fw-semibold text-success"><i class="bi bi-check-circle me-1"></i>Activo</span>
+              <span class="text-muted small d-block mt-1">Operación normal. Todos los usuarios tienen acceso completo.</span>
+            </label>
+          </div>
+
+          <div class="form-check p-3 border rounded {% if cfg.servicio_estado == 'pausado' %}border-warning bg-light{% endif %}">
+            <input class="form-check-input" type="radio" name="servicio_estado" id="est-pausado"
+                   value="pausado" {% if cfg.servicio_estado == 'pausado' %}checked{% endif %}>
+            <label class="form-check-label" for="est-pausado">
+              <span class="fw-semibold text-warning"><i class="bi bi-pause-circle me-1"></i>Pausado</span>
+              <span class="text-muted small d-block mt-1">Los usuarios pueden ingresar pero ven un banner de aviso. Útil para avisar antes de un corte.</span>
+            </label>
+          </div>
+
+          <div class="form-check p-3 border rounded {% if cfg.servicio_estado == 'suspendido' %}border-danger bg-light{% endif %}">
+            <input class="form-check-input" type="radio" name="servicio_estado" id="est-suspendido"
+                   value="suspendido" {% if cfg.servicio_estado == 'suspendido' %}checked{% endif %}>
+            <label class="form-check-label" for="est-suspendido">
+              <span class="fw-semibold text-danger"><i class="bi bi-slash-circle me-1"></i>Suspendido</span>
+              <span class="text-muted small d-block mt-1">Acceso bloqueado completamente. Se muestra la página de suspensión. Reactivar desde el panel admin del servidor o cambiando a Activo antes de guardar.</span>
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold" for="servicio_mensaje">
+          Mensaje personalizado <span class="text-muted fw-normal small">(opcional)</span>
+        </label>
+        <textarea name="servicio_mensaje" id="servicio_mensaje" class="form-control" rows="2"
+                  placeholder="Ej: Servicio suspendido por falta de pago. Contactar a soporte@contalibra.com">{{ cfg.servicio_mensaje or '' }}</textarea>
+        <div class="form-text">Se muestra en el banner (pausado) o en la página de suspensión.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>Guardar estado
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'ticket' %}
+{% if saved == 'ticket' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Configuración de ticket guardada.</div>
+{% endif %}
+<div class="card" style="max-width:560px">
+  <div class="card-header"><i class="bi bi-printer me-1"></i>Impresora de tickets / ticketeadora térmica</div>
+  <div class="card-body">
+    <p class="text-muted small mb-4">
+      Configurá cómo se imprime el ticket en impresoras de rollo (Epson TM, Star, Bixolon, etc.).
+      El ticket se genera como PDF angosto descargable desde cada venta o factura.
+    </p>
+    <form method="post" action="/config/ticket">
+
+      <div class="row g-3 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Ancho del rollo</label>
+          <select name="ticket_ancho_mm" class="form-select">
+            <option value="80" {% if cfg.ticket_ancho_mm == '80' or not cfg.ticket_ancho_mm %}selected{% endif %}>80 mm (estándar)</option>
+            <option value="58" {% if cfg.ticket_ancho_mm == '58' %}selected{% endif %}>58 mm (mini)</option>
+          </select>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Tamaño de fuente</label>
+          <select name="ticket_fuente_size" class="form-select">
+            <option value="7"  {% if cfg.ticket_fuente_size == '7'  %}selected{% endif %}>7 pt — muy pequeño</option>
+            <option value="8"  {% if cfg.ticket_fuente_size == '8'  %}selected{% endif %}>8 pt — pequeño</option>
+            <option value="9"  {% if not cfg.ticket_fuente_size or cfg.ticket_fuente_size == '9' %}selected{% endif %}>9 pt — normal (recomendado)</option>
+            <option value="10" {% if cfg.ticket_fuente_size == '10' %}selected{% endif %}>10 pt — grande</option>
+            <option value="11" {% if cfg.ticket_fuente_size == '11' %}selected{% endif %}>11 pt — muy grande</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Opciones de impresión</label>
+        <div class="d-flex flex-column gap-2">
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ticket_mostrar_logo" id="tick-logo"
+                   value="1" {% if cfg.ticket_mostrar_logo == '1' %}checked{% endif %}>
+            <label class="form-check-label" for="tick-logo">
+              Mostrar logo de la empresa
+              <span class="text-muted small d-block">Si está configurado en la pestaña Empresa.</span>
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ticket_linea_corte" id="tick-corte"
+                   value="1" {% if cfg.ticket_linea_corte != '0' %}checked{% endif %}>
+            <label class="form-check-label" for="tick-corte">
+              Imprimir línea de corte al final
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4">
+        <label class="form-label fw-semibold" for="ticket_pie">
+          Texto al pie <span class="text-muted fw-normal small">(opcional)</span>
+        </label>
+        <input type="text" name="ticket_pie" id="ticket_pie" class="form-control"
+               maxlength="80" placeholder="Ej: ¡Gracias por su compra! www.miempresa.com"
+               value="{{ cfg.ticket_pie or '' }}">
+        <div class="form-text">Aparece al final del ticket, centrado.</div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <i class="bi bi-check-lg me-1"></i>Guardar configuración
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if tab == 'datos' %}
+
+{% if saved == 'restore' %}
+<div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>Base de datos restaurada correctamente. Se guardó un backup automático antes de reemplazar.</div>
+{% endif %}
+{% if restore_error %}
+<div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>{{ restore_error }}</div>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- Backup manual -->
+  <div class="col-md-5">
+    <div class="card h-100">
+      <div class="card-header"><i class="bi bi-download me-1"></i>Backup manual</div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Descargá una copia completa de la base de datos en este momento.
+          Guardala en un lugar seguro (PC, nube, etc.).
+        </p>
+        <a href="/config/backup-db" class="btn btn-primary w-100" download>
+          <i class="bi bi-database-down me-1"></i>Descargar backup ahora
+        </a>
+        <div class="form-text mt-2">El archivo <code>.db</code> contiene todos tus datos: clientes, facturas, ventas, caja, etc.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Restaurar -->
+  <div class="col-md-7">
+    <div class="card h-100 border-warning">
+      <div class="card-header text-warning"><i class="bi bi-upload me-1"></i>Restaurar base de datos</div>
+      <div class="card-body">
+        <div class="alert alert-warning py-2 small mb-3">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          <strong>Atención:</strong> esto reemplaza <em>todos</em> los datos actuales con el backup seleccionado.
+          Se guardará un backup automático de la DB actual antes de restaurar.
+        </div>
+        <form method="post" action="/config/restore-db" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Archivo de backup (.db)</label>
+            <input type="file" name="backup_file" class="form-control" accept=".db" required>
+            <div class="form-text">Solo se aceptan archivos <code>.db</code> exportados desde este sistema.</div>
+          </div>
+          <button type="submit" class="btn btn-warning w-100"
+                  onclick="return confirm('¿Estás seguro? Se reemplazarán TODOS los datos actuales.')">
+            <i class="bi bi-arrow-counterclockwise me-1"></i>Restaurar backup
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Backups automáticos -->
+{% if backups %}
+<div class="card mt-4">
+  <div class="card-header"><i class="bi bi-clock-history me-1"></i>Backups automáticos guardados en el servidor</div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Archivo</th><th>Fecha</th><th class="text-end">Tamaño</th><th></th></tr></thead>
+      <tbody>
+      {% for b in backups %}
+      <tr>
+        <td class="font-monospace small">{{ b.filename }}</td>
+        <td class="small">{{ b.mtime }}</td>
+        <td class="text-end small">{{ b.size_mb }} MB</td>
+        <td class="text-end">
+          <a href="/config/backup-db/{{ b.filename }}" class="btn btn-outline-secondary btn-sm" download>
+            <i class="bi bi-download"></i>
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+    <div class="px-3 py-2 text-muted small">Se conservan los últimos 10 backups automáticos. Se crean automáticamente antes de cada restauración.</div>
+  </div>
+</div>
+{% else %}
+<div class="card mt-4">
+  <div class="card-body text-muted small">
+    <i class="bi bi-info-circle me-1"></i>No hay backups automáticos aún. Se generan automáticamente antes de cada restauración.
+  </div>
+</div>
+{% endif %}
+
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+{% if tab == 'integraciones' and seccion == 'mail' and cfg.email_smtp_host and cfg.email_smtp_user and cfg.email_smtp_password %}
+<script>
+async function probarEmail() {
+  const btn = document.getElementById('btn-probar-email');
+  const res = document.getElementById('email-resultado');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Probando…';
+  res.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/email/probar');
+    const d = await r.json();
+
+    if (d.ok) {
+      res.innerHTML = `
+        <div class="alert alert-success mb-0">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>Conexión SMTP exitosa</strong><br>
+          <span class="small">
+            Servidor: <strong>${d.host}:${d.port}</strong> &nbsp;·&nbsp;
+            Usuario: <strong>${d.user}</strong>
+          </span>
+        </div>`;
+    } else {
+      res.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle-fill me-2"></i>
+          <strong>Error al conectar</strong><br>
+          <span class="small">${d.error}</span>
+        </div>`;
+    }
+  } catch(e) {
+    res.innerHTML = `<div class="alert alert-danger mb-0">Error inesperado: ${e}</div>`;
+  }
+
+  res.style.display = 'block';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-send me-1"></i>Probar conexión';
+}
+</script>
+{% endif %}
+{% if tab == 'integraciones' and seccion == 'mp' and cfg.mp_access_token %}
+<script>
+async function probarMP() {
+  const btn = document.getElementById('btn-probar-mp');
+  const res = document.getElementById('mp-resultado');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Probando…';
+  res.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/mp/probar');
+    const d = await r.json();
+
+    if (d.ok) {
+      res.innerHTML = `
+        <div class="alert alert-success mb-0">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>Conexión exitosa con MercadoPago</strong><br>
+          <span class="small">
+            Usuario: <strong>${d.nickname}</strong> &nbsp;·&nbsp;
+            ID: <code>${d.user_id}</code> &nbsp;·&nbsp;
+            Email: <strong>${d.email}</strong><br>
+            Sitio: <strong>${d.site_id}</strong> &nbsp;·&nbsp;
+            País: <strong>${d.pais}</strong>
+          </span>
+        </div>`;
+    } else {
+      res.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle-fill me-2"></i>
+          <strong>Error al conectar con MercadoPago</strong><br>
+          <span class="small">${d.error}</span>
+        </div>`;
+    }
+  } catch(e) {
+    res.innerHTML = `<div class="alert alert-danger mb-0">Error inesperado: ${e}</div>`;
+  }
+
+  res.style.display = 'block';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-send me-1"></i>Probar conexión';
+}
+</script>
+{% endif %}
+{% if tab == 'arca' and arca and arca.certificado_path and arca.clave_path %}
+<script>
+async function probarArca() {
+  const btn = document.getElementById('btn-probar');
+  const res = document.getElementById('arca-resultado');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Probando…';
+  res.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/arca/probar');
+    const d = await r.json();
+
+    if (d.ok) {
+      res.innerHTML = `
+        <div class="alert alert-success mb-0">
+          <i class="bi bi-check-circle-fill me-2"></i>
+          <strong>Conexion exitosa con WSAA (${d.ambiente})</strong><br>
+          <span class="small">
+            Ticket valido hasta: <strong>${d.expiracion}</strong><br>
+            Certificado vence: <strong>${d.cert_vencimiento}</strong>
+            (${d.cert_dias_restantes} dias restantes)
+          </span>
+        </div>`;
+    } else {
+      res.innerHTML = `
+        <div class="alert alert-danger mb-0">
+          <i class="bi bi-x-circle-fill me-2"></i>
+          <strong>Error al conectar con ARCA</strong><br>
+          <span class="small">${d.error}</span>
+        </div>`;
+    }
+  } catch(e) {
+    res.innerHTML = `<div class="alert alert-danger mb-0">Error inesperado: ${e}</div>`;
+  }
+
+  res.style.display = 'block';
+  btn.disabled = false;
+  btn.innerHTML = '<i class="bi bi-send me-1"></i>Probar conexion';
+}
+</script>
+{% endif %}
+
+{% endblock %}

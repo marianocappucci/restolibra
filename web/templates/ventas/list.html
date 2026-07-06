@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Ventas — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cart3 me-2 text-primary"></i>Ventas</h1>
+  <a href="/ventas/nueva" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva venta</a>
+</div>
+
+<!-- Tabs -->
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'todas' %}active{% endif %}"
+       href="/ventas?tab=todas&desde={{ desde }}&hasta={{ hasta }}&q={{ q }}">
+      Todas
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'sin_facturar' %}active{% endif %}"
+       href="/ventas?tab=sin_facturar&desde={{ desde }}&hasta={{ hasta }}&q={{ q }}">
+      Sin facturar
+    </a>
+  </li>
+  <li class="nav-item">
+    <a class="nav-link {% if tab == 'facturadas' %}active{% endif %}"
+       href="/ventas?tab=facturadas&desde={{ desde }}&hasta={{ hasta }}&q={{ q }}">
+      Facturadas
+    </a>
+  </li>
+</ul>
+
+<!-- Filtros -->
+<form class="row g-2 mb-3 align-items-end" method="get" action="/ventas">
+  <input type="hidden" name="tab" value="{{ tab }}">
+  <div class="col-auto">
+    <input type="date" name="desde" class="form-control form-control-sm" value="{{ desde }}">
+  </div>
+  <div class="col-auto">
+    <input type="date" name="hasta" class="form-control form-control-sm" value="{{ hasta }}">
+  </div>
+  <div class="col-auto">
+    <input type="search" name="q" class="form-control form-control-sm" placeholder="Buscar…" value="{{ q }}" style="min-width:200px">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-sm btn-outline-secondary">Filtrar</button>
+    {% if desde or hasta or q %}
+    <a href="/ventas?tab={{ tab }}" class="btn btn-sm btn-outline-secondary ms-1">Limpiar</a>
+    {% endif %}
+  </div>
+</form>
+
+<div class="card">
+  <div class="card-body p-0">
+    {% if ventas %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>N°</th>
+            <th>Fecha</th>
+            <th>Cliente</th>
+            <th>Medios de pago</th>
+            <th class="text-end">Total</th>
+            <th class="text-center">Estado</th>
+            <th class="text-center">Factura</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for v in ventas %}
+          <tr>
+            <td class="fw-semibold text-primary">
+              <a href="/ventas/{{ v.id }}" class="text-decoration-none">{{ v.numero }}</a>
+            </td>
+            <td class="text-muted small">{{ v.fecha|fecha }}</td>
+            <td>
+              {% if v.cliente_id %}
+              <a href="/clientes/{{ v.cliente_id }}" class="text-decoration-none">{{ v.cliente_nombre or '—' }}</a>
+              {% else %}
+              {{ v.cliente_nombre or '—' }}
+              {% endif %}
+            </td>
+            <td class="small">
+              {% for p in v.pagos %}
+              <span class="badge bg-light text-dark border me-1">
+                {{ medio_labels.get(p.medio, p.medio) }}: ${{ p.monto|moneda0 }}
+              </span>
+              {% endfor %}
+            </td>
+            <td class="text-end fw-semibold">$ {{ v.total|moneda }}</td>
+            <td class="text-center">
+              {% if v.estado == 'cobrada' %}
+              <span class="badge" style="background:#d1e7dd;color:#0f5132">Cobrada</span>
+              {% elif v.estado == 'parcial' %}
+              <span class="badge" style="background:#fff3cd;color:#664d03">Pago parcial</span>
+              {% elif v.estado == 'anulada' %}
+              <span class="badge" style="background:#f8d7da;color:#842029">Anulada</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ v.estado }}</span>
+              {% endif %}
+            </td>
+            <td class="text-center">
+              {% if v.factura_display %}
+              <a href="/facturas/{{ v.factura_id }}" class="text-decoration-none small fw-semibold text-success">
+                <i class="bi bi-receipt me-1"></i>{{ v.factura_display }}
+              </a>
+              {% elif v.estado != 'anulada' %}
+              <span class="badge" style="background:#fff3cd;color:#664d03">Sin facturar</span>
+              {% else %}
+              <span class="text-muted small">—</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="/ventas/{{ v.id }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">
+      {% if tab == 'sin_facturar' %}
+      No hay ventas pendientes de facturar.
+      {% elif tab == 'facturadas' %}
+      No hay ventas facturadas aún.
+      {% else %}
+      No hay ventas registradas aún.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

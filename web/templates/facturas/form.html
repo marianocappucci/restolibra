@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+{% block title %}Nueva Factura — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-receipt me-2 text-primary"></i>Nueva Factura</h1>
+  <a href="/facturas" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/facturas/nueva" id="factura-form">
+  <div class="row g-3">
+
+    <!-- Tipo, Concepto, Punto de venta -->
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-header">Tipo de comprobante</div>
+        <div class="card-body">
+          <select class="form-select" name="tipo" id="tipo-select">
+            {% for t in tipos %}
+            <option value="{{ t.value }}">{{ t.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-header">Concepto</div>
+        <div class="card-body">
+          <select class="form-select" name="concepto" id="concepto-select">
+            {% for c in conceptos %}
+            <option value="{{ c.value }}">{{ c.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-header">Punto de venta</div>
+        <div class="card-body">
+          <input type="number" class="form-control" name="punto_venta"
+                 value="{{ punto_venta }}" min="1" required>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card h-100">
+        <div class="card-header">Fecha</div>
+        <div class="card-body">
+          <input type="date" class="form-control" name="fecha" required>
+        </div>
+      </div>
+    </div>
+
+    <!-- Condición de venta -->
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">Condición de venta</div>
+        <div class="card-body">
+          <select class="form-select" name="condicion_venta">
+            <option value="">— Sin especificar —</option>
+            {% for cv in condiciones_venta %}
+            <option value="{{ cv }}" {% if cv == 'Cuenta Corriente' %}selected{% endif %}>{{ cv }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fechas de servicio (concepto 2 o 3) -->
+    <div class="col-12" id="fechas-servicio" style="display:none">
+      <div class="card border-warning">
+        <div class="card-header bg-warning bg-opacity-10">
+          <i class="bi bi-calendar-range me-1"></i>Período de servicio
+          <span class="text-muted fw-normal small ms-2">Requerido por ARCA cuando el concepto es Servicios</span>
+        </div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Fecha desde <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="fch_serv_desde" id="fch_serv_desde">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Fecha hasta <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="fch_serv_hasta" id="fch_serv_hasta">
+            </div>
+            <div class="col-md-4">
+              <label class="form-label fw-semibold">Vto. de pago <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="fch_vto_pago" id="fch_vto_pago">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cliente -->
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">Cliente</div>
+        <div class="card-body">
+          {% set client_placeholder = '— Consumidor Final —' %}
+          {% set client_default_name = prefill.client_name if prefill and prefill.client_name else 'Consumidor Final' %}
+          {% set client_default_cuit = prefill.client_cuit if prefill else '' %}
+          {% set client_default_address = prefill.client_address if prefill else '' %}
+          {% set selected_client_id = prefill.client_id if prefill and prefill.client_id else none %}
+          {% include '_cliente_selector.html' %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Tasa IVA y Observaciones -->
+    {% if not es_monotributista %}
+    <div class="col-md-4">
+      <div class="card h-100">
+        <div class="card-header">Tasa de IVA</div>
+        <div class="card-body">
+          <select class="form-select" name="tax_rate" id="tax-rate">
+            <option value="0.21">21%</option>
+            <option value="0.105">10.5%</option>
+            <option value="0.0">0%</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <input type="hidden" name="tax_rate" value="0.0">
+    {% endif %}
+    <div class="col-md-{% if es_monotributista %}12{% else %}8{% endif %}">
+      <div class="card h-100">
+        <div class="card-header">Observaciones</div>
+        <div class="card-body">
+          <textarea class="form-control" name="observations" rows="2"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ítems -->
+    <div class="col-12">
+      {% set show_prices = true %}
+      {% set show_iva_row = not es_monotributista %}
+      {% include '_items_table.html' %}
+    </div>
+
+    <div class="col-12 d-flex justify-content-end gap-2 pb-4">
+      <a href="/facturas" class="btn btn-outline-secondary">Cancelar</a>
+      <button type="button" class="btn btn-outline-secondary fw-semibold px-4" id="btnBorrador">
+        <i class="bi bi-eye me-1"></i>Previsualizar borrador
+      </button>
+      <button type="submit" class="btn btn-primary fw-semibold px-4">
+        <i class="bi bi-save me-1"></i>Guardar y generar PDF
+      </button>
+    </div>
+  </div>
+</form>
+
+<div id="sugs-prod" class="list-group shadow"
+     style="position:fixed;z-index:9999;display:none;max-height:220px;overflow-y:auto"></div>
+
+{% include '_modal_nuevo_cliente.html' %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const fmt = n => '$ ' + n.toLocaleString('es-AR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+const esMonotributista = {{ 'true' if es_monotributista else 'false' }};
+
+// ── Buscador de productos ──
+(function () {
+  const buscador = document.getElementById('buscador-prod');
+  const sugs     = document.getElementById('sugs-prod');
+  let debT;
+  buscador.addEventListener('input', () => {
+    clearTimeout(debT);
+    const q = buscador.value.trim();
+    if (!q) { sugs.style.display = 'none'; return; }
+    debT = setTimeout(async () => {
+      let data = [];
+      try { const r = await fetch(`/productos/buscar?q=${encodeURIComponent(q)}`); if (r.ok) data = await r.json(); } catch(e) { return; }
+      sugs.innerHTML = '';
+      if (!data.length) { sugs.style.display = 'none'; return; }
+      data.forEach(p => {
+        const a = document.createElement('a');
+        a.href = '#';
+        a.className = 'list-group-item list-group-item-action py-1 px-3 small';
+        a.innerHTML = `<strong>${p.nombre}</strong><span class="text-muted ms-2">${fmt(p.precio_venta)} / ${p.unidad}</span>`;
+        a.addEventListener('click', e => { e.preventDefault(); insertar(p); buscador.value = ''; sugs.style.display = 'none'; });
+        sugs.appendChild(a);
+      });
+      const rect = buscador.getBoundingClientRect();
+      sugs.style.top = rect.bottom + 'px'; sugs.style.left = rect.left + 'px';
+      sugs.style.width = Math.max(rect.width, 260) + 'px'; sugs.style.display = '';
+    }, 200);
+  });
+  document.addEventListener('click', e => { if (!sugs.contains(e.target) && e.target !== buscador) sugs.style.display = 'none'; });
+  function insertar(p) {
+    let row = [...document.querySelectorAll('.item-row')].find(r => !r.querySelector('[name="desc[]"]').value.trim());
+    if (!row) { addRow(); const rows = document.querySelectorAll('.item-row'); row = rows[rows.length - 1]; }
+    row.querySelector('[name="desc[]"]').value   = p.nombre;
+    row.querySelector('.qty').value              = 1;
+    row.querySelector('.price').value            = p.precio_venta.toFixed(2);
+    autoResize(row.querySelector('.desc-field'));
+    recalc();
+    row.querySelector('[name="desc[]"]').focus();
+  }
+})();
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+function recalc() {
+  let sub = 0;
+  document.querySelectorAll('.item-row').forEach(row => {
+    const qty = parseFloat(row.querySelector('.qty').value) || 0;
+    const price = parseFloat(row.querySelector('.price').value) || 0;
+    const st = Math.round(qty * price * 100) / 100;
+    row.querySelector('.subtotal').textContent = fmt(st);
+    sub += st;
+  });
+  const rateEl = document.getElementById('tax-rate');
+  const rate = esMonotributista ? 0 : (parseFloat(rateEl ? rateEl.value : '0') || 0);
+  const tax = Math.round(sub * rate * 100) / 100;
+  document.getElementById('footer-subtotal').textContent = fmt(sub);
+  if (!esMonotributista) {
+    document.getElementById('footer-tax').textContent = fmt(tax);
+    document.getElementById('tax-pct').textContent = Math.round(rate * 100);
+  }
+  document.getElementById('footer-total').textContent = fmt(sub + tax);
+}
+
+function addRow() {
+  const tbody = document.getElementById('items-body');
+  const row = tbody.querySelector('.item-row').cloneNode(true);
+  row.querySelectorAll('input').forEach(i => i.value = i.type === 'number' ? (i.classList.contains('qty') ? 1 : '') : '');
+  const desc = row.querySelector('.desc-field');
+  desc.value = '';
+  desc.style.height = 'auto';
+  row.querySelector('.subtotal').textContent = '$ 0,00';
+  tbody.appendChild(row);
+  bindRow(row);
+}
+
+function bindRow(row) {
+  row.querySelectorAll('.qty, .price').forEach(i => i.addEventListener('input', recalc));
+  const desc = row.querySelector('.desc-field');
+  desc.addEventListener('input', () => autoResize(desc));
+  autoResize(desc);
+  row.querySelector('.remove-row').addEventListener('click', () => {
+    if (document.querySelectorAll('.item-row').length > 1) { row.remove(); recalc(); }
+  });
+}
+
+document.querySelectorAll('.item-row').forEach(bindRow);
+document.getElementById('add-row').addEventListener('click', addRow);
+if (!esMonotributista) document.getElementById('tax-rate').addEventListener('change', recalc);
+
+const dateInput = document.querySelector('input[name="fecha"]');
+if (dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+
+function toggleFechasServicio() {
+  const concepto = parseInt(document.getElementById('concepto-select').value);
+  const bloque   = document.getElementById('fechas-servicio');
+  const show     = concepto === 2 || concepto === 3;
+  bloque.style.display = show ? '' : 'none';
+  if (show) {
+    const today = new Date().toISOString().slice(0, 10);
+    const desde = document.getElementById('fch_serv_desde');
+    const hasta = document.getElementById('fch_serv_hasta');
+    const vto   = document.getElementById('fch_vto_pago');
+    if (!desde.value) desde.value = today;
+    if (!hasta.value) hasta.value = today;
+    if (!vto.value)   vto.value   = today;
+  }
+}
+document.getElementById('concepto-select').addEventListener('change', toggleFechasServicio);
+toggleFechasServicio();
+
+recalc();
+
+{% if prefill %}
+(function() {
+  {% if prefill.tipo %}
+  document.getElementById('tipo-select').value = '{{ prefill.tipo }}';
+  {% endif %}
+  {% if prefill.punto_venta %}
+  document.querySelector('[name="punto_venta"]').value = '{{ prefill.punto_venta }}';
+  {% endif %}
+  {% if prefill.condicion_venta %}
+  document.querySelector('[name="condicion_venta"]').value = {{ prefill.condicion_venta | tojson }};
+  {% endif %}
+
+  {% if prefill.client_id %}
+  const clientSel = document.getElementById('client-select');
+  if (clientSel) {
+    clientSel.value = '{{ prefill.client_id }}';
+    clientSel.dispatchEvent(new Event('change'));
+  }
+  {% endif %}
+
+  const conceptoSel = document.getElementById('concepto-select');
+  conceptoSel.value = '{{ prefill.concepto }}';
+  conceptoSel.dispatchEvent(new Event('change'));
+
+  {% if prefill.fch_serv_desde %}
+  document.getElementById('fch_serv_desde').value = {{ prefill.fch_serv_desde | tojson }};
+  {% endif %}
+  {% if prefill.fch_serv_hasta %}
+  document.getElementById('fch_serv_hasta').value = {{ prefill.fch_serv_hasta | tojson }};
+  {% endif %}
+  {% if prefill.fch_vto_pago %}
+  document.getElementById('fch_vto_pago').value = {{ prefill.fch_vto_pago | tojson }};
+  {% endif %}
+
+  const tbody = document.getElementById('items-body');
+  const prefillItems = {{ prefill['items'] | tojson }};
+  // Ensure correct number of rows without clearing (keeps first row available)
+  while (tbody.querySelectorAll('.item-row').length < prefillItems.length) addRow();
+  Array.from(tbody.querySelectorAll('.item-row')).slice(prefillItems.length).forEach(r => r.remove());
+  prefillItems.forEach((item, i) => {
+    const row = tbody.querySelectorAll('.item-row')[i];
+    row.querySelector('[name="desc[]"]').value = item.description;
+    row.querySelector('.qty').value            = item.qty;
+    row.querySelector('.price').value          = item.unit_price;
+    autoResize(row.querySelector('.desc-field'));
+  });
+
+  {% if prefill.observations %}
+  document.querySelector('[name="observations"]').value = {{ prefill.observations | tojson }};
+  {% endif %}
+
+  recalc();
+})();
+{% endif %}
+
+document.getElementById('btnBorrador').addEventListener('click', function() {
+  const form = document.querySelector('form');
+  const clone = form.cloneNode(true);
+  clone.method = 'POST';
+  clone.action = '/facturas/borrador-pdf';
+  clone.target = '_blank';
+  clone.style.display = 'none';
+  document.body.appendChild(clone);
+  clone.submit();
+  document.body.removeChild(clone);
+});
+
+</script>
+{% set client_default_name = 'Consumidor Final' %}
+{% include '_cliente_selector_js.html' %}
+{% include '_modal_nuevo_cliente_js.html' %}
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}Turnos de caja — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-person-badge me-2 text-primary"></i>Turnos de caja</h1>
+  {% if not turno_activo %}
+  <a href="/turnos/abrir" class="btn btn-success">
+    <i class="bi bi-play-circle me-1"></i>Abrir turno
+  </a>
+  {% endif %}
+</div>
+
+{% if turno_activo %}
+<div class="alert alert-success d-flex align-items-center gap-3 mb-4">
+  <i class="bi bi-circle-fill" style="color:#198754;font-size:1.1rem"></i>
+  <div>
+    <strong>Turno abierto</strong> desde {{ turno_activo.apertura }}
+    — Fondo inicial: <strong>$ {{ turno_activo.monto_inicial|moneda }}</strong>
+  </div>
+  <div class="ms-auto d-flex gap-2">
+    <a href="/turnos/{{ turno_activo.id }}" class="btn btn-sm btn-outline-success">Ver detalle</a>
+    <a href="/turnos/{{ turno_activo.id }}/cerrar" class="btn btn-sm btn-danger">
+      <i class="bi bi-stop-circle me-1"></i>Cerrar turno
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    {% if es_admin %}Todos los turnos{% else %}Mis turnos{% endif %}
+  </div>
+  <div class="card-body p-0">
+    {% if turnos %}
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>N°</th>
+            {% if es_admin %}<th>Cajero</th>{% endif %}
+            <th>Apertura</th>
+            <th>Cierre</th>
+            <th class="text-end">Fondo inicial</th>
+            <th class="text-end">Efectivo esperado</th>
+            <th class="text-end">Efectivo declarado</th>
+            <th class="text-center">Diferencia</th>
+            <th class="text-center">Estado</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in turnos %}
+          <tr>
+            <td class="text-muted small">{{ t.id }}</td>
+            {% if es_admin %}<td class="fw-semibold">{{ t.usuario_nombre }}</td>{% endif %}
+            <td class="small">{{ t.apertura }}</td>
+            <td class="small text-muted">{{ t.cierre or '—' }}</td>
+            <td class="text-end">$ {{ t.monto_inicial|moneda }}</td>
+            <td class="text-end">
+              {% if t.monto_esperado_cierre is not none %}
+              $ {{ t.monto_esperado_cierre|moneda }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end">
+              {% if t.monto_declarado_cierre is not none %}
+              $ {{ t.monto_declarado_cierre|moneda }}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-center fw-semibold">
+              {% if t.monto_declarado_cierre is not none and t.monto_esperado_cierre is not none %}
+                {% set dif = t.monto_declarado_cierre - t.monto_esperado_cierre %}
+                {% if dif > 0.01 %}
+                <span class="text-success">+$ {{ dif|moneda }}</span>
+                {% elif dif < -0.01 %}
+                <span class="text-danger">−$ {{ dif|abs|moneda }}</span>
+                {% else %}
+                <span class="text-muted">OK</span>
+                {% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-center">
+              {% if t.estado == 'abierto' %}
+              <span class="badge bg-success">Abierto</span>
+              {% else %}
+              <span class="badge bg-secondary">Cerrado</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <a href="/turnos/{{ t.id }}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-4 text-center text-muted">No hay turnos registrados.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

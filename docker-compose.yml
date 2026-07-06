@@ -1,0 +1,24 @@
+services:
+  contalibra-dev:
+    build: .
+    container_name: contalibra-dev
+    restart: unless-stopped
+    ports:
+      - "8071:8000"
+    volumes:
+      - ./:/app
+    command: uvicorn web.app:app --host 0.0.0.0 --port 8000 --reload
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-contalibra-dev-secret}
+      - ADMIN_USER=${ADMIN_USER:-admin}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
+      - ADMIN_NOMBRE=${ADMIN_NOMBRE:-Administrador}
+      - DATA_DIR=/app/dev-data
+      - ENV=development
+    networks:
+      - stack-net
+
+networks:
+  stack-net:
+    external: true
+    name: stack_stack-net

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentación — Contalibra</title>
+  <meta name="description" content="Guías y tutoriales para usar Contalibra: facturación, ventas, caja, stock y más.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+
+<nav class="navbar">
+  <a href="/" class="navbar-brand" style="text-decoration:none">
+    <div class="logo-icon">C</div>
+    Contalibra
+  </a>
+  <div class="navbar-links">
+    <a href="/#funciones">Funciones</a>
+    <a href="/#planes">Planes</a>
+    <a href="/docs/" class="active" style="color:var(--brand)">Documentación</a>
+  </div>
+</nav>
+
+<div class="docs-wrapper">
+
+  <!-- Sidebar -->
+  <nav class="docs-sidebar">
+    <div class="docs-sidebar-section">Inicio</div>
+    <a href="/docs/" class="active">Introducción</a>
+    <a href="/docs/primeros-pasos.html">Primeros pasos</a>
+
+    <div class="docs-sidebar-section">Configuración</div>
+    <a href="/docs/empresa.html">Datos de la empresa</a>
+    <a href="/docs/usuarios.html">Usuarios y permisos</a>
+    <a href="/docs/configuracion.html">Configuración general</a>
+
+    <div class="docs-sidebar-section">Módulos</div>
+    <a href="/docs/ventas.html">Ventas</a>
+    <a href="/docs/presupuestos.html">Presupuestos</a>
+    <a href="/docs/clientes.html">Clientes</a>
+    <a href="/docs/cuenta-corriente.html">Cuenta Corriente</a>
+    <a href="/docs/caja-turnos.html">Caja y Turnos</a>
+    <a href="/docs/facturacion.html">Facturación electrónica</a>
+    <a href="/docs/productos-stock.html">Productos y Stock</a>
+    <a href="/docs/listas-precio.html">Listas de Precios</a>
+    <a href="/docs/egresos-proveedores.html">Egresos y Proveedores</a>
+    <a href="/docs/tesoreria.html">Tesorería</a>
+    <a href="/docs/depositos.html">Depósitos</a>
+    <a href="/docs/reportes.html">Reportes</a>
+    <a href="/docs/libros-iva.html">Libros IVA Digital</a>
+    <a href="/docs/integraciones.html">Integraciones</a>
+  </nav>
+
+  <!-- Content -->
+  <main class="docs-content">
+    <h1>Documentación de Contalibra</h1>
+    <p class="docs-lead">Todo lo que necesitás saber para aprovechar al máximo el sistema. Desde la configuración inicial hasta el uso diario de cada módulo.</p>
+
+    <h2>Por dónde empezar</h2>
+    <p>Si es la primera vez que accedés a Contalibra, seguí esta secuencia:</p>
+    <ol class="step-list">
+      <li><strong>Ingresá al sistema</strong> con las credenciales que te proporcionó el administrador.</li>
+      <li><strong>Completá los datos de tu empresa</strong> — razón social, CUIT, dirección, logo.</li>
+      <li><strong>Configurá los módulos</strong> que necesitás según tu plan.</li>
+      <li><strong>Cargá tus productos o servicios</strong> para poder hacer ventas y presupuestos.</li>
+      <li><strong>Abrí tu primer turno de caja</strong> y registrá tu primera venta.</li>
+    </ol>
+
+    <h2>Módulos disponibles</h2>
+
+    <table class="docs-table">
+      <thead>
+        <tr>
+          <th>Módulo</th>
+          <th>Qué permite hacer</th>
+          <th>Plan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong><a href="/docs/ventas.html">Ventas</a></strong></td>
+          <td>Registrar ventas con múltiples medios de pago, búsqueda de productos, cuenta corriente</td>
+          <td>Básico+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/presupuestos.html">Presupuestos</a></strong></td>
+          <td>Crear presupuestos con estados (Borrador → Enviado → Aceptado → Facturado), convertir a remito o factura</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/clientes.html">Clientes</a></strong></td>
+          <td>Ficha de clientes con CUIT/DNI, historial de compras, facturas y presupuestos</td>
+          <td>Básico+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/cuenta-corriente.html">Cuenta Corriente</a></strong></td>
+          <td>Seguimiento de deudas por cliente, registro de pagos, historial de movimientos</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/caja-turnos.html">Caja y Turnos</a></strong></td>
+          <td>Control de efectivo, aperturas/cierres de turno, múltiples cajas</td>
+          <td>Básico+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/facturacion.html">Facturación electrónica</a></strong></td>
+          <td>Emisión de facturas A, B, C ante ARCA/AFIP con CAE</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/productos-stock.html">Productos y Stock</a></strong></td>
+          <td>Catálogo de productos, control de inventario, depósitos, alertas de stock bajo</td>
+          <td>Básico+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/listas-precio.html">Listas de Precios</a></strong></td>
+          <td>Múltiples listas (mayorista, minorista), actualización en lote por porcentaje</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/egresos-proveedores.html">Egresos y Proveedores</a></strong></td>
+          <td>Registro de gastos y facturas de proveedores, categorías de egreso</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/tesoreria.html">Tesorería</a></strong></td>
+          <td>Cuentas bancarias, caja chica y billeteras digitales con movimientos y transferencias entre cuentas</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/depositos.html">Depósitos</a></strong></td>
+          <td>Múltiples depósitos o sucursales, stock por ubicación y transferencias entre depósitos</td>
+          <td>Premium</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/reportes.html">Reportes</a></strong></td>
+          <td>Análisis de ventas, medios de pago, productos top, caja por medio de cobro</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/libros-iva.html">Libros IVA Digital</a></strong></td>
+          <td>Generación de Libro IVA Ventas y Compras en formato REGINFO para ARCA</td>
+          <td>Estándar+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/integraciones.html">MercadoPago QR</a></strong></td>
+          <td>Generación de QR dinámico por venta, confirmación automática de pago</td>
+          <td>Básico+</td>
+        </tr>
+        <tr>
+          <td><strong><a href="/docs/integraciones.html">Envío por email</a></strong></td>
+          <td>Envío de facturas, presupuestos y remitos por email con PDF adjunto</td>
+          <td>Estándar+</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Ayuda y soporte</h2>
+    <p>Si no encontrás la respuesta en esta documentación, podés contactarnos:</p>
+    <ul>
+      <li><strong>WhatsApp:</strong> escribinos directamente para soporte rápido</li>
+      <li><strong>Email:</strong> para consultas más detalladas</li>
+    </ul>
+
+    <div class="callout">
+      <p><strong>Tip:</strong> Usá el menú lateral para navegar entre las secciones. Cada página tiene ejemplos y capturas de pantalla.</p>
+    </div>
+
+    <div class="docs-nav-footer">
+      <span></span>
+      <a href="/docs/primeros-pasos.html">Primeros pasos →</a>
+    </div>
+  </main>
+
+</div>
+
+<footer style="background:var(--dark);color:#94a3b8;text-align:center;padding:1.5rem;font-size:.85rem;">
+  © 2026 Contalibra · <a href="/" style="color:#94a3b8">Inicio</a>
+</footer>
+
+</body>
+</html>

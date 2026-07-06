@@ -1,0 +1,30 @@
+<script>
+// ── Selector de cliente (compartido) ──
+function applyClientSelection(opt) {
+  const fields = document.getElementById('client-fields');
+  const defaultName = '{{ client_default_name|default("") }}';
+  if (opt.value) {
+    document.getElementById('client_name').value    = opt.text;
+    document.getElementById('client_cuit').value    = opt.dataset.cuit    || '';
+    document.getElementById('client_iva').value     = opt.dataset.iva     || '';
+    document.getElementById('client_address').value = opt.dataset.address || '';
+    document.getElementById('client_email').value   = opt.dataset.email   || '';
+    document.getElementById('client_phone').value   = opt.dataset.phone   || '';
+    document.getElementById('cf-display-name').textContent    = opt.text;
+    document.getElementById('cf-display-cuit').textContent    = opt.dataset.cuit    || '';
+    document.getElementById('cf-display-iva').textContent     = opt.dataset.iva     || '';
+    document.getElementById('cf-display-address').textContent = opt.dataset.address || '';
+    fields.classList.remove('d-none');
+  } else {
+    document.getElementById('client_name').value    = defaultName;
+    document.getElementById('client_cuit').value    = '';
+    document.getElementById('client_iva').value     = '';
+    document.getElementById('client_address').value = '';
+    document.getElementById('client_email').value   = '';
+    document.getElementById('client_phone').value   = '';
+    fields.classList.add('d-none');
+  }
+}
+const _clientSel = document.getElementById('client-select');
+if (_clientSel) _clientSel.addEventListener('change', () => applyClientSelection(_clientSel.options[_clientSel.selectedIndex]));
+</script>

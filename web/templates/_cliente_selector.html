@@ -1,0 +1,37 @@
+{# Selector de cliente reutilizable.
+   Requiere en el contexto: clientes (lista), client_placeholder (opcional)
+   Opcional (para prellenar en edición): selected_client_id, client_default_cuit,
+   client_default_address, client_default_email, client_default_phone #}
+<div class="mb-3">
+  <label class="form-label">Cliente</label>
+  <div class="input-group">
+    <select class="form-select" id="client-select" name="client_id">
+      <option value="" {% if not selected_client_id %}selected{% endif %}>{{ client_placeholder|default('— Consumidor Final —') }}</option>
+      {% for c in clientes %}
+      <option value="{{ c.id }}"
+        {% if selected_client_id and c.id == selected_client_id %}selected{% endif %}
+        data-address="{{ c.address or '' }}"
+        data-cuit="{{ c.cuit_dni or '' }}"
+        data-email="{{ c.email or '' }}"
+        data-phone="{{ c.phone or '' }}"
+        data-iva="{{ c.iva_condition or '' }}">{{ c.name }}</option>
+      {% endfor %}
+    </select>
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+            data-bs-target="#modal-nuevo-cliente" title="Agregar nuevo cliente">
+      <i class="bi bi-person-plus"></i>
+    </button>
+  </div>
+</div>
+<input type="hidden" name="client_name"    id="client_name"    value="{{ client_default_name|default('') }}">
+<input type="hidden" name="client_cuit"    id="client_cuit"    value="{{ client_default_cuit|default('') }}">
+<input type="hidden" name="client_iva"     id="client_iva"     value="">
+<input type="hidden" name="client_address" id="client_address" value="{{ client_default_address|default('') }}">
+<input type="hidden" name="client_email"   id="client_email"   value="{{ client_default_email|default('') }}">
+<input type="hidden" name="client_phone"   id="client_phone"   value="{{ client_default_phone|default('') }}">
+<div id="client-fields" class="border rounded p-2 bg-light {% if not selected_client_id %}d-none{% endif %}">
+  <div class="fw-semibold"       id="cf-display-name">{{ client_default_name|default('') if selected_client_id else '' }}</div>
+  <div class="small text-muted"  id="cf-display-cuit">{{ client_default_cuit|default('') if selected_client_id else '' }}</div>
+  <div class="small text-muted"  id="cf-display-iva"></div>
+  <div class="small text-muted"  id="cf-display-address">{{ client_default_address|default('') if selected_client_id else '' }}</div>
+</div>

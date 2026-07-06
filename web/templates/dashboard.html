@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Contalibra{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <h1><i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard</h1>
+  <span class="text-muted">{{ mes_nombre }}</span>
+</div>
+
+{# ── KPIs ── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <p class="text-muted small mb-1">Facturado este mes</p>
+            <h3 class="fw-bold mb-0 text-primary">$ {{ facturado_mes|moneda0 }}</h3>
+            <p class="text-muted small mt-1 mb-0">{{ cant_facturas_mes }} factura{% if cant_facturas_mes != 1 %}s{% endif %}</p>
+          </div>
+          <span class="bg-primary bg-opacity-10 text-primary rounded-3 p-2 fs-4">
+            <i class="bi bi-receipt"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <p class="text-muted small mb-1">Cobrado este mes</p>
+            <h3 class="fw-bold mb-0 text-success">$ {{ cobrado_mes|moneda0 }}</h3>
+            <p class="text-muted small mt-1 mb-0">Ingresos en caja</p>
+          </div>
+          <span class="bg-success bg-opacity-10 text-success rounded-3 p-2 fs-4">
+            <i class="bi bi-arrow-down-circle"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <p class="text-muted small mb-1">Egresos este mes</p>
+            <h3 class="fw-bold mb-0 text-danger">$ {{ egresos_mes|moneda0 }}</h3>
+            <p class="text-muted small mt-1 mb-0">Gastos en caja</p>
+          </div>
+          <span class="bg-danger bg-opacity-10 text-danger rounded-3 p-2 fs-4">
+            <i class="bi bi-arrow-up-circle"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="card h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-start justify-content-between">
+          <div>
+            <p class="text-muted small mb-1">Saldo total en caja</p>
+            <h3 class="fw-bold mb-0 {% if saldo_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+              $ {{ saldo_total|moneda0 }}
+            </h3>
+            <p class="text-muted small mt-1 mb-0">Histórico acumulado</p>
+          </div>
+          <span class="{% if saldo_total >= 0 %}bg-success{% else %}bg-danger{% endif %} bg-opacity-10
+                       {% if saldo_total >= 0 %}text-success{% else %}text-danger{% endif %} rounded-3 p-2 fs-4">
+            <i class="bi bi-cash-stack"></i>
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Accesos rápidos ── #}
+<div class="row g-2 mb-4">
+  <div class="col-auto">
+    <a href="/facturas/nueva" class="btn btn-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nueva Factura
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/presupuestos/nuevo" class="btn btn-outline-primary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo Presupuesto
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/remitos/nuevo" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Nuevo Remito
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/caja/nuevo" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-plus-lg me-1"></i>Movimiento de Caja
+    </a>
+  </div>
+</div>
+
+{# ── Facturas sin cobrar + Presupuestos pendientes ── #}
+<div class="row g-3 mb-3">
+
+  {# Facturas sin cobrar #}
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-hourglass-split text-warning me-1"></i>Facturas sin cobrar</span>
+        <a href="/facturas" class="btn btn-sm btn-outline-secondary">Ver todas</a>
+      </div>
+      {% if facturas_sin_cobrar %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nro.</th>
+              <th>Fecha</th>
+              <th>Cliente</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in facturas_sin_cobrar %}
+            <tr>
+              <td>
+                <span class="badge bg-secondary me-1">{{ f.letra }}</span>
+                <span class="font-monospace small">{{ f.label_numero }}</span>
+              </td>
+              <td class="small text-muted">{{ f.fecha|fecha }}</td>
+              <td class="small">{{ f.cliente_razon }}</td>
+              <td class="text-end fw-semibold">$ {{ f.total|moneda0 }}</td>
+              <td>
+                <a href="/facturas/{{ f.id }}" class="btn btn-sm btn-outline-primary py-0">Ver</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-check-circle fs-3 text-success d-block mb-2"></i>
+        Todas las facturas están cobradas
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Presupuestos pendientes #}
+  <div class="col-lg-5">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock text-info me-1"></i>Presupuestos sin respuesta</span>
+        <a href="/presupuestos" class="btn btn-sm btn-outline-secondary">Ver todos</a>
+      </div>
+      {% if presupuestos_pendientes %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Nro.</th>
+              <th>Cliente</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in presupuestos_pendientes %}
+            <tr>
+              <td class="font-monospace small">{{ p.number }}</td>
+              <td class="small">{{ p.client_name }}</td>
+              <td class="text-end fw-semibold">$ {{ p.total|moneda0 }}</td>
+              <td>
+                <a href="/presupuestos/{{ p.id }}" class="btn btn-sm btn-outline-primary py-0">Ver</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+        Sin presupuestos pendientes
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{# ── Últimos movimientos de caja ── #}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-1"></i>Últimos movimientos de caja</span>
+        <a href="/caja" class="btn btn-sm btn-outline-secondary">Ver caja completa</a>
+      </div>
+      {% if ultimos_movimientos %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Fecha</th>
+              <th>Concepto</th>
+              <th>Usuario</th>
+              <th>Referencia</th>
+              <th class="text-end">Monto</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in ultimos_movimientos %}
+            <tr>
+              <td class="small text-muted">{{ m.fecha|fecha }}</td>
+              <td class="small">{{ m.concepto }}</td>
+              <td class="small">{{ m.usuario_nombre or '—' }}</td>
+              <td class="small text-muted font-monospace">{{ m.referencia or '' }}</td>
+              <td class="text-end fw-semibold {% if m.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %}">
+                {% if m.tipo == 'ingreso' %}+{% else %}−{% endif %} $ {{ m.monto|moneda0 }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted py-4">
+        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+        Sin movimientos registrados
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

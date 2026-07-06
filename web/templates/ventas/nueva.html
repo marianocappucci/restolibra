@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+{% block title %}Nueva venta — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cart-plus me-2 text-primary"></i>Nueva venta</h1>
+  <a href="/ventas" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<form method="post" action="/ventas/nueva" id="form-venta">
+<div class="row g-4">
+
+  <!-- COLUMNA IZQUIERDA: items -->
+  <div class="col-lg-7">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-list-ul me-1"></i>Artículos</span>
+        <div class="d-flex gap-2">
+          <input type="text" id="buscador-producto" class="form-control form-control-sm"
+                 placeholder="Buscar producto…" style="width:220px" autocomplete="off">
+        </div>
+      </div>
+
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0" id="tabla-items" style="min-width:480px">
+            <thead class="table-light">
+              <tr>
+                <th style="width:40%">Descripción</th>
+                <th style="width:14%" class="text-center">Cant.</th>
+                <th style="width:20%" class="text-end">Precio unit.</th>
+                <th style="width:18%" class="text-end">Subtotal</th>
+                <th style="width:8%"></th>
+              </tr>
+            </thead>
+            <tbody id="items-body">
+              <!-- filas dinámicas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="agregarFila()">
+          <i class="bi bi-plus-lg me-1"></i>Agregar línea
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- COLUMNA DERECHA: cliente + totales + pago -->
+  <div class="col-lg-5">
+
+    <!-- Fecha + cliente -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Fecha</label>
+          <input type="date" name="fecha" class="form-control" value="{{ hoy }}">
+        </div>
+        {% if listas_precio %}
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Lista de precios</label>
+          <select id="sel-lista-precio" class="form-select form-select-sm" onchange="onListaChange(this.value)">
+            <option value="">— Precio de venta —</option>
+            {% for l in listas_precio %}
+            <option value="{{ l.id }}">{{ l.nombre }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endif %}
+        <div class="mb-0">
+          <label class="form-label fw-semibold">Cliente <span class="text-muted fw-normal small">(opcional)</span></label>
+          <div class="input-group">
+            <select name="cliente_id" class="form-select" id="sel-cliente">
+              <option value="">— Consumidor final —</option>
+              {% for c in clientes %}
+              <option value="{{ c.id }}">{{ c.name }}</option>
+              {% endfor %}
+            </select>
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#modal-nuevo-cliente" title="Agregar nuevo cliente">
+              <i class="bi bi-person-plus"></i>
+            </button>
+          </div>
+          <input type="hidden" name="cliente_nombre" id="cliente-nombre-hidden">
+        </div>
+      </div>
+    </div>
+
+    <!-- Totales -->
+    <div class="card mb-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span class="text-muted">Subtotal</span>
+          <span id="lbl-subtotal" class="fw-semibold">$ 0,00</span>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <label class="text-muted mb-0" for="descuento">Descuento</label>
+          <div class="input-group" style="width:140px">
+            <span class="input-group-text">$</span>
+            <input type="number" name="descuento" id="descuento" class="form-control text-end"
+                   step="0.01" min="0" value="0" oninput="calcTotales()">
+          </div>
+        </div>
+        <hr class="my-2">
+        <div class="d-flex justify-content-between">
+          <span class="fw-bold fs-5">Total</span>
+          <span id="lbl-total" class="fw-bold fs-5 text-primary">$ 0,00</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Medios de pago -->
+    <div class="card mb-3">
+      <div class="card-header"><i class="bi bi-credit-card me-1"></i>Cobrar</div>
+      <div class="card-body pb-2">
+        {% for m in medios_pago %}
+        <div class="mb-3">
+          <div class="form-check form-switch mb-1">
+            <input class="form-check-input medio-toggle" type="checkbox"
+                   id="toggle-{{ m.id }}" data-medio="{{ m.id }}"
+                   onchange="toggleMedio(this)">
+            <label class="form-check-label fw-semibold" for="toggle-{{ m.id }}">
+              <i class="bi {{ m.icon }} me-1"></i>{{ m.label }}
+            </label>
+          </div>
+          <div class="medio-fields ps-4" id="fields-{{ m.id }}" style="display:none">
+            <div class="input-group input-group-sm mb-1">
+              <span class="input-group-text">$</span>
+              <input type="number" name="pago_{{ m.id }}" id="monto-{{ m.id }}"
+                     class="form-control monto-pago" step="0.01" min="0"
+                     placeholder="Monto" oninput="calcPagado()">
+            </div>
+            {% if m.id in ['transferencia', 'mercadopago', 'cuenta_dni', 'billetera', 'cuenta_corriente'] %}
+            <input type="text" name="ref_{{ m.id }}" class="form-control form-control-sm"
+                   placeholder="Referencia / N° operación (opcional)">
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+
+        <hr class="mt-0">
+        <div class="d-flex justify-content-between small">
+          <span class="text-muted">Total cobrado</span>
+          <span id="lbl-pagado" class="fw-semibold">$ 0,00</span>
+        </div>
+        <div id="diferencia-alert" class="alert alert-warning py-1 px-2 small mt-2 mb-0" style="display:none">
+          <i class="bi bi-exclamation-triangle me-1"></i>
+          <span id="diferencia-msg"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Observaciones -->
+    <div class="mb-3">
+      <textarea name="observaciones" class="form-control form-control-sm" rows="2"
+                placeholder="Observaciones (opcional)"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-success w-100 btn-lg" id="btn-confirmar">
+      <i class="bi bi-check2-circle me-2"></i>Confirmar venta
+    </button>
+
+  </div><!-- /col derecha -->
+</div>
+</form>
+
+{% include '_modal_nuevo_cliente.html' %}
+
+<!-- Sugerencias autocomplete — fuera del form para que position:fixed funcione correctamente -->
+<div id="sugerencias" class="list-group shadow"
+     style="position:fixed;z-index:9999;display:none;max-height:220px;overflow-y:auto"></div>
+
+<script>
+let filaIdx = 0;
+
+function fmt(n) {
+  return '$ ' + n.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function agregarFila(nombre='', qty=1, precio=0, productoId='') {
+  const tbody = document.getElementById('items-body');
+  const idx = filaIdx++;
+  const sub = (qty * precio).toFixed(2);
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>
+      <input type="text" name="item_nombre" class="form-control form-control-sm item-nombre"
+             value="${nombre}" placeholder="Descripción" required oninput="calcSubtotal(this)">
+      <input type="hidden" name="item_producto_id" value="${productoId}">
+    </td>
+    <td>
+      <input type="number" name="item_qty" class="form-control form-control-sm text-center item-qty"
+             value="${qty}" min="0.001" step="any" required oninput="calcSubtotal(this)">
+    </td>
+    <td>
+      <input type="number" name="item_precio" class="form-control form-control-sm text-end item-precio"
+             value="${precio}" min="0" step="0.01" required oninput="calcSubtotal(this)">
+    </td>
+    <td class="text-end fw-semibold item-sub">${fmt(parseFloat(sub))}</td>
+    <td class="text-end">
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove(); calcTotales()">
+        <i class="bi bi-x"></i>
+      </button>
+    </td>`;
+  tbody.appendChild(tr);
+  calcTotales();
+}
+
+function calcSubtotal(el) {
+  const tr = el.closest('tr');
+  const qty   = parseFloat(tr.querySelector('.item-qty').value) || 0;
+  const price = parseFloat(tr.querySelector('.item-precio').value) || 0;
+  tr.querySelector('.item-sub').textContent = fmt(qty * price);
+  calcTotales();
+}
+
+function calcTotales() {
+  let sub = 0;
+  document.querySelectorAll('#items-body tr').forEach(tr => {
+    const qty   = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
+    const price = parseFloat(tr.querySelector('.item-precio')?.value) || 0;
+    sub += qty * price;
+  });
+  const desc  = parseFloat(document.getElementById('descuento').value) || 0;
+  const total = Math.max(0, sub - desc);
+  document.getElementById('lbl-subtotal').textContent = fmt(sub);
+  document.getElementById('lbl-total').textContent    = fmt(total);
+  calcPagado();
+}
+
+function calcPagado() {
+  let pagado = 0;
+  document.querySelectorAll('.monto-pago').forEach(inp => {
+    pagado += parseFloat(inp.value) || 0;
+  });
+  const total = parseFloat(document.getElementById('lbl-total').textContent.replace('$ ','').replace(',','.').replace(/\./g, (m,o,s) => o < s.lastIndexOf('.') ? '' : '.')) || 0;
+  document.getElementById('lbl-pagado').textContent = fmt(pagado);
+
+  const dif = parseFloat((total - pagado).toFixed(2));
+  const divAlert = document.getElementById('diferencia-alert');
+  const msg = document.getElementById('diferencia-msg');
+  if (Math.abs(dif) > 0.01) {
+    divAlert.style.display = '';
+    if (dif > 0) msg.textContent = 'Falta cubrir ' + fmt(dif);
+    else msg.textContent = 'Vuelto: ' + fmt(Math.abs(dif));
+  } else {
+    divAlert.style.display = 'none';
+  }
+}
+
+function toggleMedio(el) {
+  const fields = document.getElementById('fields-' + el.dataset.medio);
+  fields.style.display = el.checked ? '' : 'none';
+  if (!el.checked) {
+    const montoInp = document.getElementById('monto-' + el.dataset.medio);
+    if (montoInp) { montoInp.value = ''; }
+  } else {
+    // Auto-rellenar con el faltante
+    const totalTxt = document.getElementById('lbl-total').textContent;
+    const total = parseFloat(totalTxt.replace('$ ','').replace(',','.')) || 0;
+    let pagado = 0;
+    document.querySelectorAll('.monto-pago').forEach(inp => { pagado += parseFloat(inp.value)||0; });
+    const falta = Math.max(0, total - pagado);
+    const montoInp = document.getElementById('monto-' + el.dataset.medio);
+    if (montoInp && falta > 0) montoInp.value = falta.toFixed(2);
+  }
+  calcPagado();
+}
+
+// — Lista de precios —
+let listaId = 0;
+let preciosLista = {};  // {producto_id: precio}
+
+async function onListaChange(val) {
+  listaId = parseInt(val) || 0;
+  preciosLista = {};
+  if (listaId) {
+    const res = await fetch(`/api/listas-precio/${listaId}/precios`);
+    preciosLista = await res.json();
+  }
+}
+
+function getPrecioParaProducto(pid, precioBase) {
+  if (listaId && preciosLista[pid] != null) return preciosLista[pid];
+  return precioBase;
+}
+
+// — Autocompletado de productos —
+const buscador = document.getElementById('buscador-producto');
+const sugs     = document.getElementById('sugerencias');
+let debounceT;
+
+buscador.addEventListener('input', () => {
+  clearTimeout(debounceT);
+  const q = buscador.value.trim();
+  if (q.length < 1) { sugs.style.display='none'; return; }
+  debounceT = setTimeout(async () => {
+    const url = `/productos/buscar?q=${encodeURIComponent(q)}${listaId ? '&lista_id='+listaId : ''}`;
+    let data = [];
+    try {
+      const res = await fetch(url);
+      if (res.ok) data = await res.json();
+    } catch(e) { return; }
+    sugs.innerHTML = '';
+    if (!data.length) { sugs.style.display='none'; return; }
+    data.forEach(p => {
+      const a = document.createElement('a');
+      a.href = '#';
+      a.className = 'list-group-item list-group-item-action py-1 px-3 small';
+      a.innerHTML = `<strong>${p.nombre}</strong> <span class="text-muted ms-2">${fmt(p.precio_venta)} / ${p.unidad}</span>`;
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        agregarFila(p.nombre, 1, p.precio_venta, p.id);
+        buscador.value = '';
+        sugs.style.display = 'none';
+      });
+      sugs.appendChild(a);
+    });
+    // Posicionar bajo el buscador (fixed = coordenadas relativas al viewport)
+    const rect = buscador.getBoundingClientRect();
+    sugs.style.top   = rect.bottom + 'px';
+    sugs.style.left  = rect.left + 'px';
+    sugs.style.width = rect.width + 'px';
+    sugs.style.display = '';
+  }, 250);
+});
+
+document.addEventListener('click', e => {
+  if (!sugs.contains(e.target) && e.target !== buscador) sugs.style.display = 'none';
+});
+
+// Agregar primera fila vacía al cargar
+agregarFila();
+
+// — Modal nuevo cliente —
+document.getElementById('btn-guardar-cliente').addEventListener('click', async () => {
+  const name = document.getElementById('nc-name').value.trim();
+  const errDiv = document.getElementById('modal-nc-error');
+  errDiv.classList.add('d-none');
+  if (!name) {
+    errDiv.textContent = 'El nombre es obligatorio.';
+    errDiv.classList.remove('d-none');
+    return;
+  }
+  const body = new FormData();
+  body.append('name',          name);
+  body.append('cuit_dni',      document.getElementById('nc-cuit').value.trim());
+  body.append('iva_condition', document.getElementById('nc-iva').value);
+  body.append('email',         document.getElementById('nc-email').value.trim());
+  body.append('phone',         document.getElementById('nc-phone').value.trim());
+  const res  = await fetch('/clientes/nuevo-rapido', { method: 'POST', body });
+  const data = await res.json();
+  if (data.error) {
+    errDiv.textContent = data.error;
+    errDiv.classList.remove('d-none');
+    return;
+  }
+  const sel = document.getElementById('sel-cliente');
+  sel.appendChild(new Option(data.name, data.id, true, true));
+  sel.value = data.id;
+  bootstrap.Modal.getInstance(document.getElementById('modal-nuevo-cliente')).hide();
+  ['nc-name','nc-cuit','nc-email','nc-phone'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('nc-iva').value = '';
+});
+</script>
+{% endblock %}

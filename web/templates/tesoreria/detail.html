@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}{{ cuenta.nombre }} — Tesorería{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>
+    <i class="bi bi-bank me-2 text-primary"></i>{{ cuenta.nombre }}
+    <span class="badge ms-2 fs-6 {% if cuenta.saldo >= 0 %}bg-success{% else %}bg-danger{% endif %}">
+      $ {{ cuenta.saldo|moneda }}
+    </span>
+  </h1>
+  <div class="d-flex gap-2">
+    {% if todas %}
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTransferencia">
+      <i class="bi bi-arrow-left-right me-1"></i>Transferir
+    </button>
+    {% endif %}
+    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
+      <i class="bi bi-plus-lg me-1"></i>Movimiento
+    </button>
+    <a href="/tesoreria/{{ cuenta.id }}/editar" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+    <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+  </div>
+</div>
+
+<!-- Info cuenta -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Tipo</div>
+        <div class="fw-semibold">{{ tipo_label.get(cuenta.tipo, cuenta.tipo) }}</div>
+        {% if cuenta.banco %}<div class="text-muted small mt-1">{{ cuenta.banco }}</div>{% endif %}
+        {% if cuenta.numero %}<div class="text-muted small font-monospace">{{ cuenta.numero }}</div>{% endif %}
+        {% if cuenta.descripcion %}<div class="text-muted small mt-1">{{ cuenta.descripcion }}</div>{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small">Saldo inicial</div>
+        <div class="fw-semibold fs-5">$ {{ cuenta.saldo_inicial|moneda }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-3">
+        <div class="text-muted small">Saldo actual</div>
+        <div class="fw-bold fs-4 {% if cuenta.saldo >= 0 %}text-success{% else %}text-danger{% endif %}">
+          $ {{ cuenta.saldo|moneda }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Filtros -->
+<form method="get" class="row g-2 mb-3">
+  <div class="col-md-3">
+    <input type="date" name="desde" class="form-control form-control-sm" value="{{ desde }}" placeholder="Desde">
+  </div>
+  <div class="col-md-3">
+    <input type="date" name="hasta" class="form-control form-control-sm" value="{{ hasta }}" placeholder="Hasta">
+  </div>
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-secondary btn-sm">Filtrar</button>
+    {% if desde or hasta %}
+    <a href="/tesoreria/{{ cuenta.id }}" class="btn btn-outline-secondary btn-sm ms-1">Limpiar</a>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Movimientos -->
+<div class="card">
+  <div class="card-header fw-semibold">Movimientos</div>
+  <div class="card-body p-0">
+    {% if movimientos %}
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Fecha</th>
+          <th>Tipo</th>
+          <th>Concepto</th>
+          <th>Usuario</th>
+          <th>Referencia</th>
+          <th class="text-end">Monto</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for m in movimientos %}
+        <tr>
+          <td class="text-muted small">{{ m.fecha|fecha }}</td>
+          <td>
+            {% if m.tipo == 'ingreso' %}
+              <span class="badge" style="background:#d1e7dd;color:#0f5132">Ingreso</span>
+            {% elif m.tipo == 'egreso' %}
+              <span class="badge" style="background:#f8d7da;color:#842029">Egreso</span>
+            {% elif m.tipo == 'transferencia_entrada' %}
+              <span class="badge bg-info text-dark"><i class="bi bi-arrow-down-left me-1"></i>desde {{ m.cuenta_destino_nombre }}</span>
+            {% elif m.tipo == 'transferencia_salida' %}
+              <span class="badge bg-warning text-dark"><i class="bi bi-arrow-up-right me-1"></i>hacia {{ m.cuenta_destino_nombre }}</span>
+            {% endif %}
+          </td>
+          <td>{{ m.concepto }}</td>
+          <td class="small">{{ m.usuario_nombre or '—' }}</td>
+          <td class="text-muted small">{{ m.referencia or '' }}</td>
+          <td class="text-end fw-semibold {% if m.tipo in ('ingreso','transferencia_entrada') %}text-success{% else %}text-danger{% endif %}">
+            {% if m.tipo in ('ingreso','transferencia_entrada') %}+{% else %}-{% endif %}
+            $ {{ m.monto|moneda }}
+          </td>
+          <td class="text-end">
+            <form method="post" action="/tesoreria/movimientos/{{ m.id }}/eliminar?cid={{ cuenta.id }}"
+                  onsubmit="return confirm('¿Eliminar este movimiento?')">
+              <button type="submit" class="btn btn-sm btn-outline-danger border-0 py-0">
+                <i class="bi bi-trash"></i>
+              </button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="p-4 text-center text-muted">No hay movimientos registrados.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Movimiento -->
+<div class="modal fade" id="modalMovimiento" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/tesoreria/{{ cuenta.id }}/movimiento">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Registrar movimiento</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Tipo</label>
+            <div class="btn-group w-100" role="group">
+              <input type="radio" class="btn-check" name="tipo" id="tipo-ingreso" value="ingreso" checked>
+              <label class="btn btn-outline-success" for="tipo-ingreso"><i class="bi bi-arrow-down-left me-1"></i>Ingreso</label>
+              <input type="radio" class="btn-check" name="tipo" id="tipo-egreso" value="egreso">
+              <label class="btn btn-outline-danger" for="tipo-egreso"><i class="bi bi-arrow-up-right me-1"></i>Egreso</label>
+            </div>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Monto</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="monto" class="form-control" step="0.01" min="0.01" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Fecha</label>
+              <input type="date" name="fecha" class="form-control" id="mov-fecha" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Concepto</label>
+            <input type="text" name="concepto" class="form-control"
+                   placeholder="Ej: Cobro cliente, Pago proveedor, Retiro…" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Referencia <span class="text-muted small">(opcional)</span></label>
+            <input type="text" name="referencia" class="form-control"
+                   placeholder="N° cheque, transferencia, etc.">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Transferencia -->
+{% if todas %}
+<div class="modal fade" id="modalTransferencia" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/tesoreria/transferencia">
+        <input type="hidden" name="cuenta_origen_id" value="{{ cuenta.id }}">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-arrow-left-right me-2"></i>Transferir desde {{ cuenta.nombre }}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Cuenta destino</label>
+            <select name="cuenta_destino_id" class="form-select" required>
+              {% for c in todas %}
+              <option value="{{ c.id }}">{{ c.nombre }} — $ {{ c.saldo|moneda }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Monto</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" name="monto" class="form-control" step="0.01" min="0.01" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Fecha</label>
+              <input type="date" name="fecha" class="form-control" id="transf-fecha" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Concepto</label>
+            <input type="text" name="concepto" class="form-control" value="Transferencia entre cuentas">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Referencia <span class="text-muted small">(opcional)</span></label>
+            <input type="text" name="referencia" class="form-control" placeholder="N° op., comprobante…">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-arrow-left-right me-1"></i>Transferir
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('mov-fecha').value = new Date().toISOString().slice(0,10);
+  const tf = document.getElementById('transf-fecha');
+  if (tf) tf.value = new Date().toISOString().slice(0,10);
+</script>
+{% endblock %}

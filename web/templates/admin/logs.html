@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Logs de actividad — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-journal-text me-2 text-primary"></i>Logs de actividad</h1>
+  <a href="{{ request.url.path }}?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&export=1"
+     class="btn btn-outline-secondary btn-sm d-none" id="btn-export-nav"></a>
+  <a href="/admin/logs/export?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}"
+     class="btn btn-outline-secondary">
+    <i class="bi bi-download me-1"></i>Exportar CSV
+  </a>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="get" action="/admin/logs" id="form-filtros">
+      <div class="row g-3 align-items-end">
+
+        <!-- Tipos (checkboxes) -->
+        <div class="col-12">
+          <label class="form-label fw-semibold small text-muted text-uppercase" style="letter-spacing:.04em">Tipo de evento</label>
+          <div class="d-flex flex-wrap gap-2">
+            {% for t in todos_tipos %}
+            {% set m = tipo_meta[t] %}
+            <div class="form-check form-check-inline mb-0">
+              <input class="form-check-input tipo-check" type="checkbox" name="tipo_chk"
+                     value="{{ t }}" id="chk-{{ t }}"
+                     {% if t in tipos_sel or not tipos_sel %}checked{% endif %}>
+              <label class="form-check-label" for="chk-{{ t }}">
+                <span class="badge" style="background:{{ m.bg }};color:{{ m.color }};font-weight:600">
+                  <i class="bi {{ m.icon }} me-1"></i>{{ m.label }}
+                </span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          <input type="hidden" name="tipo" id="input-tipo" value="{{ tipos_sel|join(',') }}">
+        </div>
+
+        <!-- Usuario -->
+        <div class="col-md-3">
+          <label class="form-label fw-semibold">Usuario</label>
+          <select name="usuario_id" class="form-select form-select-sm">
+            <option value="0">— Todos —</option>
+            {% for u in usuarios %}
+            <option value="{{ u.id }}" {% if u.id == usuario_id %}selected{% endif %}>
+              {{ u.nombre }} ({{ u.role }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Turno -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Turno #</label>
+          <input type="number" name="turno_id" class="form-control form-control-sm"
+                 min="0" value="{{ turno_id or '' }}" placeholder="Todos">
+        </div>
+
+        <!-- Rango de fechas -->
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Desde</label>
+          <input type="date" name="desde" class="form-control form-control-sm" value="{{ desde }}">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-semibold">Hasta</label>
+          <input type="date" name="hasta" class="form-control form-control-sm" value="{{ hasta }}">
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+          <button type="submit" class="btn btn-primary btn-sm flex-fill">
+            <i class="bi bi-funnel me-1"></i>Filtrar
+          </button>
+          <a href="/admin/logs" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        </div>
+
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Contador -->
+<div class="d-flex justify-content-between align-items-center mb-2 px-1">
+  <span class="text-muted small">
+    Mostrando <strong>{{ actividad|length }}</strong> de <strong>{{ total }}</strong> registros
+  </span>
+  <!-- Paginación simple -->
+  <div class="d-flex gap-1 align-items-center">
+    {% if page > 1 %}
+    <a href="?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&page={{ page - 1 }}"
+       class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-left"></i></a>
+    {% endif %}
+    <span class="small text-muted px-2">Pág {{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <a href="?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&page={{ page + 1 }}"
+       class="btn btn-sm btn-outline-secondary"><i class="bi bi-chevron-right"></i></a>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Timeline / tabla -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if actividad %}
+    <div class="table-responsive">
+      <table class="table table-hover table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th style="width:130px">Fecha</th>
+            <th style="width:120px">Tipo</th>
+            <th>Descripción</th>
+            <th class="text-end" style="width:110px">Monto</th>
+            <th style="width:130px">Usuario</th>
+            <th style="width:80px" class="text-center">Turno</th>
+            <th style="width:50px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set last_date = namespace(val='') %}
+          {% for r in actividad %}
+          {% if r.fecha != last_date.val %}
+          {% set last_date.val = r.fecha %}
+          <tr class="table-secondary">
+            <td colspan="7" class="py-1 px-3">
+              <small class="fw-semibold text-muted">
+                <i class="bi bi-calendar3 me-1"></i>{{ r.fecha|fecha }}
+              </small>
+            </td>
+          </tr>
+          {% endif %}
+          {% set m = tipo_meta.get(r.tipo, {'label': r.tipo, 'icon': 'bi-circle', 'color': '#666', 'bg': '#eee'}) %}
+          <tr>
+            <td class="text-muted small ps-4">{{ r.ts[11:19] if r.ts and r.ts|length > 10 else '—' }}</td>
+            <td>
+              <span class="badge" style="background:{{ m.bg }};color:{{ m.color }};font-size:.75em">
+                <i class="bi {{ m.icon }} me-1"></i>{{ m.label }}
+              </span>
+            </td>
+            <td class="small">{{ r.descripcion }}</td>
+            <td class="text-end small {% if r.tipo == 'stock' %}text-muted{% else %}fw-semibold{% endif %}">
+              {% if r.monto %}
+              {% if r.tipo == 'stock' %}{{ r.monto }}{% else %}$ {{ r.monto|moneda }}{% endif %}
+              {% else %}—{% endif %}
+            </td>
+            <td class="small text-muted">
+              {% if r.usuario %}<i class="bi bi-person me-1"></i>{{ r.usuario }}{% else %}—{% endif %}
+            </td>
+            <td class="text-center">
+              {% if r.turno_id %}
+              <a href="/turnos/{{ r.turno_id }}" class="badge bg-light text-dark border text-decoration-none">
+                #{{ r.turno_id }}
+              </a>
+              {% else %}—{% endif %}
+            </td>
+            <td class="text-end pe-3">
+              {% if r.ref_tabla == 'ventas' %}
+              <a href="/ventas/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="bi bi-box-arrow-up-right"></i></a>
+              {% elif r.ref_tabla == 'facturas' %}
+              <a href="/facturas/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="bi bi-box-arrow-up-right"></i></a>
+              {% elif r.ref_tabla == 'remitos' %}
+              <a href="/remitos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="bi bi-box-arrow-up-right"></i></a>
+              {% elif r.ref_tabla == 'presupuestos' %}
+              <a href="/presupuestos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="bi bi-box-arrow-up-right"></i></a>
+              {% elif r.ref_tabla == 'turnos_caja' %}
+              <a href="/turnos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="bi bi-box-arrow-up-right"></i></a>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="p-5 text-center text-muted">
+      <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+      No hay registros para los filtros seleccionados.
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Paginación inferior -->
+{% if total_pages > 1 %}
+<div class="d-flex justify-content-center gap-1 mt-3">
+  {% for p in range(1, total_pages + 1) %}
+  {% if p == page %}
+  <span class="btn btn-sm btn-primary">{{ p }}</span>
+  {% elif p <= 3 or p >= total_pages - 2 or (p >= page - 2 and p <= page + 2) %}
+  <a href="?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&page={{ p }}"
+     class="btn btn-sm btn-outline-secondary">{{ p }}</a>
+  {% elif p == 4 or p == total_pages - 3 %}
+  <span class="btn btn-sm btn-outline-secondary disabled">…</span>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Accesos de usuarios -->
+<div class="card mt-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span><i class="bi bi-shield-lock me-1"></i>Accesos de usuarios</span>
+    <span class="text-muted small">Últimos 100 eventos</span>
+  </div>
+  {% if auth_log %}
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-sm table-hover align-middle mb-0" style="font-size:.88rem">
+        <thead class="table-light">
+          <tr>
+            <th>Fecha y hora</th>
+            <th>Evento</th>
+            <th>Usuario</th>
+            <th>IP</th>
+            <th>Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for e in auth_log %}
+          <tr>
+            <td class="text-muted font-monospace" style="white-space:nowrap">{{ e.ts }}</td>
+            <td>
+              {% if e.evento == 'login' %}
+              <span class="badge bg-success"><i class="bi bi-box-arrow-in-right me-1"></i>Login</span>
+              {% elif e.evento == 'logout' %}
+              <span class="badge bg-secondary"><i class="bi bi-box-arrow-right me-1"></i>Logout</span>
+              {% elif e.evento == 'login_fallido' %}
+              <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Intento fallido</span>
+              {% else %}
+              <span class="badge bg-light text-dark border">{{ e.evento }}</span>
+              {% endif %}
+            </td>
+            <td class="fw-semibold">{{ e.username }}</td>
+            <td class="text-muted font-monospace small">{{ e.ip or '—' }}</td>
+            <td class="text-muted small">{{ e.detalle or '' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+  <div class="card-body text-center text-muted py-4">
+    <i class="bi bi-shield-check fs-2 d-block mb-2 opacity-25"></i>
+    Aún no hay eventos de acceso registrados.
+  </div>
+  {% endif %}
+</div>
+
+<script>
+// Sincronizar checkboxes → input hidden antes de submit
+document.getElementById('form-filtros').addEventListener('submit', function() {
+  const checked = [...document.querySelectorAll('.tipo-check:checked')].map(c => c.value);
+  // Si están todos marcados o ninguno, enviar vacío (= todos)
+  const total = document.querySelectorAll('.tipo-check').length;
+  document.getElementById('input-tipo').value = checked.length === total ? '' : checked.join(',');
+});
+</script>
+{% endblock %}

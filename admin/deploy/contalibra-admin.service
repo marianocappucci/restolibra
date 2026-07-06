@@ -1,0 +1,18 @@
+[Unit]
+Description=Contalibra Backoffice (panel de superadmin)
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/contalibra
+EnvironmentFile=/etc/contalibra-admin.env
+# Bind solo a la interfaz del gateway Docker (por donde llega NPM), no a 0.0.0.0:
+# así el panel no queda expuesto directo en el puerto público del VPS.
+ExecStart=/root/contalibra/.venv-scripts/bin/uvicorn admin.app:app --host 172.18.0.1 --port 8060
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

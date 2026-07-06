@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Abrir turno — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-play-circle me-2 text-success"></i>Abrir turno</h1>
+  <a href="/turnos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width:480px">
+  <div class="card-body">
+    <p class="text-muted mb-4">
+      Registrá el dinero en efectivo que tenés en caja al inicio del turno.
+      Esto se usará para calcular la diferencia al cierre.
+    </p>
+    <form method="post" action="/turnos/abrir">
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Fondo inicial en caja</label>
+        <div class="input-group">
+          <span class="input-group-text">$</span>
+          <input type="number" name="monto_inicial" class="form-control form-control-lg"
+                 step="0.01" min="0" value="0" autofocus>
+        </div>
+        <div class="form-text">Efectivo físico antes de arrancar a vender.</div>
+      </div>
+      <div class="mb-4">
+        <label class="form-label fw-semibold">Notas <span class="text-muted fw-normal small">(opcional)</span></label>
+        <textarea name="notas" class="form-control" rows="2"
+                  placeholder="Ej: Turno mañana, cajero Juan…"></textarea>
+      </div>
+      <button type="submit" class="btn btn-success w-100 btn-lg">
+        <i class="bi bi-play-circle me-2"></i>Abrir turno ahora
+      </button>
+    </form>
+  </div>
+</div>
+{% endblock %}

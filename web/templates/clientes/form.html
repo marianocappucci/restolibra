@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}{% if cliente %}Editar Cliente{% else %}Nuevo Cliente{% endif %} — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-person me-2 text-primary"></i>{% if cliente %}Editar cliente{% else %}Nuevo cliente{% endif %}</h1>
+  <a href="/clientes" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="card" style="max-width: 640px;">
+  <div class="card-body">
+    <form method="post" action="{% if cliente %}/clientes/{{ cliente.id }}/editar{% else %}/clientes/nuevo{% endif %}">
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Nombre / Razón social <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" name="name" id="field-name"
+               value="{{ cliente.name if cliente else '' }}" required autofocus>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">CUIT / DNI</label>
+        <div class="input-group">
+          <input type="text" class="form-control" name="cuit_dni" id="field-cuit"
+                 value="{{ cliente.cuit_dni if cliente else '' }}"
+                 placeholder="20-12345678-9">
+          <button type="button" class="btn btn-outline-secondary" id="btn-consultar" title="Consultar en ARCA">
+            <span id="btn-consultar-text"><i class="bi bi-search me-1"></i>Consultar ARCA</span>
+            <span id="btn-consultar-spin" class="d-none">
+              <span class="spinner-border spinner-border-sm me-1"></span>Consultando…
+            </span>
+          </button>
+        </div>
+        <div id="arca-msg" class="form-text"></div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Condición ante el IVA</label>
+        <select class="form-select" name="iva_condition" id="field-iva">
+          <option value="">— Sin especificar —</option>
+          {% for cond in iva_conditions %}
+          <option value="{{ cond }}" {% if cliente and cliente.iva_condition == cond %}selected{% endif %}>
+            {{ cond }}
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label fw-semibold">Domicilio</label>
+        <input type="text" class="form-control" name="address" id="field-address"
+               value="{{ cliente.address if cliente else '' }}">
+      </div>
+
+      <div class="row g-2 mb-3">
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Email</label>
+          <input type="email" class="form-control" name="email"
+                 value="{{ cliente.email if cliente else '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label fw-semibold">Teléfono</label>
+          <input type="text" class="form-control" name="phone"
+                 value="{{ cliente.phone if cliente else '' }}">
+        </div>
+      </div>
+
+      {% if cliente %}
+      <div class="mb-3 border rounded p-3 bg-light">
+        <div class="form-check form-switch">
+          <input class="form-check-input" type="checkbox" role="switch"
+                 name="auto_facturar" id="auto_facturar"
+                 {% if cliente.auto_facturar %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="auto_facturar">
+            Facturación automática por MercadoPago
+          </label>
+        </div>
+        <div class="form-text">Cuando llegue un pago aprobado de MP para este cliente, se generará la factura y se enviará por email automáticamente.</div>
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2 mt-4">
+        <a href="/clientes" class="btn btn-outline-secondary">Cancelar</a>
+        <button type="submit" class="btn btn-primary fw-semibold px-4">
+          <i class="bi bi-save me-1"></i>{% if cliente %}Guardar cambios{% else %}Crear cliente{% endif %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btn-consultar').addEventListener('click', async () => {
+  const cuit = document.getElementById('field-cuit').value.replace(/\D/g, '');
+  const msg  = document.getElementById('arca-msg');
+  const btn  = document.getElementById('btn-consultar');
+  const txt  = document.getElementById('btn-consultar-text');
+  const spin = document.getElementById('btn-consultar-spin');
+
+  if (cuit.length !== 11) {
+    msg.className = 'form-text text-danger';
+    msg.textContent = 'Ingresá un CUIT de 11 dígitos antes de consultar.';
+    return;
+  }
+
+  btn.disabled = true;
+  txt.classList.add('d-none');
+  spin.classList.remove('d-none');
+  msg.textContent = '';
+
+  try {
+    const resp = await fetch(`/api/consultar-cuit/${cuit}`);
+    const data = await resp.json();
+
+    if (!resp.ok || data.error) {
+      msg.className = 'form-text text-danger';
+      msg.textContent = data.error || 'Error al consultar ARCA.';
+    } else {
+      if (data.nombre)        document.getElementById('field-name').value    = data.nombre;
+      if (data.domicilio)     document.getElementById('field-address').value = data.domicilio;
+      if (data.iva_condition) {
+        const sel = document.getElementById('field-iva');
+        for (let opt of sel.options) {
+          if (opt.value === data.iva_condition) { sel.value = opt.value; break; }
+        }
+      }
+      msg.className = 'form-text text-success';
+      const estado = data.estado ? ` — Estado: ${data.estado}` : '';
+      msg.textContent = `✓ Datos importados desde ARCA${estado}.`;
+    }
+  } catch (e) {
+    msg.className = 'form-text text-danger';
+    msg.textContent = 'No se pudo conectar con ARCA.';
+  } finally {
+    btn.disabled = false;
+    txt.classList.remove('d-none');
+    spin.classList.add('d-none');
+  }
+});
+</script>
+{% endblock %}

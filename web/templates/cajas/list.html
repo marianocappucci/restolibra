@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Cajas — Contalibra{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cash-stack me-2 text-primary"></i>Cajas</h1>
+  <a href="/cajas/nueva" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva caja</a>
+</div>
+
+{% if error %}
+<div class="alert alert-danger">{{ error }}</div>
+{% endif %}
+
+<div class="row g-3">
+  {% for c in cajas %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card h-100 {% if not c.activo %}opacity-50{% endif %}">
+      <div class="card-body">
+        <div class="d-flex justify-content-between align-items-start mb-2">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-cash-coin me-2 text-success"></i>{{ c.nombre }}
+          </h5>
+          <div>
+            {% if c.es_default %}
+            <span class="badge bg-success">Por defecto</span>
+            {% endif %}
+            {% if not c.activo %}
+            <span class="badge bg-secondary">Inactiva</span>
+            {% endif %}
+          </div>
+        </div>
+
+        {% if c.descripcion %}
+        <p class="text-muted small mb-2">{{ c.descripcion }}</p>
+        {% endif %}
+
+        <div class="mb-3">
+          <div class="small text-muted mb-1">Medios de pago:</div>
+          <div class="d-flex flex-wrap gap-1">
+            {% for m in c.medios_pago %}
+            <span class="badge bg-light text-dark border">{{ todos_medios | selectattr('id', 'eq', m) | map(attribute='label') | first | default(m) }}</span>
+            {% else %}
+            <span class="text-muted small">Sin medios configurados</span>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="/caja?caja_id={{ c.id }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-eye me-1"></i>Ver movimientos
+          </a>
+          <a href="/cajas/{{ c.id }}/editar" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-pencil me-1"></i>Editar
+          </a>
+          {% if not c.es_default %}
+          <form method="post" action="/cajas/{{ c.id }}/set-default" class="d-inline">
+            <button class="btn btn-sm btn-outline-success" title="Usar como caja por defecto">
+              <i class="bi bi-star me-1"></i>Predeterminar
+            </button>
+          </form>
+          <form method="post" action="/cajas/{{ c.id }}/eliminar" class="d-inline"
+                onsubmit="return confirm('¿Eliminar la caja «{{ c.nombre }}»?')">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+          </form>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="card">
+      <div class="p-4 text-center text-muted">No hay cajas configuradas.</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Nuevo cliente — Backoffice{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h1 class="h4 m-0"><i class="bi bi-plus-circle me-2"></i>Nuevo cliente</h1>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <form method="post" action="/clientes/nuevo">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Nombre del comercio / empresa *</label>
+          <input type="text" name="nombre" class="form-control" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Slug <span class="text-muted fw-normal">(auto si vacío)</span></label>
+          <input type="text" name="slug" class="form-control" placeholder="mi-comercio">
+        </div>
+
+        <div class="col-md-8">
+          <label class="form-label fw-semibold">Dominio <span class="text-muted fw-normal">(opcional)</span></label>
+          <input type="text" name="domain" class="form-control" placeholder="mitienda.com.ar">
+          <div class="form-text">Si lo completás, se intenta crear el proxy + SSL en NPM.</div>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Puerto <span class="text-muted fw-normal">(auto si vacío)</span></label>
+          <input type="number" name="port" class="form-control" placeholder="8072">
+        </div>
+
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Usuario admin</label>
+          <input type="text" name="admin_user" class="form-control" value="admin">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Contraseña admin <span class="text-muted fw-normal">(auto si vacío)</span></label>
+          <input type="text" name="admin_password" class="form-control" placeholder="Se genera una segura">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label fw-semibold">Plan inicial</label>
+          <select name="plan" class="form-select">
+            {% for p in planes %}
+            <option value="{{ p.key }}" {% if p.key == 'basico' %}selected{% endif %}>
+              {{ p.label }}{% if p.precio %} — ${{ p.precio|moneda0 }}/mes{% endif %}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-12">
+          <div class="form-check">
+            <input type="checkbox" class="form-check-input" name="setup_npm" id="setup_npm" value="1" checked>
+            <label class="form-check-label" for="setup_npm">Crear proxy + SSL en NPM si hay dominio</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning mt-3 mb-3 py-2 small">
+        <i class="bi bi-info-circle me-1"></i>
+        Se creará el directorio del cliente, se levantará su contenedor Docker y se aplicará el plan elegido.
+        Puede tardar unos segundos (build de imagen la primera vez).
+      </div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Crear cliente</button>
+        <a href="/" class="btn btn-outline-secondary">Cancelar</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

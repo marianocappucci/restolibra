@@ -1,0 +1,242 @@
+{% extends "base.html" %}
+{% block title %}Presupuesto {{ presupuesto.number }} — Contalibra{% endblock %}
+{% block content %}
+
+{% macro badge_estado(st) %}
+  {% if st == 'borrador' %}<span class="badge badge-borrador rounded-pill px-3 fs-6">Borrador</span>
+  {% elif st == 'enviado' %}<span class="badge badge-enviado rounded-pill px-3 fs-6">Enviado</span>
+  {% elif st == 'aceptado' %}<span class="badge badge-aceptado rounded-pill px-3 fs-6">Aceptado</span>
+  {% elif st == 'rechazado' %}<span class="badge badge-rechazado rounded-pill px-3 fs-6">Rechazado</span>
+  {% elif st == 'vencido' %}<span class="badge badge-vencido rounded-pill px-3 fs-6">Vencido</span>
+  {% elif st == 'facturado' %}<span class="badge badge-facturado rounded-pill px-3 fs-6">Facturado</span>
+  {% else %}<span class="badge badge-enviado rounded-pill px-3 fs-6">Enviado</span>
+  {% endif %}
+{% endmacro %}
+
+{% set st = presupuesto.status %}
+
+<div class="page-header">
+  <div class="d-flex align-items-center gap-3">
+    <h1 class="mb-0"><i class="bi bi-calculator me-2 text-primary"></i>Presupuesto <span class="font-monospace">{{ presupuesto.number }}</span></h1>
+    {{ badge_estado(st) }}
+  </div>
+  <div class="d-flex gap-2">
+    {% if st == 'borrador' %}
+    <a href="/presupuestos/{{ presupuesto.id }}/editar" class="btn btn-outline-primary">
+      <i class="bi bi-pencil me-1"></i>Editar
+    </a>
+    {% endif %}
+    <a href="/presupuestos/{{ presupuesto.id }}/pdf" class="btn btn-outline-primary" target="_blank">
+      <i class="bi bi-file-pdf me-1"></i>Ver PDF
+    </a>
+    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEmail">
+      <i class="bi bi-envelope me-1"></i>Enviar por email
+    </button>
+    <a href="/presupuestos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">Datos del cliente</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Cliente</dt><dd class="col-sm-8">{{ presupuesto.client_name }}</dd>
+          {% if presupuesto.client_cuit %}
+          <dt class="col-sm-4">CUIT / DNI</dt><dd class="col-sm-8">{{ presupuesto.client_cuit }}</dd>
+          {% endif %}
+          {% if presupuesto.client_address %}
+          <dt class="col-sm-4">Domicilio</dt><dd class="col-sm-8">{{ presupuesto.client_address }}</dd>
+          {% endif %}
+          {% if presupuesto.client_email %}
+          <dt class="col-sm-4">Email</dt><dd class="col-sm-8">{{ presupuesto.client_email }}</dd>
+          {% endif %}
+          {% if presupuesto.client_phone %}
+          <dt class="col-sm-4">Teléfono</dt><dd class="col-sm-8">{{ presupuesto.client_phone }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card h-100">
+      <div class="card-header">Datos del presupuesto</div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Número</dt><dd class="col-sm-7 font-monospace">{{ presupuesto.number }}</dd>
+          <dt class="col-sm-5">Fecha</dt><dd class="col-sm-7">{{ presupuesto.date|fecha }}</dd>
+          <dt class="col-sm-5">Válido hasta</dt><dd class="col-sm-7">{{ presupuesto.valid_until|fecha }}</dd>
+          <dt class="col-sm-5">Estado</dt>
+          <dd class="col-sm-7">{{ badge_estado(st) }}</dd>
+          {% if presupuesto.observations %}
+          <dt class="col-sm-5">Observaciones</dt><dd class="col-sm-7">{{ presupuesto.observations }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">Ítems</div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Descripción</th>
+                <th class="text-end">Cantidad</th>
+                <th class="text-end">Precio unit.</th>
+                <th class="text-end">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in presupuesto['items'] %}
+              <tr>
+                <td style="white-space: pre-line">{{ item.description }}</td>
+                <td class="text-end">{{ item.qty|entero }}</td>
+                <td class="text-end">$ {{ item.unit_price|moneda }}</td>
+                <td class="text-end">$ {{ item.subtotal|moneda }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light fw-semibold">
+              <tr>
+                <td colspan="3" class="text-end">Subtotal</td>
+                <td class="text-end">$ {{ presupuesto.subtotal|moneda }}</td>
+              </tr>
+              <tr>
+                <td colspan="3" class="text-end">IVA {{ (presupuesto.tax_rate * 100)|int }}%</td>
+                <td class="text-end">$ {{ presupuesto.tax_amount|moneda }}</td>
+              </tr>
+              <tr class="fs-5">
+                <td colspan="3" class="text-end fw-bold">TOTAL</td>
+                <td class="text-end fw-bold text-primary">$ {{ presupuesto.total|moneda }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# ── Panel de acciones según estado ── #}
+  {% if st not in ('facturado',) %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header fw-semibold">Acciones</div>
+      <div class="card-body">
+        <div class="d-flex gap-2 flex-wrap align-items-center">
+
+          {# Borrador → Enviado #}
+          {% if st == 'borrador' %}
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado">
+            <input type="hidden" name="estado" value="enviado">
+            <button class="btn btn-primary"><i class="bi bi-send me-1"></i>Marcar como Enviado</button>
+          </form>
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado"
+                onsubmit="return confirm('¿Marcar como rechazado?')">
+            <input type="hidden" name="estado" value="rechazado">
+            <button class="btn btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Rechazar</button>
+          </form>
+          {% endif %}
+
+          {# Enviado (o pendiente legacy) → Aceptado / Rechazado #}
+          {% if st in ('enviado', 'pendiente') %}
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado">
+            <input type="hidden" name="estado" value="aceptado">
+            <input type="hidden" name="convertir_remito" value="0">
+            <button class="btn btn-success"><i class="bi bi-check-circle me-1"></i>Aceptar</button>
+          </form>
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado">
+            <input type="hidden" name="estado" value="aceptado">
+            <input type="hidden" name="convertir_remito" value="1">
+            <button class="btn btn-success"><i class="bi bi-arrow-repeat me-1"></i>Aceptar y convertir a remito</button>
+          </form>
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado"
+                onsubmit="return confirm('¿Marcar como rechazado?')">
+            <input type="hidden" name="estado" value="rechazado">
+            <button class="btn btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Rechazar</button>
+          </form>
+          {% endif %}
+
+          {# Aceptado → Facturado #}
+          {% if st == 'aceptado' %}
+          <a href="/facturas/nueva?from_presupuesto={{ presupuesto.id }}" class="btn btn-primary">
+            <i class="bi bi-receipt me-1"></i>Generar Factura
+          </a>
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado">
+            <input type="hidden" name="estado" value="facturado">
+            <button class="btn btn-outline-secondary"><i class="bi bi-check2-all me-1"></i>Marcar como Facturado</button>
+          </form>
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado"
+                onsubmit="return confirm('¿Rechazar un presupuesto aceptado?')">
+            <input type="hidden" name="estado" value="rechazado">
+            <button class="btn btn-outline-danger"><i class="bi bi-x-circle me-1"></i>Rechazar</button>
+          </form>
+          {% endif %}
+
+          {# Rechazado o Vencido → Reactivar como Borrador #}
+          {% if st in ('rechazado', 'vencido') %}
+          <form method="post" action="/presupuestos/{{ presupuesto.id }}/estado">
+            <input type="hidden" name="estado" value="borrador">
+            <button class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise me-1"></i>Reactivar como Borrador</button>
+          </form>
+          {% endif %}
+
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endif %}
+
+  {# Facturado: link a factura si existe #}
+  {% if st == 'facturado' %}
+  <div class="col-12">
+    <div class="alert alert-info d-flex align-items-center gap-2 mb-0">
+      <i class="bi bi-check2-all flex-shrink-0 fs-5"></i>
+      <span>Este presupuesto está <strong>facturado</strong> y cerrado comercialmente.</span>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if email_ok %}
+  <div class="col-12"><div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>{{ email_ok }}</div></div>
+  {% endif %}
+  {% if email_error %}
+  <div class="col-12"><div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>{{ email_error }}</div></div>
+  {% endif %}
+
+  <div class="col-12 d-flex justify-content-end pb-4">
+    <form method="post" action="/presupuestos/{{ presupuesto.id }}/eliminar"
+          onsubmit="return confirm('¿Eliminar este presupuesto?')">
+      <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Eliminar presupuesto</button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal email -->
+<div class="modal fade" id="modalEmail" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="/presupuestos/{{ presupuesto.id }}/enviar-email">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Enviar presupuesto por email</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label fw-semibold">Destinatario</label>
+          <input type="email" class="form-control" name="email"
+                 value="{{ presupuesto.client_email or '' }}" placeholder="email@ejemplo.com" required>
+          <div class="form-text">Se adjunta el PDF del presupuesto.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Enviar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

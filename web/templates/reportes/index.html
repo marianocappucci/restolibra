@@ -1,0 +1,238 @@
+{% extends "base.html" %}
+{% block title %}Reportes — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-bar-chart-line me-2 text-primary"></i>Reportes</h1>
+</div>
+
+<!-- Filtros -->
+<form method="get" action="/reportes" class="card mb-4">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-auto">
+        <label class="form-label fw-semibold mb-1" style="font-size:.82rem">Desde</label>
+        <input type="date" name="desde" class="form-control form-control-sm" value="{{ desde }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label fw-semibold mb-1" style="font-size:.82rem">Hasta</label>
+        <input type="date" name="hasta" class="form-control form-control-sm" value="{{ hasta }}">
+      </div>
+      <div class="col-auto">
+        <label class="form-label fw-semibold mb-1" style="font-size:.82rem">Agrupación</label>
+        <select name="agrupacion" class="form-select form-select-sm">
+          <option value="dia"   {% if agrupacion == 'dia'   %}selected{% endif %}>Por día</option>
+          <option value="semana"{% if agrupacion == 'semana'%}selected{% endif %}>Por semana</option>
+          <option value="mes"   {% if agrupacion == 'mes'   %}selected{% endif %}>Por mes</option>
+        </select>
+      </div>
+      <div class="col-auto">
+        <button type="submit" class="btn btn-primary btn-sm">
+          <i class="bi bi-funnel me-1"></i>Filtrar
+        </button>
+      </div>
+    </div>
+  </div>
+</form>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+  {% set kpis = [
+    ("Ventas en período",  resumen.ventas_cantidad, "operaciones", "bi-cart3",        "#0d6efd", "#cfe2ff"),
+    ("Total vendido",      "$" ~ resumen.ventas_total|moneda, "",  "bi-currency-dollar", "#198754", "#d1e7dd"),
+    ("Facturas emitidas",  resumen.facturas_cantidad, "",            "bi-receipt",      "#6f42c1", "#e8d5ff"),
+    ("Movim. de caja",     "$" ~ resumen.caja_saldo|moneda, "", "bi-cash-stack",    "#fd7e14", "#ffe5d0"),
+  ] %}
+  {% for label, val, sub, icon, col, bg in kpis %}
+  <div class="col-6 col-md-3">
+    <div class="card h-100">
+      <div class="card-body d-flex align-items-center gap-3 py-3">
+        <div style="width:44px;height:44px;border-radius:10px;background:{{ bg }};display:flex;align-items:center;justify-content:center;flex-shrink:0">
+          <i class="bi {{ icon }}" style="font-size:1.2rem;color:{{ col }}"></i>
+        </div>
+        <div>
+          <div class="fw-bold" style="font-size:1.1rem">{{ val }}</div>
+          <div class="text-muted" style="font-size:.78rem">{{ label }}{% if sub %} <span class="text-muted">{{ sub }}</span>{% endif %}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-3 mb-4">
+
+  <!-- Ventas en el tiempo -->
+  <div class="col-lg-8">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-graph-up me-1 text-primary"></i>Ventas en el período</span>
+        <a href="/reportes/export/ventas?desde={{ desde }}&hasta={{ hasta }}&agrupacion={{ agrupacion }}"
+           class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>CSV</a>
+      </div>
+      <div class="card-body p-0">
+        {% if ventas_ts %}
+        <div style="overflow-x:auto">
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr>
+            <th>Período</th><th class="text-end">Ventas</th><th class="text-end">Total</th>
+          </tr></thead>
+          <tbody>
+          {% for r in ventas_ts %}
+          <tr>
+            <td>{{ r.periodo|fecha }}</td>
+            <td class="text-end">{{ r.cantidad|entero }}</td>
+            <td class="text-end fw-semibold">${{ r.total|moneda }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td>Total</td>
+              <td class="text-end">{{ ventas_ts | sum(attribute='cantidad') | entero }}</td>
+              <td class="text-end">${{ ventas_ts | sum(attribute='total'|moneda) }}</td>
+            </tr>
+          </tfoot>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">Sin ventas en el período.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Medios de pago -->
+  <div class="col-lg-4">
+    <div class="card h-100">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-pie-chart me-1 text-success"></i>Medios de pago</span>
+        <a href="/reportes/export/medios?desde={{ desde }}&hasta={{ hasta }}"
+           class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>CSV</a>
+      </div>
+      <div class="card-body p-0">
+        {% set _medio_icons = {
+          'efectivo': 'bi-cash', 'transferencia': 'bi-bank',
+          'mercadopago': 'bi-phone', 'cuenta_dni': 'bi-person-vcard', 'billetera': 'bi-wallet2'
+        } %}
+        {% set _medio_labels = {
+          'efectivo': 'Efectivo', 'transferencia': 'Transferencia',
+          'mercadopago': 'Mercado Pago', 'cuenta_dni': 'Cuenta DNI', 'billetera': 'Billetera'
+        } %}
+        {% if medios %}
+        {% set total_medios = medios | sum(attribute='total') %}
+        <ul class="list-group list-group-flush">
+        {% for m in medios %}
+          {% set pct = ((m.total / total_medios * 100) | round(1)) if total_medios else 0 %}
+          <li class="list-group-item py-2">
+            <div class="d-flex justify-content-between mb-1">
+              <span><i class="bi {{ _medio_icons.get(m.medio, 'bi-cash') }} me-1"></i>
+                {{ _medio_labels.get(m.medio, m.medio) }}</span>
+              <span class="fw-semibold">${{ m.total|moneda }}</span>
+            </div>
+            <div class="progress" style="height:5px">
+              <div class="progress-bar bg-success" style="width:{{ pct }}%"></div>
+            </div>
+            <div class="text-muted mt-1" style="font-size:.75rem">{{ m.operaciones }} operaciones · {{ pct }}%</div>
+          </li>
+        {% endfor %}
+        </ul>
+        {% else %}
+        <div class="text-center text-muted py-4">Sin datos en el período.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="row g-3 mb-4">
+
+  <!-- Productos top -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-box-seam me-1 text-purple"></i>Productos más vendidos</span>
+        <a href="/reportes/export/productos?desde={{ desde }}&hasta={{ hasta }}"
+           class="btn btn-outline-secondary btn-sm"><i class="bi bi-download me-1"></i>CSV</a>
+      </div>
+      <div class="card-body p-0">
+        {% if productos %}
+        <div style="overflow-x:auto">
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>#</th><th>Producto</th><th class="text-end">Cant.</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for p in productos %}
+          <tr>
+            <td class="text-muted" style="width:2rem">{{ loop.index }}</td>
+            <td>{{ p.nombre or '(sin nombre)' }}</td>
+            <td class="text-end">{{ p.cantidad|entero }}</td>
+            <td class="text-end fw-semibold">${{ p.total or 0|moneda }}</td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">Sin datos en el período.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Movimientos de caja -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header">
+        <i class="bi bi-cash-stack me-1 text-warning"></i>Caja por tipo de movimiento
+      </div>
+      <div class="card-body p-0">
+        {% if caja %}
+        <table class="table table-sm table-hover mb-0">
+          <thead><tr><th>Tipo</th><th class="text-end">Cant.</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for c in caja %}
+          <tr>
+            <td>{{ c.tipo | capitalize }}</td>
+            <td class="text-end">{{ c.cantidad|entero }}</td>
+            <td class="text-end {% if c.tipo == 'ingreso' %}text-success{% else %}text-danger{% endif %} fw-semibold">
+              ${{ c.total|moneda }}
+            </td>
+          </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="text-center text-muted py-4">Sin movimientos en el período.</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Stock bajo mínimo -->
+{% if stock_bajo %}
+<div class="card mb-4 border-warning">
+  <div class="card-header text-warning">
+    <i class="bi bi-exclamation-triangle me-1"></i>Stock bajo mínimo ({{ stock_bajo | length }} producto{{ 's' if stock_bajo | length != 1 }})
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm mb-0">
+      <thead><tr><th>Código</th><th>Producto</th><th class="text-end">Stock actual</th><th class="text-end">Mínimo</th><th class="text-end">Faltante</th></tr></thead>
+      <tbody>
+      {% for p in stock_bajo %}
+      <tr>
+        <td class="text-muted">{{ p.codigo or '—' }}</td>
+        <td>{{ p.nombre }}</td>
+        <td class="text-end text-danger fw-semibold">{{ p.stock_actual|entero }}</td>
+        <td class="text-end">{{ p.stock_minimo|entero }}</td>
+        <td class="text-end text-danger">{{ (p.stock_minimo - p.stock_actual)|entero }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

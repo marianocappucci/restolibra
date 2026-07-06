@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Generar {{ nota_tipo_label }} — Contalibra{% endblock %}
+{% block content %}
+{% set pv  = '%04d' % factura.punto_venta %}
+{% set num = '%08d' % factura.numero %}
+{% set es_nc = 'Crédito' in nota_tipo_label %}
+<div class="page-header">
+  <h1><i class="bi {{ nota_icono }} me-2 text-{{ nota_color }}"></i>Generar {{ nota_tipo_label }}</h1>
+  <a href="/facturas/{{ factura.id }}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-1"></i>Volver
+  </a>
+</div>
+
+<div class="alert alert-{{ nota_color }} d-flex gap-2 align-items-start mb-4">
+  <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+  <div>
+    Estás por generar una <strong>{{ nota_tipo_label }}</strong>
+    {% if es_nc %}que anula{% else %}asociada a{% endif %}
+    el comprobante <strong>{{ tipo_label }} {{ pv }}-{{ num }}</strong>
+    ({{ factura.cliente_razon }}) por <strong>$ {{ factura.total|moneda }}</strong>.
+    <br>Esta acción <strong>no se puede deshacer</strong> y enviará el comprobante a ARCA para su autorización.
+  </div>
+</div>
+
+<div class="card mb-4" style="max-width: 560px;">
+  <div class="card-header fw-semibold">Resumen del comprobante a generar</div>
+  <div class="card-body">
+    <dl class="row mb-0">
+      <dt class="col-sm-5">Tipo</dt>
+      <dd class="col-sm-7">{{ nota_tipo_label }}</dd>
+      <dt class="col-sm-5">Fecha</dt>
+      <dd class="col-sm-7">Hoy</dd>
+      <dt class="col-sm-5">Cliente</dt>
+      <dd class="col-sm-7">{{ factura.cliente_razon }}</dd>
+      <dt class="col-sm-5">Comprobante asociado</dt>
+      <dd class="col-sm-7 font-monospace">{{ tipo_label }} {{ pv }}-{{ num }}</dd>
+      <dt class="col-sm-5">Importe</dt>
+      <dd class="col-sm-7 fw-semibold {% if es_nc %}text-danger{% else %}text-primary{% endif %}">
+        {% if es_nc %}-{% endif %}$ {{ factura.total|moneda }}
+      </dd>
+    </dl>
+  </div>
+</div>
+
+<form method="post" action="{{ nota_url }}">
+  <div class="d-flex gap-2">
+    <a href="/facturas/{{ factura.id }}" class="btn btn-outline-secondary">Cancelar</a>
+    <button type="submit" class="btn btn-{{ nota_color }} fw-semibold px-4">
+      <i class="bi {{ nota_icono }} me-1"></i>Confirmar y generar {{ nota_tipo_label }}
+    </button>
+  </div>
+</form>
+{% endblock %}

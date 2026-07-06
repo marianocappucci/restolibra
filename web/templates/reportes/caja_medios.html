@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Caja por Medio de Cobro — Contalibra{% endblock %}
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-cash-stack me-2 text-primary"></i>Caja por Medio de Cobro</h1>
+  <a href="/reportes" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Reportes
+  </a>
+</div>
+
+{# ── Filtros ── #}
+<div class="card mb-4">
+  <div class="card-body py-2">
+    <form class="d-flex flex-wrap gap-2 align-items-end" method="get" action="/reportes/caja-medios">
+      <div>
+        <label class="form-label mb-0 small fw-semibold">Desde</label>
+        <input type="date" class="form-control form-control-sm" name="desde" value="{{ desde }}" required>
+      </div>
+      <div>
+        <label class="form-label mb-0 small fw-semibold">Hasta</label>
+        <input type="date" class="form-control form-control-sm" name="hasta" value="{{ hasta }}" required>
+      </div>
+      {% if cajas_config | length > 1 %}
+      <div>
+        <label class="form-label mb-0 small fw-semibold">Caja</label>
+        <select class="form-select form-select-sm" name="caja_id" style="min-width:160px">
+          <option value="0">Todas las cajas</option>
+          {% for c in cajas_config %}
+          <option value="{{ c.id }}" {% if caja_id == c.id %}selected{% endif %}>{{ c.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary btn-sm">
+        <i class="bi bi-funnel me-1"></i>Filtrar
+      </button>
+      <a href="/reportes/caja-medios/export?desde={{ desde }}&hasta={{ hasta }}&caja_id={{ caja_id }}"
+         class="btn btn-outline-secondary btn-sm ms-auto">
+        <i class="bi bi-download me-1"></i>Exportar CSV
+      </a>
+    </form>
+  </div>
+</div>
+
+{% if cajas %}
+
+{# ── Resumen total ── #}
+{% set gran_total_ing = cajas | sum(attribute='total_ingresos') %}
+{% set gran_total_egr = cajas | sum(attribute='total_egresos') %}
+
+<div class="row g-3 mb-4">
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Total Ingresos</div>
+        <div class="fw-bold fs-4 text-success">$ {{ gran_total_ing|moneda }}</div>
+        <div class="text-muted" style="font-size:.75rem">en el período</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Total Egresos</div>
+        <div class="fw-bold fs-4 text-danger">$ {{ gran_total_egr|moneda }}</div>
+        <div class="text-muted" style="font-size:.75rem">en el período</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4">
+    <div class="card text-center h-100">
+      <div class="card-body py-3">
+        <div class="text-muted small">Saldo Neto</div>
+        <div class="fw-bold fs-4 {% if gran_total_ing >= gran_total_egr %}text-primary{% else %}text-danger{% endif %}">
+          $ {{ (gran_total_ing - gran_total_egr)|moneda }}
+        </div>
+        <div class="text-muted" style="font-size:.75rem">ingresos − egresos</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ── Totales por medio (todos los ingresos) ── #}
+{% if totales %}
+<div class="card mb-4">
+  <div class="card-header fw-semibold">
+    <i class="bi bi-pie-chart me-1 text-success"></i>Ingresos por medio de cobro — todas las cajas
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light">
+        <tr>
+          <th>Medio de cobro</th>
+          <th class="text-center">Operaciones</th>
+          <th class="text-end">Ingresos</th>
+          <th style="width:160px"></th>
+          <th class="text-center">Operaciones</th>
+          <th class="text-end">Egresos</th>
+          <th class="text-end">Saldo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for medio, vals in totales.items() %}
+        {% set pct = ((vals.ingresos / gran_total_ing * 100) | round(1)) if gran_total_ing else 0 %}
+        <tr>
+          <td>
+            <i class="bi {{ medio_icon.get(medio, 'bi-cash') }} me-1 text-muted"></i>
+            {{ medio_label.get(medio, medio) }}
+          </td>
+          <td class="text-center text-muted small">{{ vals.ingresos_ops }}</td>
+          <td class="text-end fw-semibold text-success">$ {{ vals.ingresos|moneda }}</td>
+          <td>
+            <div class="progress" style="height:6px">
+              <div class="progress-bar bg-success" style="width:{{ pct }}%"></div>
+            </div>
+            <div class="text-muted text-end mt-1" style="font-size:.7rem">{{ pct }}%</div>
+          </td>
+          <td class="text-center text-muted small">{{ vals.egresos_ops }}</td>
+          <td class="text-end text-danger {% if vals.egresos == 0 %}text-muted{% endif %}">
+            {% if vals.egresos > 0 %}$ {{ vals.egresos|moneda }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end fw-semibold {% if vals.ingresos >= vals.egresos %}text-primary{% else %}text-danger{% endif %}">
+            $ {{ (vals.ingresos - vals.egresos)|moneda }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>Total</td>
+          <td class="text-center">{{ totales.values() | sum(attribute='ingresos_ops') }}</td>
+          <td class="text-end text-success">$ {{ gran_total_ing|moneda }}</td>
+          <td></td>
+          <td class="text-center">{{ totales.values() | sum(attribute='egresos_ops') }}</td>
+          <td class="text-end text-danger">$ {{ gran_total_egr|moneda }}</td>
+          <td class="text-end {% if gran_total_ing >= gran_total_egr %}text-primary{% else %}text-danger{% endif %}">
+            $ {{ (gran_total_ing - gran_total_egr)|moneda }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endif %}
+
+{# ── Detalle por caja ── #}
+{% for caja in cajas %}
+<div class="card mb-3">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <span class="fw-semibold">
+      <i class="bi bi-cash-stack me-1 text-primary"></i>{{ caja.nombre }}
+    </span>
+    <div class="d-flex gap-3 text-sm">
+      <span class="text-success fw-semibold">
+        <i class="bi bi-arrow-up me-1"></i>$ {{ caja.total_ingresos|moneda }}
+      </span>
+      <span class="text-danger fw-semibold">
+        <i class="bi bi-arrow-down me-1"></i>$ {{ caja.total_egresos|moneda }}
+      </span>
+      <span class="fw-bold {% if caja.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+        Saldo: $ {{ caja.saldo|moneda }}
+      </span>
+    </div>
+  </div>
+  <div class="card-body p-0">
+    <table class="table table-sm align-middle mb-0">
+      <thead class="table-light" style="font-size:.8rem">
+        <tr>
+          <th>Medio de cobro</th>
+          <th class="text-center">Op. entrada</th>
+          <th class="text-end">Ingresos</th>
+          <th class="text-center">Op. salida</th>
+          <th class="text-end">Egresos</th>
+          <th class="text-end">Saldo medio</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for medio, vals in caja.medios.items() | sort %}
+        {% set saldo_m = vals.ingresos - vals.egresos %}
+        <tr>
+          <td>
+            <i class="bi {{ medio_icon.get(medio, 'bi-cash') }} me-1 text-muted"></i>
+            {{ medio_label.get(medio, medio) }}
+          </td>
+          <td class="text-center text-muted small">
+            {% if vals.ingresos_ops %}{{ vals.ingresos_ops }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end {% if vals.ingresos > 0 %}text-success fw-semibold{% else %}text-muted{% endif %}">
+            {% if vals.ingresos > 0 %}$ {{ vals.ingresos|moneda }}{% else %}—{% endif %}
+          </td>
+          <td class="text-center text-muted small">
+            {% if vals.egresos_ops %}{{ vals.egresos_ops }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end {% if vals.egresos > 0 %}text-danger{% else %}text-muted{% endif %}">
+            {% if vals.egresos > 0 %}$ {{ vals.egresos|moneda }}{% else %}—{% endif %}
+          </td>
+          <td class="text-end fw-semibold {% if saldo_m >= 0 %}text-primary{% else %}text-danger{% endif %}">
+            $ {{ saldo_m|moneda }}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot class="table-light fw-bold">
+        <tr>
+          <td>Subtotal {{ caja.nombre }}</td>
+          <td class="text-center">{{ caja.medios.values() | sum(attribute='ingresos_ops') }}</td>
+          <td class="text-end text-success">$ {{ caja.total_ingresos|moneda }}</td>
+          <td class="text-center">{{ caja.medios.values() | sum(attribute='egresos_ops') }}</td>
+          <td class="text-end text-danger">$ {{ caja.total_egresos|moneda }}</td>
+          <td class="text-end {% if caja.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
+            $ {{ caja.saldo|moneda }}
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endfor %}
+
+{% else %}
+<div class="card">
+  <div class="card-body p-5 text-center text-muted">
+    <i class="bi bi-cash-stack fs-1 d-block mb-2 opacity-25"></i>
+    No hay movimientos de caja en el período seleccionado.
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

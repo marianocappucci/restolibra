@@ -1,0 +1,15 @@
+services:
+  web:
+    build: .
+    image: contalibra-web:latest
+    container_name: contalibra-web
+    restart: unless-stopped
+    ports:
+      - "8069:80"
+    networks:
+      - stack-net
+
+networks:
+  stack-net:
+    external: true
+    name: stack_stack-net

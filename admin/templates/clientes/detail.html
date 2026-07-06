@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}{{ c.nombre }} — Backoffice{% endblock %}
+{% block content %}
+
+<div class="d-flex align-items-center gap-2 mb-3">
+  <a href="/" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i></a>
+  <h1 class="h4 m-0">{{ c.nombre }}</h1>
+  {% set ec = 'estado-running' if c.estado == 'running' else ('estado-exited' if c.estado == 'exited' else ('estado-paused' if c.estado == 'paused' else 'estado-otro')) %}
+  <i class="bi bi-circle-fill estado-dot {{ ec }}" title="{{ c.estado }}"></i>
+  <span class="text-muted small text-capitalize">{{ c.estado }}</span>
+</div>
+
+{% if nueva_pass %}
+<div class="alert alert-info d-flex align-items-center gap-2">
+  <i class="bi bi-key-fill"></i>
+  <div>Credenciales del admin: <strong>{{ c.admin_user }}</strong> / <code>{{ nueva_pass }}</code>
+  — guardalas, no se vuelven a mostrar.</div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <!-- Datos + edición -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold"><i class="bi bi-info-circle me-2"></i>Datos</div>
+      <div class="card-body">
+        <form method="post" action="/clientes/{{ c.slug }}/editar">
+          <div class="mb-2">
+            <label class="form-label small fw-semibold mb-1">Nombre</label>
+            <input type="text" name="nombre" class="form-control form-control-sm" value="{{ c.nombre }}">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold mb-1">Dominio</label>
+            <input type="text" name="domain" class="form-control form-control-sm" value="{{ c.domain }}">
+          </div>
+          <dl class="row small mb-2">
+            <dt class="col-5 text-muted">Slug</dt><dd class="col-7"><code>{{ c.slug }}</code></dd>
+            <dt class="col-5 text-muted">Contenedor</dt><dd class="col-7"><code>{{ c.container }}</code></dd>
+            <dt class="col-5 text-muted">Puerto</dt><dd class="col-7">{{ c.port }}</dd>
+            <dt class="col-5 text-muted">Admin</dt><dd class="col-7">{{ c.admin_user }}</dd>
+            <dt class="col-5 text-muted">Iniciado</dt><dd class="col-7">{{ c.iniciado or '—' }}</dd>
+          </dl>
+          <button class="btn btn-sm btn-outline-primary"><i class="bi bi-save me-1"></i>Guardar datos</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Plan -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold"><i class="bi bi-box-seam me-2"></i>Plan</div>
+      <div class="card-body">
+        <p class="small text-muted mb-2">Plan actual:
+          {% if c.plan %}<span class="badge plan-{{ c.plan }}">{{ planes|selectattr('key','equalto',c.plan)|map(attribute='label')|first|default(c.plan) }}</span>
+          {% else %}<span class="text-muted">sin asignar</span>{% endif %}
+          · <strong>{{ c.modulos_activos if c.modulos_activos is not none else '—' }}</strong> módulos activos
+        </p>
+        <form method="post" action="/clientes/{{ c.slug }}/plan">
+          {% for p in planes %}
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="plan" id="plan-{{ p.key }}" value="{{ p.key }}"
+                   {% if p.key == c.plan %}checked{% endif %}>
+            <label class="form-check-label" for="plan-{{ p.key }}">
+              <span class="badge plan-{{ p.key }}">{{ p.label }}</span>
+              {% if p.precio %}<span class="text-muted small">${{ p.precio|moneda0 }}/mes</span>{% endif %}
+              <span class="text-muted small">· {{ p.modulos|length }} módulos</span>
+            </label>
+          </div>
+          {% endfor %}
+          <button class="btn btn-sm btn-primary mt-2"><i class="bi bi-arrow-repeat me-1"></i>Aplicar plan</button>
+          <div class="form-text">Toma efecto de inmediato en la instancia (no requiere reinicio).</div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Estado / ciclo de vida -->
+  <div class="col-lg-6">
+    <div class="card h-100">
+      <div class="card-header fw-semibold"><i class="bi bi-hdd-network me-2"></i>Estado y servicio</div>
+      <div class="card-body">
+        <div class="mb-2 small text-muted">Contenedor</div>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          {% for acc, ico, lbl, cls in [
+            ('start','play-fill','Iniciar','success'),
+            ('restart','arrow-clockwise','Reiniciar','secondary'),
+            ('stop','stop-fill','Detener','danger')] %}
+          <form method="post" action="/clientes/{{ c.slug }}/estado/{{ acc }}">
+            <button class="btn btn-sm btn-outline-{{ cls }}"><i class="bi bi-{{ ico }} me-1"></i>{{ lbl }}</button>
+          </form>
+          {% endfor %}
+        </div>
+        <div class="mb-2 small text-muted">Servicio (banner en la app del cliente)</div>
+        <div class="d-flex flex-wrap gap-2">
+          {% for acc, lbl, cls in [
+            ('activar','Activar','success'),
+            ('pausar','Pausar','warning'),
+            ('suspender','Suspender','dark')] %}
+          <form method="post" action="/clientes/{{ c.slug }}/estado/{{ acc }}">
+            <button class="btn btn-sm btn-outline-{{ cls }}">{{ lbl }}</button>
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup + baja -->
+  <div class="col-lg-6">
+    <div class="card h-100 border-danger-subtle">
+      <div class="card-header fw-semibold"><i class="bi bi-shield-exclamation me-2"></i>Backup y baja</div>
+      <div class="card-body">
+        <form method="post" action="/clientes/{{ c.slug }}/backup" class="mb-3">
+          <button class="btn btn-sm btn-outline-secondary"><i class="bi bi-download me-1"></i>Generar backup</button>
+          <span class="form-text ms-1">tar.gz de la carpeta data del cliente.</span>
+        </form>
+        <hr>
+        <p class="small text-danger mb-2"><i class="bi bi-exclamation-triangle me-1"></i>
+          Eliminar da de baja el contenedor y borra <strong>todos los datos</strong> del cliente
+          (se genera un backup automático antes). Escribí el slug <code>{{ c.slug }}</code> para confirmar.</p>
+        <form method="post" action="/clientes/{{ c.slug }}/eliminar"
+              onsubmit="return confirm('¿Eliminar definitivamente al cliente {{ c.slug }}?');">
+          <div class="input-group input-group-sm">
+            <input type="text" name="confirmar" class="form-control" placeholder="{{ c.slug }}" autocomplete="off">
+            <button class="btn btn-danger"><i class="bi bi-trash me-1"></i>Eliminar cliente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

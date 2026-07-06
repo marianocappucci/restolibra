@@ -1,0 +1,311 @@
+{% extends "base.html" %}
+{% block title %}{{ lista.nombre }} — Lista de precios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>
+    <i class="bi bi-tag me-2 text-primary"></i>{{ lista.nombre }}
+    {% if not lista.activa %}<span class="badge bg-secondary ms-2 fs-6">Inactiva</span>{% endif %}
+  </h1>
+  <div class="d-flex gap-2 flex-wrap">
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalLote">
+      <i class="bi bi-percent me-1"></i>Actualizar en lote
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
+      <i class="bi bi-download me-1"></i>Importar precios
+    </button>
+    <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfig">
+      <i class="bi bi-gear me-1"></i>Configurar
+    </button>
+    <a href="/listas-precio" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+  </div>
+</div>
+
+{% if lista.descripcion %}
+<p class="text-muted mb-3">{{ lista.descripcion }}</p>
+{% endif %}
+
+<!-- Filtro por categoría -->
+<form method="get" class="d-flex gap-2 mb-3 align-items-center">
+  <select name="categoria" class="form-select form-select-sm" style="max-width:220px" onchange="this.form.submit()">
+    <option value="">Todas las categorías</option>
+    {% for cat in categorias %}
+    <option value="{{ cat }}" {% if cat == cat_sel %}selected{% endif %}>{{ cat }}</option>
+    {% endfor %}
+  </select>
+  {% if cat_sel %}
+  <a href="/listas-precio/{{ lista.id }}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+  {% endif %}
+  <span class="text-muted small ms-1">{{ items|length }} producto{% if items|length != 1 %}s{% endif %}</span>
+</form>
+
+<!-- Tabla de precios -->
+<form method="post" action="/listas-precio/{{ lista.id }}/guardar-precios" id="form-precios">
+  <input type="hidden" name="categoria" value="{{ cat_sel }}">
+
+  <div class="card">
+    <div class="card-header d-flex align-items-center justify-content-between py-2">
+      <span class="fw-semibold">Precios</span>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="text-muted small" id="lbl-modificados" style="display:none">
+          <i class="bi bi-pencil text-warning me-1"></i><span id="cnt-mod">0</span> modificado(s)
+        </span>
+        <button type="submit" class="btn btn-success btn-sm">
+          <i class="bi bi-check-lg me-1"></i>Guardar precios
+        </button>
+      </div>
+    </div>
+    <div class="card-body p-0">
+      {% if items %}
+      <table class="table table-sm align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>Código</th>
+            <th>Producto</th>
+            <th>Categoría</th>
+            <th class="text-end">P. Costo</th>
+            <th class="text-end">P. Venta</th>
+            <th class="text-end" style="width:160px">Precio lista</th>
+            <th class="text-end" style="width:70px">Margen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in items %}
+          <tr data-costo="{{ p.precio_costo }}" data-venta="{{ p.precio_venta }}">
+            <td class="text-muted small font-monospace">{{ p.codigo or '—' }}</td>
+            <td class="fw-semibold">{{ p.nombre }}</td>
+            <td class="text-muted small">{{ p.categoria or '—' }}</td>
+            <td class="text-end text-muted small">$ {{ p.precio_costo|moneda }}</td>
+            <td class="text-end text-muted small">$ {{ p.precio_venta|moneda }}</td>
+            <td class="text-end">
+              <div class="input-group input-group-sm justify-content-end">
+                <span class="input-group-text">$</span>
+                <input type="number"
+                       name="precio_{{ p.id }}"
+                       class="form-control text-end precio-input"
+                       style="max-width:110px"
+                       value="{{ p.precio_lista if p.precio_lista else '' }}"
+                       step="0.01" min="0"
+                       placeholder="{{ p.precio_venta|moneda }}"
+                       data-original="{{ p.precio_lista }}"
+                       oninput="onPrecioChange(this)">
+              </div>
+            </td>
+            <td class="text-end small margen-cell text-muted">
+              {% if p.precio_lista and p.precio_costo > 0 %}
+                {{ ((p.precio_lista / p.precio_costo - 1) * 100)|round(1) }}%
+              {% else %}—{% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="p-5 text-center text-muted">No hay productos activos.</div>
+      {% endif %}
+    </div>
+    {% if items %}
+    <div class="card-footer d-flex justify-content-end">
+      <button type="submit" class="btn btn-success btn-sm">
+        <i class="bi bi-check-lg me-1"></i>Guardar precios
+      </button>
+    </div>
+    {% endif %}
+  </div>
+</form>
+
+<!-- Modal Actualizar en lote -->
+<div class="modal fade" id="modalLote" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/listas-precio/{{ lista.id }}/actualizar-en-lote">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-percent me-2"></i>Actualizar precios en lote</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Base de cálculo</label>
+            <select name="base" class="form-select">
+              <option value="lista">Precios actuales de esta lista</option>
+              <option value="venta">Precio de venta de cada producto</option>
+              <option value="costo">Precio de costo de cada producto</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Porcentaje de ajuste</label>
+            <div class="input-group">
+              <input type="number" name="porcentaje" class="form-control"
+                     step="0.1" placeholder="Ej: 10 para +10%, -5 para -5%" required id="inp-pct">
+              <span class="input-group-text">%</span>
+            </div>
+            <div class="form-text" id="txt-pct-preview"></div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Aplicar a</label>
+            <select name="categoria" class="form-select">
+              <option value="">Todos los productos</option>
+              {% for cat in categorias %}
+              <option value="{{ cat }}" {% if cat == cat_sel %}selected{% endif %}>{{ cat }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="alert alert-warning py-2 small mb-0">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Esta acción reemplaza los precios calculados. Los precios que no estén en la lista se van a insertar.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-check-lg me-1"></i>Aplicar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Importar precios -->
+<div class="modal fade" id="modalImportar" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/listas-precio/{{ lista.id }}/importar">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-download me-2"></i>Importar precios</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-muted small">Reemplaza los precios existentes en esta lista con los precios de la fuente seleccionada.</p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Importar desde</label>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp2-venta" value="venta" checked>
+              <label class="form-check-label" for="imp2-venta">Precio de venta de cada producto</label>
+            </div>
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp2-costo" value="costo">
+              <label class="form-check-label" for="imp2-costo">Precio de costo de cada producto</label>
+            </div>
+            {% if listas_otras %}
+            <div class="form-check mb-2">
+              <input class="form-check-input" type="radio" name="importar_desde" id="imp2-lista" value="lista">
+              <label class="form-check-label" for="imp2-lista">Desde otra lista:</label>
+            </div>
+            <div class="ms-4 mt-1" id="sel-imp2-lista" style="display:none">
+              <select name="fuente_lista_id" class="form-select form-select-sm" style="max-width:240px">
+                {% for l in listas_otras %}
+                <option value="{{ l.id }}">{{ l.nombre }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-download me-1"></i>Importar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Configurar lista -->
+<div class="modal fade" id="modalConfig" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/listas-precio/{{ lista.id }}/editar">
+        <div class="modal-header">
+          <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Configurar lista</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nombre</label>
+            <input type="text" name="nombre" class="form-control" value="{{ lista.nombre }}" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Descripción</label>
+            <input type="text" name="descripcion" class="form-control" value="{{ lista.descripcion or '' }}">
+          </div>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" name="activa" value="1"
+                   id="chk-activa" {% if lista.activa %}checked{% endif %}>
+            <label class="form-check-label" for="chk-activa">Lista activa (disponible en ventas)</label>
+          </div>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <form method="post" action="/listas-precio/{{ lista.id }}/eliminar"
+                onsubmit="return confirm('¿Eliminar esta lista y todos sus precios?')">
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+              <i class="bi bi-trash me-1"></i>Eliminar lista
+            </button>
+          </form>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Contador de cambios en la tabla
+let modificados = new Set();
+function onPrecioChange(inp) {
+  const key = inp.name;
+  const orig = inp.dataset.original;
+  const cur  = inp.value;
+  if (cur !== orig) modificados.add(key); else modificados.delete(key);
+  document.getElementById('cnt-mod').textContent = modificados.size;
+  document.getElementById('lbl-modificados').style.display = modificados.size ? '' : 'none';
+
+  // Actualizar margen en la misma fila
+  const tr    = inp.closest('tr');
+  const costo = parseFloat(tr.dataset.costo) || 0;
+  const cell  = tr.querySelector('.margen-cell');
+  const precio = parseFloat(cur) || 0;
+  if (costo > 0 && precio > 0) {
+    cell.textContent = ((precio / costo - 1) * 100).toFixed(1) + '%';
+    cell.className = 'text-end small margen-cell ' + (precio >= costo ? 'text-success' : 'text-danger');
+  } else {
+    cell.textContent = '—';
+    cell.className = 'text-end small margen-cell text-muted';
+  }
+}
+
+// Preview del porcentaje
+document.getElementById('inp-pct')?.addEventListener('input', function() {
+  const pct = parseFloat(this.value);
+  const el  = document.getElementById('txt-pct-preview');
+  if (isNaN(pct)) { el.textContent = ''; return; }
+  const factor = 1 + pct / 100;
+  el.textContent = `Un producto de $1.000 pasará a $${(1000 * factor).toFixed(2).replace('.', ',')}.`;
+});
+
+// Mostrar selector de lista en modal importar
+document.querySelectorAll('input[name="importar_desde"]').forEach(r => {
+  r.addEventListener('change', () => {
+    const sel = document.getElementById('sel-imp2-lista');
+    if (sel) sel.style.display = r.value === 'lista' ? '' : 'none';
+  });
+});
+
+// Aviso al salir con cambios sin guardar
+window.addEventListener('beforeunload', e => {
+  if (modificados.size > 0) e.returnValue = '¿Salir sin guardar los precios?';
+});
+document.getElementById('form-precios').addEventListener('submit', () => {
+  modificados.clear();
+});
+</script>
+{% endblock %}
