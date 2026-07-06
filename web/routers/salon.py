@@ -132,12 +132,15 @@ def salon_pedido_enviar(pid: int, user: Auth):
 @router.post("/salon/pedido/{pid}/anular")
 def salon_pedido_anular(pid: int, user: Auth):
     pedido = db.get_pedido(pid)
+    destino = "/salon"
     if pedido and pedido["estado"] == "abierto":
         with db.get_connection() as conn:
             conn.execute("UPDATE pedidos SET estado='anulado' WHERE id=?", (pid,))
             if pedido.get("mesa_id"):
                 conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
-    return RedirectResponse("/salon", status_code=303)
+        if not pedido.get("mesa_id"):
+            destino = "/pedidos"
+    return RedirectResponse(destino, status_code=303)
 
 
 # ── Cobro ────────────────────────────────────────────────────────────────────

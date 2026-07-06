@@ -346,6 +346,7 @@ def init_db():
                 telefono       TEXT DEFAULT '',
                 repartidor     TEXT DEFAULT '',
                 costo_envio    REAL NOT NULL DEFAULT 0,
+                hora_retiro    TEXT DEFAULT '',
                 observaciones  TEXT DEFAULT '',
                 venta_id       INTEGER REFERENCES ventas(id) ON DELETE SET NULL,
                 created_at     TEXT DEFAULT (datetime('now')),
@@ -420,6 +421,9 @@ def init_db():
             conn.execute("ALTER TABLE productos ADD COLUMN stock_minimo REAL NOT NULL DEFAULT 0")
         if "estacion" not in prod_cols:
             conn.execute("ALTER TABLE productos ADD COLUMN estacion TEXT DEFAULT ''")
+        ped_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
+        if ped_cols and "hora_retiro" not in ped_cols:
+            conn.execute("ALTER TABLE pedidos ADD COLUMN hora_retiro TEXT DEFAULT ''")
         ventas_cols = [r[1] for r in conn.execute("PRAGMA table_info(ventas)").fetchall()]
         if ventas_cols and "turno_id" not in ventas_cols:
             conn.execute("ALTER TABLE ventas ADD COLUMN turno_id INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL")
@@ -3640,21 +3644,47 @@ def get_next_pedido_numero() -> str:
 
 def crear_pedido(canal: str = "salon", mesa_id: int | None = None, comensales: int = 1,
                  usuario_id: int | None = None, cliente_id: int | None = None,
-                 cliente_nombre: str = "", observaciones: str = "") -> int:
+                 cliente_nombre: str = "", observaciones: str = "",
+                 telefono: str = "", direccion: str = "", repartidor: str = "",
+                 costo_envio: float = 0.0, hora_retiro: str = "") -> int:
     numero = get_next_pedido_numero()
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO pedidos
                (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-                cliente_nombre, observaciones)
-               VALUES (?,?,?,?,?,?,?,?)""",
+                cliente_nombre, observaciones, telefono, direccion, repartidor,
+                costo_envio, hora_retiro)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-             cliente_nombre, observaciones),
+             cliente_nombre, observaciones, telefono, direccion, repartidor,
+             float(costo_envio or 0), hora_retiro),
         )
         pid = cur.lastrowid
         if mesa_id:
             conn.execute("UPDATE mesas SET estado='ocupada' WHERE id=?", (mesa_id,))
     return pid
+
+
+def get_pedidos_activos(canales: list[str] | None = None) -> list[dict]:
+    """Pedidos abiertos (opcionalmente filtrados por canal), con su total.
+    Usado por el board de mostrador/delivery (canales sin mesa)."""
+    with get_connection() as conn:
+        sql = """SELECT p.*, m.nombre AS mesa_nombre, u.username AS mozo
+                 FROM pedidos p
+                 LEFT JOIN mesas m ON m.id = p.mesa_id
+                 LEFT JOIN usuarios u ON u.id = p.usuario_id
+                 WHERE p.estado = 'abierto'"""
+        params: list = []
+        if canales:
+            ph = ",".join("?" for _ in canales)
+            sql += f" AND p.canal IN ({ph})"
+            params += list(canales)
+        sql += " ORDER BY p.created_at DESC"
+        rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
+    for r in rows:
+        r["total"] = pedido_total(r["id"])
+        r["n_items"] = len([1 for _ in get_pedido_items(r["id"])])
+    return rows
 
 
 def get_pedido_items(pedido_id: int) -> list[dict]:

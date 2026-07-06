@@ -23,7 +23,10 @@
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr class="fw-bold border-top"><td>TOTAL</td><td class="text-end fs-5">${{ pedido.total|moneda }}</td></tr>
+          {% if pedido.costo_envio and pedido.costo_envio > 0 %}
+          <tr class="border-top"><td><i class="bi bi-scooter"></i> Envío</td><td class="text-end">${{ pedido.costo_envio|moneda }}</td></tr>
+          {% endif %}
+          <tr class="fw-bold {% if not (pedido.costo_envio and pedido.costo_envio > 0) %}border-top{% endif %}"><td>TOTAL</td><td class="text-end fs-5">${{ pedido.total|moneda }}</td></tr>
         </tfoot>
       </table>
     </div>

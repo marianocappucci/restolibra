@@ -40,6 +40,7 @@ from web.routers import listas_precio as listas_precio_router
 from web.routers import libros_iva as libros_iva_router
 from web.routers import salon as salon_router
 from web.routers import kds as kds_router
+from web.routers import pedidos as pedidos_router
 
 app = FastAPI(title="Restolibra")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
@@ -127,6 +128,7 @@ app.include_router(listas_precio_router.router)
 app.include_router(libros_iva_router.router)
 app.include_router(salon_router.router)
 app.include_router(kds_router.router)
+app.include_router(pedidos_router.router)
 
 
 @app.on_event("startup")

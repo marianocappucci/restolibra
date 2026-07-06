@@ -8,10 +8,30 @@
     {% if pedido.mesa_nombre %}Mesa {{ pedido.mesa_nombre }}{% else %}{{ pedido.canal|capitalize }}{% endif %}
     <small class="text-muted fs-6">· Pedido {{ pedido.numero }}</small>
   </h1>
+  {% if pedido.mesa_id %}
   <a href="/salon?salon_id={{ pedido.salon_id or '' }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>Salón
   </a>
+  {% else %}
+  <a href="/pedidos" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Pedidos
+  </a>
+  {% endif %}
 </div>
+
+{% if not pedido.mesa_id %}
+<div class="alert alert-light border d-flex flex-wrap gap-3 py-2">
+  <span class="badge bg-primary align-self-center">{{ pedido.canal|capitalize }}</span>
+  {% if pedido.cliente_nombre %}<span><i class="bi bi-person"></i> {{ pedido.cliente_nombre }}</span>{% endif %}
+  {% if pedido.telefono %}<span><i class="bi bi-telephone"></i> {{ pedido.telefono }}</span>{% endif %}
+  {% if pedido.canal == 'takeaway' and pedido.hora_retiro %}<span><i class="bi bi-clock"></i> Retiro {{ pedido.hora_retiro }}</span>{% endif %}
+  {% if pedido.canal == 'delivery' %}
+    {% if pedido.direccion %}<span><i class="bi bi-geo-alt"></i> {{ pedido.direccion }}</span>{% endif %}
+    {% if pedido.repartidor %}<span><i class="bi bi-person-badge"></i> {{ pedido.repartidor }}</span>{% endif %}
+    {% if pedido.costo_envio and pedido.costo_envio > 0 %}<span><i class="bi bi-scooter"></i> Envío ${{ pedido.costo_envio|moneda }}</span>{% endif %}
+  {% endif %}
+</div>
+{% endif %}
 
 <div class="row g-3">
   <!-- ── Pedido / cuenta ── -->
@@ -49,7 +69,13 @@
             {% endfor %}
           </tbody>
           <tfoot>
-            <tr class="fw-bold border-top">
+            {% if pedido.costo_envio and pedido.costo_envio > 0 %}
+            <tr class="border-top">
+              <td colspan="2"><i class="bi bi-scooter"></i> Envío</td>
+              <td class="text-end" colspan="2">${{ pedido.costo_envio|moneda }}</td>
+            </tr>
+            {% endif %}
+            <tr class="fw-bold {% if not (pedido.costo_envio and pedido.costo_envio > 0) %}border-top{% endif %}">
               <td colspan="2">TOTAL</td>
               <td class="text-end" colspan="2">${{ pedido.total|moneda }}</td>
             </tr>
