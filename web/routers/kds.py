@@ -47,6 +47,7 @@ def kds_feed(estacion: str, user: Auth):
             "mesa": c.get("mesa_nombre") or (c.get("canal") or "").upper(),
             "mozo": c.get("mozo") or "",
             "created_at": c.get("created_at") or "",
+            "mins": db.minutos_desde(c.get("created_at")),
             "items": [
                 {"qty": it["qty"], "nombre": it["nombre"], "nota": it.get("nota") or ""}
                 for it in c["items"]

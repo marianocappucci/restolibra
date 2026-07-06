@@ -354,13 +354,16 @@ def init_db():
             );
 
             CREATE TABLE IF NOT EXISTS comandas (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                pedido_id  INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-                estacion   TEXT NOT NULL,                     -- cocina | barra
-                numero     INTEGER NOT NULL DEFAULT 0,        -- ronda dentro del pedido
-                estado     TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | preparacion | listo | entregado
-                created_at TEXT DEFAULT (datetime('now')),
-                updated_at TEXT DEFAULT (datetime('now'))
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                pedido_id      INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
+                estacion       TEXT NOT NULL,                     -- cocina | barra
+                numero         INTEGER NOT NULL DEFAULT 0,        -- ronda dentro del pedido
+                estado         TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | preparacion | listo | entregado
+                preparacion_at TEXT,                              -- timestamps de transición (tiempos)
+                listo_at       TEXT,
+                entregado_at   TEXT,
+                created_at     TEXT DEFAULT (datetime('now')),
+                updated_at     TEXT DEFAULT (datetime('now'))
             );
 
             CREATE TABLE IF NOT EXISTS pedido_items (
@@ -424,6 +427,10 @@ def init_db():
         ped_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
         if ped_cols and "hora_retiro" not in ped_cols:
             conn.execute("ALTER TABLE pedidos ADD COLUMN hora_retiro TEXT DEFAULT ''")
+        com_cols = [r[1] for r in conn.execute("PRAGMA table_info(comandas)").fetchall()]
+        for _col in ("preparacion_at", "listo_at", "entregado_at"):
+            if com_cols and _col not in com_cols:
+                conn.execute(f"ALTER TABLE comandas ADD COLUMN {_col} TEXT")
         ventas_cols = [r[1] for r in conn.execute("PRAGMA table_info(ventas)").fetchall()]
         if ventas_cols and "turno_id" not in ventas_cols:
             conn.execute("ALTER TABLE ventas ADD COLUMN turno_id INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL")
@@ -3792,9 +3799,11 @@ def enviar_a_estaciones(pedido_id: int) -> list[int]:
             grupo = [it for it in items if (it.get("estacion") or "") == estacion]
             if not grupo:
                 continue
+            _now = _ar_now()
             cur = conn.execute(
-                "INSERT INTO comandas (pedido_id, estacion, numero, estado) VALUES (?,?,?,'pendiente')",
-                (pedido_id, estacion, ronda),
+                "INSERT INTO comandas (pedido_id, estacion, numero, estado, created_at, updated_at) "
+                "VALUES (?,?,?,'pendiente',?,?)",
+                (pedido_id, estacion, ronda, _now, _now),
             )
             cid = cur.lastrowid
             for it in grupo:
@@ -3859,13 +3868,30 @@ def get_comandas_estacion(estacion: str, estados: list[str] | None = None) -> li
     return comandas
 
 
+_ESTADO_TS_COL = {"preparacion": "preparacion_at", "listo": "listo_at", "entregado": "entregado_at"}
+
+
+def _aplicar_estado_comanda(conn, cid: int, estado: str):
+    """Setea estado + updated_at y, si corresponde, el timestamp de la transición
+    (sólo la primera vez que entra a ese estado, vía COALESCE)."""
+    now = _ar_now()
+    col = _ESTADO_TS_COL.get(estado)
+    if col:
+        conn.execute(
+            f"UPDATE comandas SET estado=?, updated_at=?, {col}=COALESCE({col}, ?) WHERE id=?",
+            (estado, now, now, cid),
+        )
+    else:
+        conn.execute(
+            "UPDATE comandas SET estado=?, updated_at=? WHERE id=?", (estado, now, cid)
+        )
+
+
 def set_comanda_estado(cid: int, estado: str) -> bool:
     if estado not in COMANDA_ESTADOS:
         return False
     with get_connection() as conn:
-        conn.execute(
-            "UPDATE comandas SET estado=?, updated_at=? WHERE id=?", (estado, _ar_now(), cid)
-        )
+        _aplicar_estado_comanda(conn, cid, estado)
     return True
 
 
@@ -3878,9 +3904,7 @@ def avanzar_comanda(cid: int) -> str | None:
         nuevo = _COMANDA_NEXT.get(row["estado"])
         if not nuevo:
             return row["estado"]
-        conn.execute(
-            "UPDATE comandas SET estado=?, updated_at=? WHERE id=?", (nuevo, _ar_now(), cid)
-        )
+        _aplicar_estado_comanda(conn, cid, nuevo)
     return nuevo
 
 
@@ -3965,3 +3989,60 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
         if pedido.get("mesa_id"):
             conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
     return venta_id
+
+
+# ── Reportes gastronómicos + tiempos ─────────────────────────────────────────
+
+def minutos_desde(ts: str) -> int:
+    """Minutos transcurridos (en hora AR) desde un timestamp 'YYYY-MM-DD HH:MM:SS'."""
+    if not ts:
+        return 0
+    try:
+        t = _datetime.strptime(str(ts)[:19], "%Y-%m-%d %H:%M:%S")
+        now = _datetime.strptime(_ar_now(), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return 0
+    return max(0, int((now - t).total_seconds() // 60))
+
+
+def reporte_gastronomia(desde: str, hasta: str) -> dict:
+    """Métricas del módulo restaurant en [desde, hasta] (fechas 'YYYY-MM-DD'):
+    - Ventas por canal (pedidos cobrados): cantidad, total, ticket promedio.
+    - Tiempos de comanda por estación (minutos): espera, preparación y total, sobre las
+      comandas que llegaron a 'listo' en el período."""
+    ini, fin = desde + " 00:00:00", hasta + " 23:59:59"
+    with get_connection() as conn:
+        canales = [dict(r) for r in conn.execute(
+            """SELECT p.canal AS canal, COUNT(*) AS n,
+                      COALESCE(SUM(v.total), 0) AS total
+               FROM pedidos p JOIN ventas v ON v.id = p.venta_id
+               WHERE p.estado = 'cobrado' AND v.fecha >= ? AND v.fecha <= ?
+               GROUP BY p.canal
+               ORDER BY total DESC""",
+            (desde, hasta),
+        ).fetchall()]
+        for c in canales:
+            c["ticket"] = round(c["total"] / c["n"], 2) if c["n"] else 0.0
+
+        tiempos = [dict(r) for r in conn.execute(
+            """SELECT estacion,
+                      COUNT(*) AS n,
+                      AVG((julianday(preparacion_at) - julianday(created_at)) * 1440) AS espera_min,
+                      AVG((julianday(listo_at)       - julianday(preparacion_at)) * 1440) AS prep_min,
+                      AVG((julianday(listo_at)       - julianday(created_at)) * 1440) AS total_min
+               FROM comandas
+               WHERE listo_at IS NOT NULL AND created_at >= ? AND created_at <= ?
+               GROUP BY estacion
+               ORDER BY estacion""",
+            (ini, fin),
+        ).fetchall()]
+        for t in tiempos:
+            for k in ("espera_min", "prep_min", "total_min"):
+                t[k] = round(t[k], 1) if t[k] is not None else None
+    return {
+        "desde": desde, "hasta": hasta,
+        "canales": canales,
+        "total_n": sum(c["n"] for c in canales),
+        "total_total": round(sum(c["total"] for c in canales), 2),
+        "tiempos": tiempos,
+    }

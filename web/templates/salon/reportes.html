@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Reportes de salón — Restolibra{% endblock %}
+
+{% set canal_label = {'salon': 'Salón', 'barra': 'Barra', 'takeaway': 'Takeaway', 'delivery': 'Delivery'} %}
+{% set canal_icon = {'salon': 'bi-shop', 'barra': 'bi-cup-straw', 'takeaway': 'bi-bag', 'delivery': 'bi-scooter'} %}
+
+{% block content %}
+<div class="page-header">
+  <h1><i class="bi bi-graph-up me-2 text-primary"></i>Reportes de salón</h1>
+  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Salón</a>
+</div>
+
+<form method="get" action="/salon/reportes" class="row g-2 align-items-end mb-3">
+  <div class="col-auto">
+    <label class="form-label small mb-0">Desde</label>
+    <input type="date" name="desde" value="{{ rep.desde }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-auto">
+    <label class="form-label small mb-0">Hasta</label>
+    <input type="date" name="hasta" value="{{ rep.hasta }}" class="form-control form-control-sm">
+  </div>
+  <div class="col-auto">
+    <button class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button>
+  </div>
+</form>
+
+<div class="row g-3">
+  <!-- Ventas por canal -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-pie-chart me-1"></i>Ventas por canal</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-middle">
+          <thead>
+            <tr><th>Canal</th><th class="text-end">Pedidos</th><th class="text-end">Total</th><th class="text-end">Ticket prom.</th></tr>
+          </thead>
+          <tbody>
+            {% for c in rep.canales %}
+            <tr>
+              <td><i class="bi {{ canal_icon.get(c.canal, 'bi-dot') }} me-1"></i>{{ canal_label.get(c.canal, c.canal) }}</td>
+              <td class="text-end">{{ c.n }}</td>
+              <td class="text-end">${{ c.total|moneda }}</td>
+              <td class="text-end">${{ c.ticket|moneda }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center text-muted py-3">Sin ventas en el período.</td></tr>
+            {% endfor %}
+          </tbody>
+          {% if rep.canales %}
+          <tfoot>
+            <tr class="fw-bold border-top">
+              <td>Total</td><td class="text-end">{{ rep.total_n }}</td>
+              <td class="text-end">${{ rep.total_total|moneda }}</td><td></td>
+            </tr>
+          </tfoot>
+          {% endif %}
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tiempos de comanda -->
+  <div class="col-lg-5">
+    <div class="card">
+      <div class="card-header"><i class="bi bi-stopwatch me-1"></i>Tiempos de comanda (min)</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0 align-middle">
+          <thead>
+            <tr><th>Estación</th><th class="text-end">Comandas</th><th class="text-end">Espera</th><th class="text-end">Prep.</th><th class="text-end">Total</th></tr>
+          </thead>
+          <tbody>
+            {% for t in rep.tiempos %}
+            <tr>
+              <td class="text-capitalize">{{ t.estacion }}</td>
+              <td class="text-end">{{ t.n }}</td>
+              <td class="text-end">{{ '%.1f'|format(t.espera_min) if t.espera_min is not none else '—' }}</td>
+              <td class="text-end">{{ '%.1f'|format(t.prep_min) if t.prep_min is not none else '—' }}</td>
+              <td class="text-end fw-semibold">{{ '%.1f'|format(t.total_min) if t.total_min is not none else '—' }}</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" class="text-center text-muted py-3">Sin comandas terminadas en el período.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer small text-muted">
+        Espera: creación → preparación · Prep.: preparación → listo · Total: creación → listo.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

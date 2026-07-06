@@ -3,6 +3,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from typing import Annotated
+from datetime import date
 from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -232,3 +233,18 @@ async def salon_config_mesa(request: Request, user: Auth):
             capacidad = 4
         db.create_mesa(int(salon_id), nombre, capacidad)
     return RedirectResponse("/salon/config", status_code=303)
+
+
+# ── Reportes gastronómicos ───────────────────────────────────────────────────
+
+@router.get("/salon/reportes")
+def salon_reportes(request: Request, user: Auth, desde: str = "", hasta: str = ""):
+    hoy = date.today()
+    if not hasta:
+        hasta = hoy.isoformat()
+    if not desde:
+        desde = hoy.replace(day=1).isoformat()
+    rep = db.reporte_gastronomia(desde, hasta)
+    return templates.TemplateResponse(request, "salon/reportes.html", {
+        "active": "salon_reportes", "rep": rep,
+    })
