@@ -192,7 +192,7 @@ async def factura_borrador_pdf(request: Request, user: Auth):
 
 
 @router.get("/facturas/nueva")
-def factura_nueva_get(request: Request, user: Auth, from_presupuesto: int = 0, from_factura: int = 0):
+def factura_nueva_get(request: Request, user: Auth, from_presupuesto: int = 0, from_factura: int = 0, from_venta: int = 0):
     tipos = _tipos_emisor()
     es_monotributista = len(tipos) == 1 and tipos[0]["value"] == 11
     prefill = None
@@ -238,6 +238,35 @@ def factura_nueva_get(request: Request, user: Auth, from_presupuesto: int = 0, f
                 "fch_serv_desde":  orig.get("fch_serv_desde", ""),
                 "fch_serv_hasta":  orig.get("fch_serv_hasta", ""),
                 "fch_vto_pago":    orig.get("fch_vto_pago", ""),
+            }
+    elif from_venta:
+        v = db.get_venta(from_venta)
+        if v:
+            client_iva = client_cuit = client_address = ""
+            client_id = v.get("cliente_id") or ""
+            if client_id:
+                c = db.get_client(client_id)
+                if c:
+                    client_iva     = c.get("iva_condition", "")
+                    client_cuit    = c.get("cuit_dni", "")
+                    client_address = c.get("address", "")
+            # Los ítems de venta usan nombre/precio; el form de factura espera
+            # description/qty/unit_price (ver extract_items_from_form).
+            items = [
+                {"description": it.get("nombre", ""),
+                 "qty":         it.get("qty", 1),
+                 "unit_price":  it.get("precio", 0)}
+                for it in (v.get("items") or [])
+            ]
+            prefill = {
+                "client_id":      client_id,
+                "client_name":    v.get("cliente_nombre", "") or "",
+                "client_cuit":    client_cuit,
+                "client_address": client_address,
+                "client_iva":     client_iva,
+                "concepto":       1,
+                "observations":   v.get("observaciones", ""),
+                "items":          items,
             }
     return templates.TemplateResponse(request, "facturas/form.html", {
         "clientes":            db.get_all_clients(),
