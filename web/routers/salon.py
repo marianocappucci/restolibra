@@ -41,7 +41,7 @@ def _aplicar_cargos_automaticos(pedido_id: int, comensales: int):
     if str(cfg.get("panera_activo", "0")).strip() in ("1", "true", "True"):
         p = _cfg_precio(cfg, "panera_precio")
         if p > 0:
-            db.add_pedido_item(pedido_id, "Panera", n, p, estacion="")
+            db.add_pedido_item(pedido_id, "Panera", 1, p, estacion="")   # 1 por mesa
 
 
 # ── Mapa de mesas ────────────────────────────────────────────────────────────
