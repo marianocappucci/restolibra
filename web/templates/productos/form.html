@@ -31,8 +31,8 @@
           <label class="form-label fw-semibold">Código</label>
           <input type="text" name="codigo" class="form-control"
                  value="{{ producto.codigo if producto and producto.codigo else '' }}"
-                 placeholder="Ej: EMP-001">
-          <div class="form-text">Opcional. Debe ser único.</div>
+                 placeholder="Se genera solo (ej: BEB-0001)">
+          <div class="form-text">Dejalo vacío para autogenerarlo según la categoría. Debe ser único.</div>
         </div>
         <div class="col-md-5">
           <label class="form-label fw-semibold">Categoría</label>

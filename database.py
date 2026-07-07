@@ -1997,6 +1997,25 @@ def create_producto(nombre: str, codigo: str = "", descripcion: str = "",
         return cur.lastrowid
 
 
+def generar_codigo_producto(categoria: str = "") -> str:
+    """Genera un código único para un producto: prefijo según la categoría
+    (3 primeras letras/dígitos en mayúscula, o 'PRD' si no hay) + secuencia
+    correlativa dentro de ese prefijo. Ej.: categoría 'Bebidas' -> 'BEB-0001'."""
+    import re
+    base = re.sub(r"[^A-Za-z0-9]", "", (categoria or ""))[:3].upper() or "PRD"
+    pat = re.compile(r"^" + re.escape(base) + r"-(\d+)$")
+    with get_connection() as conn:
+        rows = conn.execute(
+            "SELECT codigo FROM productos WHERE codigo LIKE ?", (base + "-%",)
+        ).fetchall()
+    maxn = 0
+    for r in rows:
+        m = pat.match(r["codigo"] or "")
+        if m:
+            maxn = max(maxn, int(m.group(1)))
+    return f"{base}-{maxn + 1:04d}"
+
+
 def get_all_productos(solo_activos: bool = False, q: str = "") -> list[dict]:
     with get_connection() as conn:
         where = []

@@ -30,6 +30,10 @@
           <td>
             {% if u.role == 'admin' %}
               <span class="badge bg-primary">Admin</span>
+            {% elif u.role == 'mozo' %}
+              <span class="badge bg-info">Mozo</span>
+            {% elif u.role == 'cajero' %}
+              <span class="badge bg-success">Cajero</span>
             {% else %}
               <span class="badge bg-secondary">Operador</span>
             {% endif %}

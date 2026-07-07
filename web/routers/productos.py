@@ -57,10 +57,14 @@ async def producto_nuevo_post(request: Request, user: Auth):
             "active": "productos", "unidades": UNIDADES,
             "categorias": db.get_categorias_producto(),
         }, status_code=422)
+    codigo = str(form.get("codigo", "")).strip()
+    categoria = str(form.get("categoria", "")).strip()
+    if not codigo:
+        codigo = db.generar_codigo_producto(categoria)
     try:
         db.create_producto(
             nombre=nombre,
-            codigo=str(form.get("codigo", "")).strip(),
+            codigo=codigo,
             descripcion=str(form.get("descripcion", "")).strip(),
             precio_venta=float(form.get("precio_venta") or 0),
             precio_costo=float(form.get("precio_costo") or 0),
