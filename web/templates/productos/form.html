@@ -122,6 +122,21 @@
         </div>
         {% endif %}
 
+        <!-- Vendible -->
+        <div class="col-12">
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="vendible" name="vendible"
+                   {% if not producto or producto.vendible %}checked{% endif %}>
+            <label class="form-check-label" for="vendible">Vendible</label>
+          </div>
+          <div class="form-text">
+            Si lo desactivás, este producto es un <strong>insumo</strong>: no aparece en el
+            menú del mozo ni en el punto de venta, pero sí en el selector de ingredientes de
+            recetas y en stock. Podés dejarlo marcado si el mismo producto se vende suelto y
+            también entra como ingrediente de otro plato (ej. una bebida embotellada).
+          </div>
+        </div>
+
         <!-- Estado (solo en edición) -->
         {% if producto %}
         <div class="col-12">
@@ -138,6 +153,11 @@
         <button type="submit" class="btn btn-primary">
           <i class="bi bi-check-lg me-1"></i>{{ 'Guardar cambios' if producto else 'Crear producto' }}
         </button>
+        {% if producto %}
+        <a href="/productos/{{ producto.id }}/receta" class="btn btn-outline-primary">
+          <i class="bi bi-clipboard-data me-1"></i>Receta / insumos
+        </a>
+        {% endif %}
         <a href="/productos" class="btn btn-outline-secondary">Cancelar</a>
       </div>
     </form>

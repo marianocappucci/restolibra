@@ -97,7 +97,7 @@ def salon_pedido(request: Request, pid: int, user: Auth, q: str = ""):
     pedido = db.get_pedido(pid)
     if not pedido:
         raise HTTPException(404)
-    productos = db.get_all_productos(solo_activos=True, q=q)
+    productos = db.get_all_productos(solo_activos=True, solo_vendibles=True, q=q)
     hay_nuevos = any(it["estado"] == "nuevo" for it in pedido["items"])
     return templates.TemplateResponse(request, "salon/pedido.html", {
         "active": "salon", "pedido": pedido, "productos": productos, "q": q,

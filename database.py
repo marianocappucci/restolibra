@@ -199,6 +199,26 @@ def init_db():
                 created_at   TEXT DEFAULT (datetime('now'))
             );
 
+            CREATE TABLE IF NOT EXISTS recetas (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                producto_id     INTEGER NOT NULL UNIQUE REFERENCES productos(id) ON DELETE CASCADE,
+                rinde           REAL NOT NULL DEFAULT 1,
+                rinde_unidad    TEXT NOT NULL DEFAULT 'u',
+                rendimiento_pct REAL NOT NULL DEFAULT 100,
+                activo          INTEGER NOT NULL DEFAULT 1,
+                notas           TEXT DEFAULT '',
+                created_at      TEXT DEFAULT (datetime('now')),
+                updated_at      TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS receta_items (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                receta_id      INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
+                ingrediente_id INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                cantidad       REAL NOT NULL DEFAULT 0,
+                created_at     TEXT DEFAULT (datetime('now'))
+            );
+
             CREATE TABLE IF NOT EXISTS depositos (
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 nombre      TEXT NOT NULL,
@@ -424,6 +444,8 @@ def init_db():
             conn.execute("ALTER TABLE productos ADD COLUMN stock_minimo REAL NOT NULL DEFAULT 0")
         if "estacion" not in prod_cols:
             conn.execute("ALTER TABLE productos ADD COLUMN estacion TEXT DEFAULT ''")
+        if "vendible" not in prod_cols:
+            conn.execute("ALTER TABLE productos ADD COLUMN vendible INTEGER NOT NULL DEFAULT 1")
         ped_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
         if ped_cols and "hora_retiro" not in ped_cols:
             conn.execute("ALTER TABLE pedidos ADD COLUMN hora_retiro TEXT DEFAULT ''")
@@ -1984,15 +2006,16 @@ def delete_categoria_producto(cid: int):
 def create_producto(nombre: str, codigo: str = "", descripcion: str = "",
                     precio_venta: float = 0, precio_costo: float = 0,
                     unidad: str = "u", categoria: str = "",
-                    stock_minimo: float = 0, estacion: str = "") -> int:
+                    stock_minimo: float = 0, estacion: str = "",
+                    vendible: int = 1) -> int:
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO productos
                (codigo, nombre, descripcion, precio_venta, precio_costo,
-                unidad, categoria, stock_minimo, estacion)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
+                unidad, categoria, stock_minimo, estacion, vendible)
+               VALUES (?,?,?,?,?,?,?,?,?,?)""",
             (codigo or None, nombre, descripcion, precio_venta, precio_costo,
-             unidad, categoria, stock_minimo, estacion or ""),
+             unidad, categoria, stock_minimo, estacion or "", vendible),
         )
         return cur.lastrowid
 
@@ -2016,12 +2039,15 @@ def generar_codigo_producto(categoria: str = "") -> str:
     return f"{base}-{maxn + 1:04d}"
 
 
-def get_all_productos(solo_activos: bool = False, q: str = "") -> list[dict]:
+def get_all_productos(solo_activos: bool = False, q: str = "",
+                      solo_vendibles: bool = False) -> list[dict]:
     with get_connection() as conn:
         where = []
         params = []
         if solo_activos:
             where.append("activo=1")
+        if solo_vendibles:
+            where.append("vendible=1")
         if q:
             where.append("(nombre LIKE ? OR codigo LIKE ? OR categoria LIKE ?)")
             params += [f"%{q}%", f"%{q}%", f"%{q}%"]
@@ -2049,21 +2075,107 @@ def get_producto_by_codigo(codigo: str) -> dict | None:
 def update_producto(pid: int, nombre: str, codigo: str, descripcion: str,
                     precio_venta: float, precio_costo: float,
                     unidad: str, categoria: str, activo: int,
-                    stock_minimo: float = 0, estacion: str = ""):
+                    stock_minimo: float = 0, estacion: str = "",
+                    vendible: int = 1):
     with get_connection() as conn:
         conn.execute(
             """UPDATE productos SET nombre=?, codigo=?, descripcion=?,
                precio_venta=?, precio_costo=?, unidad=?, categoria=?,
-               activo=?, stock_minimo=?, estacion=?
+               activo=?, stock_minimo=?, estacion=?, vendible=?
                WHERE id=?""",
             (nombre, codigo or None, descripcion, precio_venta, precio_costo,
-             unidad, categoria, activo, stock_minimo, estacion or "", pid),
+             unidad, categoria, activo, stock_minimo, estacion or "", vendible, pid),
         )
 
 
 def delete_producto(pid: int):
     with get_connection() as conn:
         conn.execute("DELETE FROM productos WHERE id=?", (pid,))
+
+
+# ── Recetas / fichas técnicas ─────────────────────────────────────────────────
+
+def get_receta(producto_id: int) -> dict | None:
+    """Receta de un producto con sus ítems (ingrediente + cantidad + costo unitario)."""
+    with get_connection() as conn:
+        receta = conn.execute(
+            "SELECT * FROM recetas WHERE producto_id=?", (producto_id,)
+        ).fetchone()
+        if not receta:
+            return None
+        items = conn.execute(
+            """SELECT ri.id, ri.ingrediente_id, ri.cantidad,
+                      p.nombre AS ingrediente_nombre, p.unidad AS ingrediente_unidad,
+                      p.precio_costo AS ingrediente_precio_costo
+               FROM receta_items ri
+               JOIN productos p ON p.id = ri.ingrediente_id
+               WHERE ri.receta_id=?
+               ORDER BY p.nombre""",
+            (receta["id"],),
+        ).fetchall()
+    data = dict(receta)
+    data["items"] = [dict(r) for r in items]
+    return data
+
+
+def guardar_receta(producto_id: int, items: list[dict], notas: str = "") -> int:
+    """Crea o reemplaza la receta de un producto. `items` es una lista de
+    {"ingrediente_id": int, "cantidad": float}. Reemplaza todos los ítems
+    existentes (delete + insert) dentro de la misma transacción."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT id FROM recetas WHERE producto_id=?", (producto_id,)
+        ).fetchone()
+        if row:
+            receta_id = row["id"]
+            conn.execute(
+                "UPDATE recetas SET notas=?, updated_at=? WHERE id=?",
+                (notas, _ar_now(), receta_id),
+            )
+            conn.execute("DELETE FROM receta_items WHERE receta_id=?", (receta_id,))
+        else:
+            cur = conn.execute(
+                "INSERT INTO recetas (producto_id, notas) VALUES (?,?)",
+                (producto_id, notas),
+            )
+            receta_id = cur.lastrowid
+        for it in items:
+            cantidad = float(it.get("cantidad") or 0)
+            ingrediente_id = int(it["ingrediente_id"])
+            if ingrediente_id == producto_id or cantidad <= 0:
+                continue
+            conn.execute(
+                "INSERT INTO receta_items (receta_id, ingrediente_id, cantidad) VALUES (?,?,?)",
+                (receta_id, ingrediente_id, cantidad),
+            )
+        return receta_id
+
+
+def eliminar_receta(producto_id: int):
+    with get_connection() as conn:
+        conn.execute("DELETE FROM recetas WHERE producto_id=?", (producto_id,))
+
+
+def costo_receta(producto_id: int) -> float:
+    """Costo total de la receta de un producto (0 si no tiene receta o está vacía)."""
+    receta = get_receta(producto_id)
+    if not receta or not receta["items"]:
+        return 0.0
+    total = sum(
+        it["cantidad"] * it["ingrediente_precio_costo"] for it in receta["items"]
+    )
+    rendimiento = receta["rendimiento_pct"] or 100
+    rinde = receta["rinde"] or 1
+    return (total / (rendimiento / 100)) / rinde
+
+
+def food_cost_pct(producto_id: int, precio_venta: float, costo: float | None = None) -> float | None:
+    """Food cost % = costo de la receta / precio de venta. None si no hay precio de venta."""
+    if not precio_venta:
+        return None
+    if costo is None:
+        costo = costo_receta(producto_id)
+    return costo / precio_venta * 100
 
 
 # ── Turnos de caja ────────────────────────────────────────────────────────────
@@ -2260,17 +2372,35 @@ def ajustar_stock(producto_id: int, stock_nuevo: float, referencia: str,
 
 def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
                            usuario_id: int | None = None):
-    """Descuenta stock por cada ítem de la venta que tenga producto_id."""
+    """Descuenta stock por cada ítem de la venta que tenga producto_id.
+
+    Si el producto tiene una receta activa, descuenta cada insumo de la
+    receta (cantidad × cantidad vendida) en vez del propio producto — no es
+    recursivo, los elaborados se stockean aparte por "producción" (Fase 2).
+    Si no tiene receta, se mantiene el comportamiento anterior (descuenta el
+    propio producto — sirve para reventa, ej. bebidas embotelladas).
+    """
     for item in items:
         pid = item.get("producto_id")
         if not pid:
             continue
-        add_movimiento_stock(
-            producto_id=pid, tipo="venta",
-            cantidad=-abs(float(item.get("qty", 0))),
-            referencia=f"Venta ID {venta_id}",
-            venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
-        )
+        qty = abs(float(item.get("qty", 0)))
+        receta = get_receta(pid)
+        if receta and receta["items"]:
+            for ri in receta["items"]:
+                add_movimiento_stock(
+                    producto_id=ri["ingrediente_id"], tipo="venta",
+                    cantidad=-(ri["cantidad"] * qty),
+                    referencia=f"Venta ID {venta_id} (receta)",
+                    venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
+                )
+        else:
+            add_movimiento_stock(
+                producto_id=pid, tipo="venta",
+                cantidad=-qty,
+                referencia=f"Venta ID {venta_id}",
+                venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
+            )
 
 
 # ── Ventas ────────────────────────────────────────────────────────────────────

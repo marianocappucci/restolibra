@@ -36,7 +36,10 @@
           {% for p in productos %}
           <tr {% if not p.activo %}class="table-secondary"{% endif %}>
             <td class="text-muted small">{{ p.codigo or '—' }}</td>
-            <td class="fw-semibold">{{ p.nombre }}</td>
+            <td class="fw-semibold">
+              {{ p.nombre }}
+              {% if not p.vendible %}<span class="badge bg-secondary ms-1">Insumo</span>{% endif %}
+            </td>
             <td><span class="text-muted small">{{ p.categoria or '—' }}</span></td>
             <td class="text-muted small">{{ p.unidad }}</td>
             <td class="text-end">$ {{ p.precio_venta|moneda }}</td>
@@ -49,6 +52,9 @@
               {% endif %}
             </td>
             <td class="text-end">
+              <a href="/productos/{{ p.id }}/receta" class="btn btn-sm btn-outline-secondary" title="Receta / insumos">
+                <i class="bi bi-clipboard-data"></i>
+              </a>
               <a href="/productos/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-pencil"></i>
               </a>
