@@ -3635,6 +3635,31 @@ def set_mesa_estado(mid: int, estado: str):
         conn.execute("UPDATE mesas SET estado=? WHERE id=?", (estado, mid))
 
 
+def delete_mesa(mid: int) -> bool:
+    """Elimina una mesa. Bloquea si tiene un pedido abierto (no dejar pedidos huérfanos)."""
+    with get_connection() as conn:
+        c = conn.execute(
+            "SELECT COUNT(*) AS c FROM pedidos WHERE mesa_id=? AND estado='abierto'", (mid,)
+        ).fetchone()["c"]
+        if c:
+            return False
+        conn.execute("DELETE FROM mesas WHERE id=?", (mid,))
+    return True
+
+
+def delete_salon(sid: int) -> bool:
+    """Elimina un salón y sus mesas (cascade). Bloquea si alguna mesa tiene pedido abierto."""
+    with get_connection() as conn:
+        c = conn.execute(
+            """SELECT COUNT(*) AS c FROM pedidos p JOIN mesas m ON m.id = p.mesa_id
+               WHERE m.salon_id=? AND p.estado='abierto'""", (sid,)
+        ).fetchone()["c"]
+        if c:
+            return False
+        conn.execute("DELETE FROM salones WHERE id=?", (sid,))
+    return True
+
+
 # ── Pedidos ─────────────────────────────────────────────────────────────────
 
 def get_next_pedido_numero() -> str:

@@ -200,11 +200,12 @@ async def salon_cobrar_post(request: Request, pid: int, user: Auth):
 # ── Configuración de salón (salones / mesas) ─────────────────────────────────
 
 @router.get("/salon/config")
-def salon_config(request: Request, user: Auth):
+def salon_config(request: Request, user: Auth, msg: str = ""):
     salones = db.get_salones(solo_activos=False)
     mesas_por_salon = {s["id"]: db.get_mesas(salon_id=s["id"], solo_activas=False) for s in salones}
     return templates.TemplateResponse(request, "salon/config.html", {
         "active": "salon_config", "salones": salones, "mesas_por_salon": mesas_por_salon,
+        "msg": msg,
     })
 
 
@@ -233,6 +234,46 @@ async def salon_config_mesa(request: Request, user: Auth):
             capacidad = 4
         db.create_mesa(int(salon_id), nombre, capacidad)
     return RedirectResponse("/salon/config", status_code=303)
+
+
+@router.post("/salon/config/salon/{sid}/editar")
+async def salon_config_salon_editar(request: Request, sid: int, user: Auth):
+    form = await request.form()
+    nombre = str(form.get("nombre", "")).strip()
+    if nombre:
+        try:
+            orden = int(form.get("orden") or 0)
+        except ValueError:
+            orden = 0
+        db.update_salon(sid, nombre, orden, 1 if form.get("activo") else 0)
+    return RedirectResponse("/salon/config", status_code=303)
+
+
+@router.post("/salon/config/salon/{sid}/eliminar")
+def salon_config_salon_eliminar(sid: int, user: Auth):
+    ok = db.delete_salon(sid)
+    msg = "" if ok else "No se puede eliminar el salón: tiene una mesa con un pedido abierto."
+    return RedirectResponse(f"/salon/config?msg={msg}", status_code=303)
+
+
+@router.post("/salon/config/mesa/{mid}/editar")
+async def salon_config_mesa_editar(request: Request, mid: int, user: Auth):
+    form = await request.form()
+    nombre = str(form.get("nombre", "")).strip()
+    if nombre:
+        try:
+            capacidad = int(form.get("capacidad") or 4)
+        except ValueError:
+            capacidad = 4
+        db.update_mesa(mid, nombre, capacidad, 0, 1 if form.get("activo") else 0)
+    return RedirectResponse("/salon/config", status_code=303)
+
+
+@router.post("/salon/config/mesa/{mid}/eliminar")
+def salon_config_mesa_eliminar(mid: int, user: Auth):
+    ok = db.delete_mesa(mid)
+    msg = "" if ok else "No se puede eliminar la mesa: tiene un pedido abierto."
+    return RedirectResponse(f"/salon/config?msg={msg}", status_code=303)
 
 
 # ── Reportes gastronómicos ───────────────────────────────────────────────────

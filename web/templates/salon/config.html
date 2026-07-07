@@ -7,6 +7,8 @@
   <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Ir al salón</a>
 </div>
 
+{% if msg %}<div class="alert alert-warning py-2">{{ msg }}</div>{% endif %}
+
 <div class="row g-3">
   <div class="col-md-4">
     <div class="card">
@@ -24,27 +26,65 @@
   <div class="col-md-8">
     {% for s in salones %}
     <div class="card mb-3">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-columns-gap me-1"></i>{{ s.nombre }}
-          {% if not s.activo %}<span class="badge bg-secondary">inactivo</span>{% endif %}
-        </span>
+      <div class="card-header">
+        <form method="post" action="/salon/config/salon/{{ s.id }}/editar" class="row g-2 align-items-center">
+          <div class="col-auto"><i class="bi bi-columns-gap"></i></div>
+          <div class="col"><input name="nombre" value="{{ s.nombre }}" class="form-control form-control-sm" required></div>
+          <div class="col-auto">
+            <div class="form-check mb-0">
+              <input class="form-check-input" type="checkbox" name="activo" id="sal-act-{{ s.id }}" {% if s.activo %}checked{% endif %}>
+              <label class="form-check-label small" for="sal-act-{{ s.id }}">Activo</label>
+            </div>
+          </div>
+          <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Guardar</button></div>
+        </form>
       </div>
       <div class="card-body">
-        <div class="d-flex flex-wrap gap-2 mb-3">
-          {% for m in mesas_por_salon[s.id] %}
-          <span class="badge bg-light text-dark border">
-            {{ m.nombre }} · {{ m.capacidad }} cub.{% if not m.activo %} (inactiva){% endif %}
-          </span>
-          {% else %}
-          <span class="text-muted small">Sin mesas.</span>
-          {% endfor %}
+        <div class="small text-muted mb-1 d-flex gap-2">
+          <span style="flex:1 1 auto">Mesa</span>
+          <span style="width:6.5rem">Comensales</span>
+          <span style="width:3rem" class="text-center">Activa</span>
+          <span style="width:5rem"></span>
         </div>
-        <form method="post" action="/salon/config/mesa" class="row g-2">
+
+        {% for m in mesas_por_salon[s.id] %}
+        <div class="d-flex gap-2 align-items-center mb-2">
+          <form method="post" action="/salon/config/mesa/{{ m.id }}/editar" class="d-flex gap-2 align-items-center flex-grow-1">
+            <input name="nombre" value="{{ m.nombre }}" class="form-control form-control-sm" style="flex:1 1 auto" required>
+            <input name="capacidad" type="number" min="1" value="{{ m.capacidad }}" class="form-control form-control-sm" style="width:6.5rem">
+            <div style="width:3rem" class="text-center">
+              <input class="form-check-input" type="checkbox" name="activo" {% if m.activo %}checked{% endif %}>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" title="Guardar cambios"><i class="bi bi-check-lg"></i></button>
+          </form>
+          <form method="post" action="/salon/config/mesa/{{ m.id }}/eliminar"
+                onsubmit="return confirm('¿Eliminar la mesa {{ m.nombre }}?')">
+            <button class="btn btn-sm btn-outline-danger" title="Eliminar mesa"><i class="bi bi-trash"></i></button>
+          </form>
+        </div>
+        {% else %}
+        <p class="text-muted small">Sin mesas.</p>
+        {% endfor %}
+
+        <form method="post" action="/salon/config/mesa" class="row g-2 align-items-end mt-3 border-top pt-3">
           <input type="hidden" name="salon_id" value="{{ s.id }}">
-          <div class="col-5"><input name="nombre" class="form-control form-control-sm" placeholder="Mesa (ej: 1)" required></div>
-          <div class="col-4"><input name="capacidad" type="number" class="form-control form-control-sm" placeholder="Cubiertos" value="4"></div>
+          <div class="col-5">
+            <label class="form-label small mb-0">Nueva mesa</label>
+            <input name="nombre" class="form-control form-control-sm" placeholder="Ej: 1" required>
+          </div>
+          <div class="col-4">
+            <label class="form-label small mb-0">Comensales</label>
+            <input name="capacidad" type="number" min="1" class="form-control form-control-sm" value="4">
+          </div>
           <div class="col-3"><button class="btn btn-sm btn-outline-primary w-100">+ Mesa</button></div>
         </form>
+
+        <div class="text-end mt-3">
+          <form method="post" action="/salon/config/salon/{{ s.id }}/eliminar" class="d-inline"
+                onsubmit="return confirm('¿Eliminar el salón {{ s.nombre }} y todas sus mesas?')">
+            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash me-1"></i>Eliminar salón</button>
+          </form>
+        </div>
       </div>
     </div>
     {% else %}
