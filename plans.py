@@ -18,10 +18,17 @@ PLAN_LABELS = {
 }
 
 # Precio mensual de referencia (informativo, para mostrar en el backoffice).
+# Repricing 2026-07-08: calibrado contra los 10 sistemas de gestión gastronómica
+# más visibles en Argentina (Ganapán, Fudo, Maxirest, Bistrosoft, HivePOS, CajaOS,
+# Tango Restô, NexoSmart, Núcleo IT, POS Restaurantes). Ver wiki/analyses en el
+# LLM Wiki del usuario para el detalle del benchmark. Básico bajó levemente para
+# competir con las entradas "todo incluido" (Ganapán/HivePOS); Estándar y Premium
+# subieron porque estaban por debajo de lo que el mercado paga por ese nivel de
+# funcionalidad (facturación real + recetas/food cost, que la mayoría no ofrece).
 PLAN_PRECIOS = {
-    "basico":   29000,
-    "estandar": 59000,
-    "premium":  89000,
+    "basico":   27000,
+    "estandar": 69000,
+    "premium":  109000,
 }
 
 # Módulos base del plan Básico.
