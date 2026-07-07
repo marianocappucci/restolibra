@@ -99,9 +99,14 @@ def salon_pedido(request: Request, pid: int, user: Auth, q: str = ""):
         raise HTTPException(404)
     productos = db.get_all_productos(solo_activos=True, solo_vendibles=True, q=q)
     hay_nuevos = any(it["estado"] == "nuevo" for it in pedido["items"])
+    recetas_por_producto = {}
+    for p in productos:
+        receta = db.get_receta(p["id"])
+        if receta and receta["ingredientes"]:
+            recetas_por_producto[p["id"]] = receta["ingredientes"]
     return templates.TemplateResponse(request, "salon/pedido.html", {
         "active": "salon", "pedido": pedido, "productos": productos, "q": q,
-        "hay_nuevos": hay_nuevos,
+        "hay_nuevos": hay_nuevos, "recetas_por_producto": recetas_por_producto,
     })
 
 
@@ -113,6 +118,7 @@ async def salon_pedido_add_item(request: Request, pid: int, user: Auth):
     form = await request.form()
     producto_id = form.get("producto_id")
     nota = str(form.get("nota", "")).strip()
+    modificadores = str(form.get("modificadores", "")).strip()
     try:
         qty = float(str(form.get("qty") or 1).replace(",", "."))
     except ValueError:
@@ -127,6 +133,7 @@ async def salon_pedido_add_item(request: Request, pid: int, user: Auth):
         db.add_pedido_item(
             pid, nombre=prod["nombre"], qty=qty, precio=float(prod["precio_venta"]),
             producto_id=prod["id"], estacion=prod.get("estacion") or "", nota=nota,
+            modificadores=modificadores,
         )
     else:
         nombre = str(form.get("nombre", "")).strip()

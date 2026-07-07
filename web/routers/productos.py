@@ -151,9 +151,11 @@ def producto_receta_get(request: Request, pid: int, user: Auth):
     receta = db.get_receta(pid)
     ingredientes = [p for p in db.get_all_productos(solo_activos=True) if p["id"] != pid]
     costo = db.costo_receta(pid)
+    stock_actual = db.get_stock_actual(pid)
     return templates.TemplateResponse(request, "productos/receta.html", {
         "producto": producto, "receta": receta, "ingredientes": ingredientes,
         "costo": costo, "food_cost_pct": db.food_cost_pct(pid, producto["precio_venta"], costo),
+        "stock_actual": stock_actual, "unidades": UNIDADES,
         "active": "productos",
     })
 
@@ -174,7 +176,19 @@ async def producto_receta_post(request: Request, pid: int, user: Auth):
             items.append({"ingrediente_id": int(iid), "cantidad": float(cant)})
         except ValueError:
             continue
-    db.guardar_receta(pid, items, notas=str(form.get("notas", "")).strip())
+    try:
+        rinde = float(str(form.get("rinde") or "1").replace(",", "."))
+    except ValueError:
+        rinde = 1.0
+    try:
+        rendimiento_pct = float(str(form.get("rendimiento_pct") or "100").replace(",", "."))
+    except ValueError:
+        rendimiento_pct = 100.0
+    db.guardar_receta(
+        pid, items, notas=str(form.get("notas", "")).strip(),
+        rinde=rinde or 1, rinde_unidad=str(form.get("rinde_unidad", "u")).strip() or "u",
+        rendimiento_pct=rendimiento_pct or 100,
+    )
     return RedirectResponse(f"/productos/{pid}/receta", status_code=303)
 
 
@@ -185,3 +199,34 @@ def producto_receta_eliminar(request: Request, pid: int, user: Auth):
         raise HTTPException(404)
     db.eliminar_receta(pid)
     return RedirectResponse(f"/productos/{pid}/receta", status_code=303)
+
+
+@router.post("/productos/{pid}/receta/producir")
+async def producto_receta_producir(request: Request, pid: int, user: Auth):
+    producto = db.get_producto(pid)
+    if not producto:
+        raise HTTPException(404)
+    form = await request.form()
+    try:
+        cantidad = float(str(form.get("cantidad_producir") or "0").replace(",", "."))
+    except ValueError:
+        cantidad = 0.0
+    if cantidad > 0:
+        usuario = db.get_usuario_by_username(user)
+        usuario_id = usuario["id"] if usuario else None
+        try:
+            db.producir_receta(pid, cantidad, usuario_id=usuario_id)
+        except ValueError:
+            pass
+    return RedirectResponse(f"/productos/{pid}/receta", status_code=303)
+
+
+@router.get("/productos/reportes-costos")
+def productos_reportes_costos(request: Request, user: Auth,
+                              desde: str = "", hasta: str = ""):
+    reporte = db.get_reporte_food_cost()
+    consumo = db.get_consumo_insumos(desde=desde, hasta=hasta)
+    return templates.TemplateResponse(request, "productos/reportes_costos.html", {
+        "reporte": reporte, "consumo": consumo, "desde": desde, "hasta": hasta,
+        "active": "reportes_costos",
+    })

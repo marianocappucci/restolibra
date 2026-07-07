@@ -453,6 +453,9 @@ def init_db():
         for _col in ("preparacion_at", "listo_at", "entregado_at"):
             if com_cols and _col not in com_cols:
                 conn.execute(f"ALTER TABLE comandas ADD COLUMN {_col} TEXT")
+        pi_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedido_items)").fetchall()]
+        if pi_cols and "modificadores" not in pi_cols:
+            conn.execute("ALTER TABLE pedido_items ADD COLUMN modificadores TEXT DEFAULT ''")
         ventas_cols = [r[1] for r in conn.execute("PRAGMA table_info(ventas)").fetchall()]
         if ventas_cols and "turno_id" not in ventas_cols:
             conn.execute("ALTER TABLE ventas ADD COLUMN turno_id INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL")
@@ -2120,10 +2123,19 @@ def get_receta(producto_id: int) -> dict | None:
     return data
 
 
-def guardar_receta(producto_id: int, items: list[dict], notas: str = "") -> int:
+def guardar_receta(producto_id: int, items: list[dict], notas: str = "",
+                   rinde: float = 1, rinde_unidad: str = "u",
+                   rendimiento_pct: float = 100) -> int:
     """Crea o reemplaza la receta de un producto. `items` es una lista de
     {"ingrediente_id": int, "cantidad": float}. Reemplaza todos los ítems
-    existentes (delete + insert) dentro de la misma transacción."""
+    existentes (delete + insert) dentro de la misma transacción.
+
+    `rinde`/`rinde_unidad`: cuánto produce un lote de esta receta (para
+    elaborados que se producen antes de venderse, ej. una salsa). `rendimiento_pct`:
+    merma de proceso (ej. pelar papas). Con los valores por defecto (1/u/100) la
+    receta es "plana": 1 lote = 1 unidad del producto, sin ajuste de costeo."""
+    rinde = rinde or 1
+    rendimiento_pct = rendimiento_pct or 100
     with get_connection() as conn:
         row = conn.execute(
             "SELECT id FROM recetas WHERE producto_id=?", (producto_id,)
@@ -2131,14 +2143,16 @@ def guardar_receta(producto_id: int, items: list[dict], notas: str = "") -> int:
         if row:
             receta_id = row["id"]
             conn.execute(
-                "UPDATE recetas SET notas=?, updated_at=? WHERE id=?",
-                (notas, _ar_now(), receta_id),
+                """UPDATE recetas SET notas=?, rinde=?, rinde_unidad=?,
+                   rendimiento_pct=?, updated_at=? WHERE id=?""",
+                (notas, rinde, rinde_unidad, rendimiento_pct, _ar_now(), receta_id),
             )
             conn.execute("DELETE FROM receta_items WHERE receta_id=?", (receta_id,))
         else:
             cur = conn.execute(
-                "INSERT INTO recetas (producto_id, notas) VALUES (?,?)",
-                (producto_id, notas),
+                """INSERT INTO recetas (producto_id, notas, rinde, rinde_unidad, rendimiento_pct)
+                   VALUES (?,?,?,?,?)""",
+                (producto_id, notas, rinde, rinde_unidad, rendimiento_pct),
             )
             receta_id = cur.lastrowid
         for it in items:
@@ -2156,6 +2170,35 @@ def guardar_receta(producto_id: int, items: list[dict], notas: str = "") -> int:
 def eliminar_receta(producto_id: int):
     with get_connection() as conn:
         conn.execute("DELETE FROM recetas WHERE producto_id=?", (producto_id,))
+
+
+def producir_receta(producto_id: int, cantidad_producida: float,
+                    usuario_id: int | None = None, fecha: str = "") -> None:
+    """Produce un lote de un elaborado: descuenta cada insumo de la receta
+    (ajustado por rendimiento y proporcional a `cantidad_producida / rinde`) y
+    suma esa cantidad al stock del producto elaborado. No es recursivo: si un
+    insumo tiene a su vez receta propia, no se "produce" automáticamente."""
+    if cantidad_producida <= 0:
+        raise ValueError("La cantidad a producir debe ser mayor a 0.")
+    receta = get_receta(producto_id)
+    if not receta or not receta["ingredientes"]:
+        raise ValueError("El producto no tiene una receta con ingredientes.")
+    rinde = receta["rinde"] or 1
+    rendimiento = receta["rendimiento_pct"] or 100
+    factor = (cantidad_producida / rinde) / (rendimiento / 100)
+    ref = f"Producción de {cantidad_producida:g} {receta['rinde_unidad']} (receta)"
+    for ri in receta["ingredientes"]:
+        add_movimiento_stock(
+            producto_id=ri["ingrediente_id"], tipo="produccion",
+            cantidad=-(ri["cantidad"] * factor),
+            referencia=ref, usuario_id=usuario_id, fecha=fecha,
+        )
+    add_movimiento_stock(
+        producto_id=producto_id, tipo="produccion",
+        cantidad=cantidad_producida,
+        referencia="Producción de lote (receta)",
+        usuario_id=usuario_id, fecha=fecha,
+    )
 
 
 def costo_receta(producto_id: int) -> float:
@@ -2178,6 +2221,50 @@ def food_cost_pct(producto_id: int, precio_venta: float, costo: float | None = N
     if costo is None:
         costo = costo_receta(producto_id)
     return costo / precio_venta * 100
+
+
+def get_reporte_food_cost() -> list[dict]:
+    """Food cost / margen de todos los productos vendibles con receta."""
+    productos = get_all_productos(solo_activos=True, solo_vendibles=True)
+    reporte = []
+    for p in productos:
+        receta = get_receta(p["id"])
+        if not receta or not receta["ingredientes"]:
+            continue
+        costo = costo_receta(p["id"])
+        pv = float(p["precio_venta"] or 0)
+        fc = food_cost_pct(p["id"], pv, costo)
+        reporte.append({
+            "id": p["id"], "nombre": p["nombre"], "categoria": p["categoria"],
+            "precio_venta": pv, "costo": costo,
+            "margen": pv - costo, "food_cost_pct": fc,
+        })
+    reporte.sort(key=lambda r: (r["food_cost_pct"] is None, -(r["food_cost_pct"] or 0)))
+    return reporte
+
+
+def get_consumo_insumos(desde: str = "", hasta: str = "") -> list[dict]:
+    """Consumo real de insumos (ventas + mermas, en negativo) por producto en un
+    rango de fechas, para comparar contra el consumo teórico de las recetas."""
+    where = ["m.tipo IN ('venta','merma')"]
+    params: list = []
+    if desde:
+        where.append("m.fecha >= ?"); params.append(desde)
+    if hasta:
+        where.append("m.fecha <= ?"); params.append(hasta)
+    sql = f"""
+        SELECT p.id, p.nombre, p.unidad,
+               SUM(CASE WHEN m.tipo='venta' THEN -m.cantidad ELSE 0 END) AS consumido_venta,
+               SUM(CASE WHEN m.tipo='merma' THEN -m.cantidad ELSE 0 END) AS consumido_merma
+        FROM movimientos_stock m
+        JOIN productos p ON p.id = m.producto_id
+        WHERE {' AND '.join(where)}
+        GROUP BY p.id
+        ORDER BY (consumido_venta + consumido_merma) DESC
+    """
+    with get_connection() as conn:
+        rows = conn.execute(sql, params).fetchall()
+    return [dict(r) for r in rows]
 
 
 # ── Turnos de caja ────────────────────────────────────────────────────────────
@@ -2381,6 +2468,10 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
     recursivo, los elaborados se stockean aparte por "producción" (Fase 2).
     Si no tiene receta, se mantiene el comportamiento anterior (descuenta el
     propio producto — sirve para reventa, ej. bebidas embotelladas).
+
+    Si el ítem trae `modificadores` (JSON de `add_pedido_item`, Fase 3), se
+    ajusta la cantidad de cada insumo: "quitar" -> no se descuenta, "doble"
+    -> se descuenta el doble. Sin modificadores, receta normal.
     """
     for item in items:
         pid = item.get("producto_id")
@@ -2389,10 +2480,15 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
         qty = abs(float(item.get("qty", 0)))
         receta = get_receta(pid)
         if receta and receta["ingredientes"]:
+            modos = _parse_modificadores(item.get("modificadores"))
             for ri in receta["ingredientes"]:
+                modo = modos.get(ri["ingrediente_id"])
+                if modo == "quitar":
+                    continue
+                multiplicador = 2 if modo == "doble" else 1
                 add_movimiento_stock(
                     producto_id=ri["ingrediente_id"], tipo="venta",
-                    cantidad=-(ri["cantidad"] * qty),
+                    cantidad=-(ri["cantidad"] * qty * multiplicador),
                     referencia=f"Venta ID {venta_id} (receta)",
                     venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
                 )
@@ -2403,6 +2499,32 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
                 referencia=f"Venta ID {venta_id}",
                 venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
             )
+
+
+def _parse_modificadores(modificadores) -> dict:
+    """Convierte el JSON de modificadores de un pedido_item en un dict
+    {ingrediente_id: "quitar"|"doble"} para uso interno."""
+    if not modificadores:
+        return {}
+    try:
+        lista = json.loads(modificadores)
+    except (ValueError, TypeError):
+        return {}
+    return {int(m["ingrediente_id"]): m.get("modo") for m in lista if m.get("ingrediente_id")}
+
+
+def _resumen_modificadores(modificadores) -> str:
+    """Texto corto para mostrar en el pedido/comanda, ej. 'Sin Cheddar, Doble Medallón'."""
+    if not modificadores:
+        return ""
+    try:
+        lista = json.loads(modificadores)
+    except (ValueError, TypeError):
+        return ""
+    etiquetas = {"quitar": "Sin", "doble": "Doble"}
+    partes = [f"{etiquetas.get(m.get('modo'), m.get('modo'))} {m.get('ingrediente_nombre', '')}".strip()
+              for m in lista if m.get("ingrediente_nombre")]
+    return ", ".join(partes)
 
 
 # ── Ventas ────────────────────────────────────────────────────────────────────
@@ -3910,6 +4032,8 @@ def get_pedido(pid: int) -> dict | None:
             "SELECT * FROM pedido_items WHERE pedido_id=? AND estado!='anulado' ORDER BY id",
             (pid,),
         ).fetchall()]
+        for it in pedido["items"]:
+            it["modificadores_resumen"] = _resumen_modificadores(it.get("modificadores"))
         pedido["comandas"] = [dict(r) for r in conn.execute(
             "SELECT * FROM comandas WHERE pedido_id=? ORDER BY id", (pid,)
         ).fetchall()]
@@ -3928,15 +4052,19 @@ def get_pedido_abierto_de_mesa(mesa_id: int) -> dict | None:
 
 def add_pedido_item(pedido_id: int, nombre: str, qty: float, precio: float,
                     producto_id: int | None = None, estacion: str = "",
-                    nota: str = "") -> int:
+                    nota: str = "", modificadores: str = "") -> int:
+    """`modificadores` es un JSON (string) con la lista de ajustes a la receta
+    del producto para este ítem puntual, ej.: [{"ingrediente_id":5,
+    "ingrediente_nombre":"Cheddar","modo":"quitar"}]. `modo` es "quitar" (no
+    descuenta ese insumo) o "doble" (descuenta el doble). Vacío = receta normal."""
     subtotal = round(qty * precio, 2)
     with get_connection() as conn:
         cur = conn.execute(
             """INSERT INTO pedido_items
-               (pedido_id, producto_id, nombre, qty, precio, subtotal, estacion, nota)
-               VALUES (?,?,?,?,?,?,?,?)""",
+               (pedido_id, producto_id, nombre, qty, precio, subtotal, estacion, nota, modificadores)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
             (pedido_id, producto_id, nombre.strip(), qty, precio, subtotal,
-             estacion or "", nota.strip()),
+             estacion or "", nota.strip(), modificadores or ""),
         )
         conn.execute("UPDATE pedidos SET updated_at=? WHERE id=?", (_ar_now(), pedido_id))
         return cur.lastrowid
@@ -4027,6 +4155,10 @@ def get_comanda(cid: int) -> dict | None:
             "SELECT * FROM pedido_items WHERE comanda_id=? AND estado!='anulado' ORDER BY id",
             (cid,),
         ).fetchall()]
+    for it in comanda["items"]:
+        resumen = _resumen_modificadores(it.get("modificadores"))
+        if resumen:
+            it["nota"] = f"{resumen} — {it['nota']}" if it.get("nota") else resumen
     return comanda
 
 
@@ -4052,6 +4184,10 @@ def get_comandas_estacion(estacion: str, estados: list[str] | None = None) -> li
                 "SELECT * FROM pedido_items WHERE comanda_id=? AND estado!='anulado' ORDER BY id",
                 (c["id"],),
             ).fetchall()]
+            for it in c["items"]:
+                resumen = _resumen_modificadores(it.get("modificadores"))
+                if resumen:
+                    it["nota"] = f"{resumen} — {it['nota']}" if it.get("nota") else resumen
     return comandas
 
 
@@ -4109,11 +4245,12 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
         raise ValueError("El pedido no está abierto")
 
     items = [{
-        "nombre":      it["nombre"],
-        "qty":         float(it["qty"]),
-        "precio":      float(it["precio"]),
-        "subtotal":    float(it["subtotal"]),
-        "producto_id": it.get("producto_id"),
+        "nombre":         it["nombre"],
+        "qty":            float(it["qty"]),
+        "precio":         float(it["precio"]),
+        "subtotal":       float(it["subtotal"]),
+        "producto_id":    it.get("producto_id"),
+        "modificadores":  it.get("modificadores") or "",
     } for it in pedido["items"]]
 
     envio = float(pedido.get("costo_envio") or 0)

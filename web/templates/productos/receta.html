@@ -73,6 +73,35 @@
             </table>
           </div>
           <div class="p-3 border-top">
+            <label class="form-label fw-semibold">Rinde (para elaborados / sub-recetas)</label>
+            <div class="row g-2">
+              <div class="col-4">
+                <input type="number" name="rinde" id="input-rinde" class="form-control form-control-sm"
+                       step="any" min="0" value="{{ receta.rinde if receta else 1 }}" oninput="recalcAll()">
+              </div>
+              <div class="col-4">
+                <select name="rinde_unidad" class="form-select form-select-sm">
+                  {% for u in unidades %}
+                  <option value="{{ u }}" {% if receta and receta.rinde_unidad == u %}selected{% endif %}>{{ u }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-4">
+                <div class="input-group input-group-sm">
+                  <input type="number" name="rendimiento_pct" id="input-rendimiento" class="form-control"
+                         step="any" min="1" max="100" value="{{ receta.rendimiento_pct if receta else 100 }}" oninput="recalcAll()">
+                  <span class="input-group-text">% rend.</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-text">
+              Un lote de esta receta produce <strong>rinde</strong> unidades (ej. 6 lt de salsa).
+              El <strong>rendimiento</strong> es la merma de proceso (ej. 82% al pelar papas) — con
+              100% no ajusta nada. Con los valores por defecto (1 / 100%) la receta es plana: 1 lote
+              = 1 unidad del producto.
+            </div>
+          </div>
+          <div class="p-3 border-top">
             <label class="form-label fw-semibold">Notas</label>
             <textarea name="notas" class="form-control" rows="2" placeholder="Notas de preparación (opcional)">{{ receta.notas if receta else '' }}</textarea>
           </div>
@@ -94,7 +123,7 @@
   </div>
 
   <div class="col-lg-4">
-    <div class="card">
+    <div class="card mb-3">
       <div class="card-header">Costeo</div>
       <div class="card-body">
         <div class="d-flex justify-content-between mb-2">
@@ -115,10 +144,28 @@
         <div class="form-text mt-2">Food cost = costo de la receta / precio de venta.</div>
       </div>
     </div>
+
+    {% if receta and receta.ingredientes %}
+    <div class="card">
+      <div class="card-header"><i class="bi bi-boxes me-1"></i>Producir lote</div>
+      <div class="card-body">
+        <p class="small text-muted">
+          Para elaborados (ej. una salsa): descuenta los insumos de la receta y suma stock
+          de <strong>{{ producto.nombre }}</strong>. Stock actual: <strong>{{ stock_actual|entero }} {{ producto.unidad }}</strong>.
+        </p>
+        <form method="post" action="/productos/{{ producto.id }}/receta/producir" class="d-flex gap-2">
+          <input type="number" name="cantidad_producir" class="form-control form-control-sm"
+                 step="any" min="0" placeholder="Cantidad a producir ({{ producto.unidad }})" required>
+          <button class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-check-lg me-1"></i>Producir</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 
 <script>
+let recalcAll;
 (function() {
   const tbody = document.getElementById('items-body');
   const addBtn = document.getElementById('add-row');
@@ -144,17 +191,20 @@
     return subtotal;
   }
 
-  function recalcAll() {
+  recalcAll = function() {
     let total = 0;
     tbody.querySelectorAll('.item-row').forEach(row => { total += recalcRow(row); });
+    const rinde = parseFloat(document.getElementById('input-rinde').value) || 1;
+    const rendimiento = parseFloat(document.getElementById('input-rendimiento').value) || 100;
+    const costoAjustado = (total / (rendimiento / 100)) / rinde;
     footerCosto.textContent = '$ ' + fmt(total);
-    resumenCosto.textContent = '$ ' + fmt(total);
+    resumenCosto.textContent = '$ ' + fmt(costoAjustado);
     if (precioVenta > 0) {
-      resumenFoodCost.textContent = (total / precioVenta * 100).toFixed(1) + '%';
+      resumenFoodCost.textContent = (costoAjustado / precioVenta * 100).toFixed(1) + '%';
     } else {
       resumenFoodCost.textContent = '—';
     }
-  }
+  };
 
   function bindRow(row) {
     row.querySelector('.ingrediente-select').addEventListener('change', recalcAll);

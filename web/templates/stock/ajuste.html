@@ -66,6 +66,13 @@
                   <i class="bi bi-box-arrow-up me-1"></i>Salida
                 </label>
               </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="modo" id="modo-merma"
+                       value="merma" onchange="updateLabel()">
+                <label class="form-check-label" for="modo-merma">
+                  <i class="bi bi-exclamation-triangle me-1"></i>Merma
+                </label>
+              </div>
             </div>
           </div>
 
@@ -75,6 +82,39 @@
                    step="0.001" min="0" value="{{ stock_actual }}" required
                    oninput="calcResultado()">
             <div class="form-text" id="resultado-text"></div>
+          </div>
+
+          <!-- Conversión de compra (solo modo Entrada) -->
+          <div class="mb-3 d-none" id="campo-conversion">
+            <label class="form-label fw-semibold">Conversión de compra (opcional)</label>
+            <div class="row g-2">
+              <div class="col-7">
+                <input type="text" name="unidad_compra" class="form-control form-control-sm"
+                       placeholder="Ej: caja de 20kg, bidón de 20L">
+              </div>
+              <div class="col-5">
+                <input type="number" name="factor" id="input-factor" class="form-control form-control-sm"
+                       step="any" min="0" value="1" placeholder="Factor" oninput="calcResultado()">
+              </div>
+            </div>
+            <div class="form-text">
+              La cantidad ingresada arriba se multiplica por este factor para convertirla a
+              {{ producto.unidad }} (unidad base del insumo). Ej: 1 caja × factor 20000 = 20.000 g.
+            </div>
+          </div>
+
+          <!-- Motivo (solo modo Merma) -->
+          <div class="mb-3 d-none" id="campo-motivo">
+            <label class="form-label fw-semibold">Motivo de la merma</label>
+            <select name="motivo" class="form-select">
+              <option value="Quemado">Quemado</option>
+              <option value="Caída al piso">Caída al piso</option>
+              <option value="Vencimiento">Vencimiento</option>
+              <option value="Rotura">Rotura</option>
+              <option value="Degustación">Degustación</option>
+              <option value="Consumo del personal">Consumo del personal</option>
+              <option value="Otro">Otro</option>
+            </select>
           </div>
 
           <div class="mb-3">
@@ -120,11 +160,18 @@ function updateLabel() {
   const modo = document.querySelector('[name="modo"]:checked').value;
   const inp  = document.getElementById('input-cantidad');
   const lbl  = document.getElementById('lbl-cantidad');
+  const conv = document.getElementById('campo-conversion');
+  const mot  = document.getElementById('campo-motivo');
+  conv.classList.toggle('d-none', modo !== 'entrada');
+  mot.classList.toggle('d-none', modo !== 'merma');
   if (modo === 'absoluto') {
     lbl.textContent = `Stock nuevo (${unidad})`;
     inp.value = stockActual;
   } else if (modo === 'entrada') {
-    lbl.textContent = `Cantidad a ingresar (${unidad})`;
+    lbl.textContent = `Cantidad a ingresar (unidad de compra, o ${unidad} si no convertís)`;
+    inp.value = '';
+  } else if (modo === 'merma') {
+    lbl.textContent = `Cantidad de la merma (${unidad})`;
     inp.value = '';
   } else {
     lbl.textContent = `Cantidad a retirar (${unidad})`;
@@ -134,12 +181,13 @@ function updateLabel() {
 }
 
 function calcResultado() {
-  const modo = document.querySelector('[name="modo"]:checked').value;
-  const val  = parseFloat(document.getElementById('input-cantidad').value) || 0;
-  const txt  = document.getElementById('resultado-text');
+  const modo   = document.querySelector('[name="modo"]:checked').value;
+  const val    = parseFloat(document.getElementById('input-cantidad').value) || 0;
+  const factor = modo === 'entrada' ? (parseFloat(document.getElementById('input-factor').value) || 1) : 1;
+  const txt    = document.getElementById('resultado-text');
   let resultado;
   if (modo === 'absoluto') resultado = val;
-  else if (modo === 'entrada') resultado = stockActual + val;
+  else if (modo === 'entrada') resultado = stockActual + (val * factor);
   else resultado = stockActual - val;
   txt.textContent = `Stock resultante: ${resultado.toFixed(3)} ${unidad}`;
   txt.style.color = resultado < 0 ? '#842029' : '#0f5132';

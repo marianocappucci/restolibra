@@ -53,6 +53,9 @@
                 {% elif it.estacion == 'barra' %}<i class="bi bi-cup-straw text-info" title="Barra"></i>{% endif %}
                 {% if it.estado == 'nuevo' %}<span class="badge bg-secondary">nuevo</span>
                 {% else %}<span class="badge bg-info">enviado</span>{% endif %}
+                {% if it.modificadores_resumen %}
+                <div class="small text-primary"><i class="bi bi-sliders"></i> {{ it.modificadores_resumen }}</div>
+                {% endif %}
                 <form method="post" action="/salon/pedido/{{ pedido.id }}/item/{{ it.id }}/nota"
                       class="input-group input-group-sm mt-1">
                   <span class="input-group-text py-0 px-1" title="Observación para la comanda"><i class="bi bi-chat-left-text"></i></span>
@@ -152,6 +155,12 @@
                 </div>
               </button>
             </form>
+            {% if p.id in recetas_por_producto %}
+            <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-muted"
+                    onclick="abrirModificadores({{ p.id }}, '{{ p.nombre|replace("'", "") }}', {{ p.precio_venta }})">
+              <i class="bi bi-sliders"></i> Personalizar
+            </button>
+            {% endif %}
           </div>
           {% else %}
           <div class="col-12 text-center text-muted py-3">
@@ -179,4 +188,63 @@
     </div>
   </div>
 </div>
+
+<!-- ── Modal de modificadores ── -->
+<div class="modal fade" id="modal-modificadores" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form method="post" action="/salon/pedido/{{ pedido.id }}/item" id="form-modificadores">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modal-mod-titulo">Personalizar</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" name="producto_id" id="mod-producto-id">
+          <input type="hidden" name="modificadores" id="mod-modificadores">
+          <div id="mod-ingredientes-list"></div>
+          <div class="mt-2">
+            <label class="form-label small">Observación para la comanda</label>
+            <input type="text" name="nota" class="form-control form-control-sm" placeholder="Ej: bien cocido">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Agregar al pedido</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+const RECETAS_POR_PRODUCTO = {{ recetas_por_producto | tojson }};
+
+function abrirModificadores(productoId, nombre, precio) {
+  document.getElementById('mod-producto-id').value = productoId;
+  document.getElementById('modal-mod-titulo').textContent = 'Personalizar: ' + nombre;
+  const lista = document.getElementById('mod-ingredientes-list');
+  const ingredientes = RECETAS_POR_PRODUCTO[productoId] || [];
+  lista.innerHTML = ingredientes.map(function(ing) {
+    return '<div class="d-flex justify-content-between align-items-center py-1 border-bottom">' +
+      '<span class="small">' + ing.ingrediente_nombre + '</span>' +
+      '<select class="form-select form-select-sm mod-select" style="width:auto" data-id="' + ing.ingrediente_id + '" data-nombre="' + ing.ingrediente_nombre + '">' +
+        '<option value="normal">Normal</option>' +
+        '<option value="quitar">Sin</option>' +
+        '<option value="doble">Doble</option>' +
+      '</select></div>';
+  }).join('');
+  new bootstrap.Modal(document.getElementById('modal-modificadores')).show();
+}
+
+document.getElementById('form-modificadores').addEventListener('submit', function() {
+  const selects = document.querySelectorAll('#mod-ingredientes-list .mod-select');
+  const mods = [];
+  selects.forEach(function(sel) {
+    if (sel.value !== 'normal') {
+      mods.push({ingrediente_id: parseInt(sel.dataset.id), ingrediente_nombre: sel.dataset.nombre, modo: sel.value});
+    }
+  });
+  document.getElementById('mod-modificadores').value = mods.length ? JSON.stringify(mods) : '';
+});
+</script>
 {% endblock %}

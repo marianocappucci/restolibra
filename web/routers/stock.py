@@ -15,10 +15,12 @@ router = APIRouter()
 Auth = Annotated[str, Depends(require_auth)]
 
 TIPO_LABELS = {
-    "entrada": "Entrada",
-    "salida":  "Salida",
-    "ajuste":  "Ajuste",
-    "venta":   "Venta",
+    "entrada":    "Entrada",
+    "salida":     "Salida",
+    "ajuste":     "Ajuste",
+    "venta":      "Venta",
+    "merma":      "Merma",
+    "produccion": "Producción",
 }
 
 
@@ -84,10 +86,23 @@ async def stock_ajuste_post(request: Request, pid: int, user: Auth):
     if modo == "absoluto":
         db.ajustar_stock(pid, cantidad, referencia, usuario_id=usuario_id, fecha=fecha)
     elif modo == "entrada":
-        db.add_movimiento_stock(pid, "entrada", abs(cantidad), referencia,
+        try:
+            factor = float(str(form.get("factor") or "1").replace(",", ".") or "1")
+        except ValueError:
+            factor = 1.0
+        unidad_compra = str(form.get("unidad_compra", "")).strip()
+        cantidad_base = abs(cantidad) * factor
+        ref = referencia
+        if unidad_compra and factor != 1:
+            ref = f"{referencia} ({cantidad:g} {unidad_compra} × {factor:g})"
+        db.add_movimiento_stock(pid, "entrada", cantidad_base, ref,
                                 usuario_id=usuario_id, fecha=fecha)
     elif modo == "salida":
         db.add_movimiento_stock(pid, "salida", -abs(cantidad), referencia,
+                                usuario_id=usuario_id, fecha=fecha)
+    elif modo == "merma":
+        motivo = str(form.get("motivo", "Otro")).strip() or "Otro"
+        db.add_movimiento_stock(pid, "merma", -abs(cantidad), f"Merma: {motivo}",
                                 usuario_id=usuario_id, fecha=fecha)
 
     return RedirectResponse("/stock", status_code=303)
