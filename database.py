@@ -3822,6 +3822,17 @@ def delete_pedido_item(item_id: int) -> bool:
         return True
 
 
+def set_pedido_item_nota(item_id: int, nota: str) -> bool:
+    """Observación del ítem (ej.: 'sin aderezo', 'agregar queso'). Llega a la comanda/KDS.
+    Editable mientras el ítem no esté anulado (el KDS lee la nota en vivo por polling)."""
+    with get_connection() as conn:
+        row = conn.execute("SELECT estado FROM pedido_items WHERE id=?", (item_id,)).fetchone()
+        if not row or row["estado"] == "anulado":
+            return False
+        conn.execute("UPDATE pedido_items SET nota=? WHERE id=?", ((nota or "").strip(), item_id))
+    return True
+
+
 # ── Comandas ────────────────────────────────────────────────────────────────
 
 def enviar_a_estaciones(pedido_id: int) -> list[int]:

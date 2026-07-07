@@ -148,6 +148,13 @@ def salon_pedido_del_item(pid: int, item_id: int, user: Auth):
     return RedirectResponse(f"/salon/pedido/{pid}", status_code=303)
 
 
+@router.post("/salon/pedido/{pid}/item/{item_id}/nota")
+async def salon_pedido_item_nota(request: Request, pid: int, item_id: int, user: Auth):
+    form = await request.form()
+    db.set_pedido_item_nota(item_id, str(form.get("nota", "")))
+    return RedirectResponse(f"/salon/pedido/{pid}", status_code=303)
+
+
 @router.post("/salon/pedido/{pid}/enviar")
 def salon_pedido_enviar(pid: int, user: Auth):
     db.enviar_a_estaciones(pid)

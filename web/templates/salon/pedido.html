@@ -51,9 +51,15 @@
                 {{ it.nombre }}
                 {% if it.estacion == 'cocina' %}<i class="bi bi-fire text-danger" title="Cocina"></i>
                 {% elif it.estacion == 'barra' %}<i class="bi bi-cup-straw text-info" title="Barra"></i>{% endif %}
-                {% if it.nota %}<div class="small text-muted">{{ it.nota }}</div>{% endif %}
                 {% if it.estado == 'nuevo' %}<span class="badge bg-secondary">nuevo</span>
                 {% else %}<span class="badge bg-info">enviado</span>{% endif %}
+                <form method="post" action="/salon/pedido/{{ pedido.id }}/item/{{ it.id }}/nota"
+                      class="input-group input-group-sm mt-1">
+                  <span class="input-group-text py-0 px-1" title="Observación para la comanda"><i class="bi bi-chat-left-text"></i></span>
+                  <input name="nota" value="{{ it.nota or '' }}" class="form-control py-0"
+                         placeholder="Observación (sin aderezo, agregar…)" style="font-size:.78rem">
+                  <button class="btn btn-outline-secondary py-0 px-1" title="Guardar observación"><i class="bi bi-check-lg"></i></button>
+                </form>
               </td>
               <td class="text-end">${{ it.subtotal|moneda }}</td>
               <td class="text-end" style="width:2.5rem">
