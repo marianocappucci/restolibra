@@ -2164,7 +2164,15 @@ def guardar_receta(producto_id: int, items: list[dict], notas: str = "",
                 "INSERT INTO receta_items (receta_id, ingrediente_id, cantidad) VALUES (?,?,?)",
                 (receta_id, ingrediente_id, cantidad),
             )
-        return receta_id
+    # Sincroniza productos.precio_costo con el costo calculado de la receta, para
+    # que si este producto se usa a su vez como ingrediente de otra receta (ej. un
+    # combo que incluye una hamburguesa ya armada), tome un costo real y no 0.
+    # No es recursivo: usa el precio_costo *guardado* de cada ingrediente, no vuelve
+    # a recalcular la cadena completa.
+    costo = costo_receta(producto_id)
+    with get_connection() as conn:
+        conn.execute("UPDATE productos SET precio_costo=? WHERE id=?", (costo, producto_id))
+    return receta_id
 
 
 def eliminar_receta(producto_id: int):
