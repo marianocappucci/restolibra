@@ -9,6 +9,43 @@
 
 {% if msg %}<div class="alert alert-warning py-2">{{ msg }}</div>{% endif %}
 
+<div class="card mb-3">
+  <div class="card-header"><i class="bi bi-cash-stack me-1"></i>Cargos automáticos por mesa</div>
+  <div class="card-body">
+    <p class="text-muted small mb-2">Se agregan al abrir una mesa, <strong>por comensal</strong>
+      (sin comanda). Se pueden quitar del pedido si el cliente no los lleva.</p>
+    <form method="post" action="/salon/config/cargos" class="row g-3 align-items-end">
+      <div class="col-md-5">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="cubierto_activo" id="cub-act"
+                 {% if cfg.cubierto_activo == '1' %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="cub-act">Cubierto</label>
+        </div>
+        <div class="input-group input-group-sm mt-1">
+          <span class="input-group-text">$ por comensal</span>
+          <input type="number" step="0.01" min="0" name="cubierto_precio" class="form-control"
+                 value="{{ cfg.cubierto_precio }}">
+        </div>
+      </div>
+      <div class="col-md-5">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="panera_activo" id="pan-act"
+                 {% if cfg.panera_activo == '1' %}checked{% endif %}>
+          <label class="form-check-label fw-semibold" for="pan-act">Panera</label>
+        </div>
+        <div class="input-group input-group-sm mt-1">
+          <span class="input-group-text">$ por comensal</span>
+          <input type="number" step="0.01" min="0" name="panera_precio" class="form-control"
+                 value="{{ cfg.panera_precio }}">
+        </div>
+      </div>
+      <div class="col-md-2">
+        <button class="btn btn-primary w-100">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="row g-3">
   <div class="col-md-4">
     <div class="card">

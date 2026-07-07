@@ -8,6 +8,7 @@ from fastapi import APIRouter, Request, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 
 import database as db
+import config_manager
 from web.auth import require_auth
 from web.templates_config import templates
 from web.routers.ventas import MEDIOS_PAGO
@@ -19,6 +20,28 @@ Auth = Annotated[str, Depends(require_auth)]
 def _usuario_id(username: str) -> int | None:
     u = db.get_usuario_by_username(username)
     return u["id"] if u else None
+
+
+def _cfg_precio(cfg: dict, key: str) -> float:
+    try:
+        return max(0.0, float(str(cfg.get(key) or 0).replace(",", ".")))
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def _aplicar_cargos_automaticos(pedido_id: int, comensales: int):
+    """Agrega los cargos automáticos por mesa (cubierto/panera) según la config,
+    por comensal. Van sin estación (no generan comanda) y se pueden quitar."""
+    cfg = config_manager.load()
+    n = max(1, int(comensales or 1))
+    if str(cfg.get("cubierto_activo", "0")).strip() in ("1", "true", "True"):
+        p = _cfg_precio(cfg, "cubierto_precio")
+        if p > 0:
+            db.add_pedido_item(pedido_id, "Cubierto", n, p, estacion="")
+    if str(cfg.get("panera_activo", "0")).strip() in ("1", "true", "True"):
+        p = _cfg_precio(cfg, "panera_precio")
+        if p > 0:
+            db.add_pedido_item(pedido_id, "Panera", n, p, estacion="")
 
 
 # ── Mapa de mesas ────────────────────────────────────────────────────────────
@@ -63,6 +86,7 @@ async def salon_mesa_abrir(request: Request, mesa_id: int, user: Auth):
         canal="salon", mesa_id=mesa_id, comensales=comensales,
         usuario_id=_usuario_id(user),
     )
+    _aplicar_cargos_automaticos(pid, comensales)
     return RedirectResponse(f"/salon/pedido/{pid}", status_code=303)
 
 
@@ -205,8 +229,27 @@ def salon_config(request: Request, user: Auth, msg: str = ""):
     mesas_por_salon = {s["id"]: db.get_mesas(salon_id=s["id"], solo_activas=False) for s in salones}
     return templates.TemplateResponse(request, "salon/config.html", {
         "active": "salon_config", "salones": salones, "mesas_por_salon": mesas_por_salon,
-        "msg": msg,
+        "msg": msg, "cfg": config_manager.load(),
     })
+
+
+@router.post("/salon/config/cargos")
+async def salon_config_cargos(request: Request, user: Auth):
+    form = await request.form()
+    cfg = config_manager.load()
+
+    def _price(name: str) -> str:
+        try:
+            return str(max(0.0, float(str(form.get(name) or 0).replace(",", "."))))
+        except (ValueError, TypeError):
+            return "0"
+
+    cfg["cubierto_activo"] = "1" if form.get("cubierto_activo") else "0"
+    cfg["cubierto_precio"] = _price("cubierto_precio")
+    cfg["panera_activo"]   = "1" if form.get("panera_activo") else "0"
+    cfg["panera_precio"]   = _price("panera_precio")
+    config_manager.save(cfg)
+    return RedirectResponse("/salon/config", status_code=303)
 
 
 @router.post("/salon/config/salon")

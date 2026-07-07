@@ -42,6 +42,11 @@ _DEFAULTS = {
     "ticket_mostrar_logo":    "0",       # 0 | 1
     "ticket_linea_corte":     "1",       # imprimir línea de corte al final
     "ticket_pie":             "",        # texto libre al pie (ej: "¡Gracias por su compra!")
+    # Restaurant — cargos automáticos por mesa (por comensal)
+    "cubierto_activo":        "0",       # 0 | 1
+    "cubierto_precio":        "0",       # precio por comensal
+    "panera_activo":          "0",       # 0 | 1
+    "panera_precio":          "0",       # precio por comensal
 }
 
 
