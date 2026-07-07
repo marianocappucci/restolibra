@@ -2114,7 +2114,9 @@ def get_receta(producto_id: int) -> dict | None:
             (receta["id"],),
         ).fetchall()
     data = dict(receta)
-    data["items"] = [dict(r) for r in items]
+    # clave "ingredientes" (no "items"): dict.items() es un método builtin y
+    # Jinja resolvería receta.items a ese método en vez de esta clave.
+    data["ingredientes"] = [dict(r) for r in items]
     return data
 
 
@@ -2159,10 +2161,10 @@ def eliminar_receta(producto_id: int):
 def costo_receta(producto_id: int) -> float:
     """Costo total de la receta de un producto (0 si no tiene receta o está vacía)."""
     receta = get_receta(producto_id)
-    if not receta or not receta["items"]:
+    if not receta or not receta["ingredientes"]:
         return 0.0
     total = sum(
-        it["cantidad"] * it["ingrediente_precio_costo"] for it in receta["items"]
+        it["cantidad"] * it["ingrediente_precio_costo"] for it in receta["ingredientes"]
     )
     rendimiento = receta["rendimiento_pct"] or 100
     rinde = receta["rinde"] or 1
@@ -2386,8 +2388,8 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
             continue
         qty = abs(float(item.get("qty", 0)))
         receta = get_receta(pid)
-        if receta and receta["items"]:
-            for ri in receta["items"]:
+        if receta and receta["ingredientes"]:
+            for ri in receta["ingredientes"]:
                 add_movimiento_stock(
                     producto_id=ri["ingrediente_id"], tipo="venta",
                     cantidad=-(ri["cantidad"] * qty),

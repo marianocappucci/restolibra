@@ -41,8 +41,8 @@
                 </tr>
               </thead>
               <tbody id="items-body">
-                {% if receta and receta.items %}
-                {% for it in receta.items %}
+                {% if receta and receta.ingredientes %}
+                {% for it in receta.ingredientes %}
                 <tr class="item-row">
                   <td>
                     <select name="ingrediente_id" class="form-select form-select-sm ingrediente-select" required>
