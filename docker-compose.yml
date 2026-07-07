@@ -1,5 +1,5 @@
 services:
-  contalibra-dev:
+  restolibra-dev:
     build: .
     container_name: restolibra-dev
     restart: unless-stopped
