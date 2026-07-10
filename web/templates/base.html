@@ -6,18 +6,32 @@
   <title>{% block title %}Restolibra{% endblock %}</title>
   {% if active == 'salon' %}
   <link rel="manifest" href="/static/manifest.json">
-  <meta name="theme-color" content="#1a1a2e">
+  <meta name="theme-color" content="#ea580c">
   <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
   {% endif %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    body { background: #f4f6fb; }
+    /* Paleta de marca (misma que restolibra.com.ar) — pisa el azul default de Bootstrap
+       via sus variables, asi que btn-primary/text-primary/bg-primary/etc. la heredan
+       en toda la app sin tocar cada template. */
+    :root {
+      --bs-primary:               #ea580c;
+      --bs-primary-rgb:           234, 88, 12;
+      --bs-primary-text-emphasis: #c2410c;
+      --bs-primary-bg-subtle:     #fff7ed;
+      --bs-primary-border-subtle: #fed7aa;
+      --bs-link-color:            #ea580c;
+      --bs-link-color-rgb:        234, 88, 12;
+      --bs-link-hover-color:      #c2410c;
+      --bs-link-hover-color-rgb:  194, 65, 12;
+    }
+    body { background: #fbf9f6; }
     .sidebar {
       position: fixed;
       top: 0; left: 0;
       height: 100vh;
-      background: #1a1a2e;
+      background: #1c1410;
       color: #e0e0e0;
       width: 220px;
       flex-shrink: 0;
@@ -31,7 +45,7 @@
       color: #fff;
       padding: 1.5rem 1.2rem 1rem;
       letter-spacing: 0.03em;
-      border-bottom: 1px solid #2d2d4e;
+      border-bottom: 1px solid #3a2b23;
       line-height: 1.2;
       flex-shrink: 0;
       display: block;
@@ -46,7 +60,7 @@
       display: block;
       font-size: 0.7rem;
       font-weight: 400;
-      color: #8892aa;
+      color: #8a7a6c;
       letter-spacing: 0.01em;
       margin-top: 3px;
       white-space: nowrap;
@@ -61,20 +75,20 @@
     }
     .sidebar-nav::-webkit-scrollbar { width: 4px; }
     .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-    .sidebar-nav::-webkit-scrollbar-thumb { background: #2d2d4e; border-radius: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: #3a2b23; border-radius: 4px; }
     .sidebar .sidebar-footer {
       flex-shrink: 0;
-      border-top: 1px solid #2d2d4e;
+      border-top: 1px solid #3a2b23;
     }
     .sidebar .nav-link {
-      color: #b0b8d4;
+      color: #c9beb2;
       border-radius: 8px;
       margin: 2px 8px;
       padding: 0.55rem 1rem;
       font-size: 0.95rem;
     }
     .sidebar .nav-link:hover, .sidebar .nav-link.active {
-      background: #2d2d4e;
+      background: #3a2b23;
       color: #fff;
     }
     .sidebar .nav-link i { margin-right: 8px; font-size: 1.05rem; }
@@ -83,12 +97,12 @@
       font-weight: 600;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #4a5270;
+      color: #8a7a6c;
       padding: 0.65rem 1.2rem 0.2rem;
       margin-top: 0.25rem;
     }
     .sidebar-divider {
-      border-top: 1px solid #2d2d4e;
+      border-top: 1px solid #3a2b23;
       margin: 0.5rem 1rem 0.25rem;
     }
     .main-content { flex: 1; min-width: 0; padding: 2rem; margin-left: 220px; }
@@ -117,11 +131,11 @@
     .badge-rechazado { background: #f8d7da; color: #842029; }
     .badge-vencido   { background: #ffe5d0; color: #7c3f00; }
     .badge-facturado { background: #d3d3f7; color: #2b2b8b; }
-    .logout-link { color: #b0b8d4; font-size: 0.85rem; padding: 0.5rem 1.2rem; display: block; }
+    .logout-link { color: #c9beb2; font-size: 0.85rem; padding: 0.5rem 1.2rem; display: block; }
     .logout-link:hover { color: #fff; }
     /* ── Mobile: topbar con hamburguesa + sidebar deslizante (off-canvas) ── */
     .mobile-topbar {
-      background: #1a1a2e;
+      background: #1c1410;
       color: #fff;
       align-items: center;
       gap: 0.75rem;
@@ -485,15 +499,15 @@
     {% set cu = request.state.current_user %}
     <div class="sidebar-footer">
       {% if cu %}
-      <div style="padding: 0.6rem 1.2rem 0.3rem; font-size: 0.8rem; color: #7a85a8;">
-        <a href="/mi-cuenta" style="color:#b0b8d4; text-decoration:none;">
+      <div style="padding: 0.6rem 1.2rem 0.3rem; font-size: 0.8rem; color: #a89a8c;">
+        <a href="/mi-cuenta" style="color:#c9beb2; text-decoration:none;">
           <i class="bi bi-person-circle me-1"></i>{{ cu.nombre }}
         </a>
         <span class="ms-1" style="font-size:0.72rem; opacity:.7;">({{ cu.role }})</span>
       </div>
       {% endif %}
       <a href="/logout" class="logout-link mb-2"><i class="bi bi-box-arrow-left me-1"></i>Cerrar sesión</a>
-      <div style="padding: 0.3rem 1.2rem 0.6rem; font-size: 0.68rem; color: #4a5270; display:flex; align-items:center; gap:0.4rem;">
+      <div style="padding: 0.3rem 1.2rem 0.6rem; font-size: 0.68rem; color: #8a7a6c; display:flex; align-items:center; gap:0.4rem;">
         <span>v{{ app_version }}</span>
         {% if app_env == 'development' %}
         <span style="background:#f59e0b;color:#000;border-radius:3px;padding:0 4px;font-size:0.6rem;font-weight:700;letter-spacing:.04em;">DEV</span>

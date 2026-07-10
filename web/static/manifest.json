@@ -6,8 +6,8 @@
   "scope": "/salon",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#f4f6fb",
-  "theme_color": "#1a1a2e",
+  "background_color": "#fbf9f6",
+  "theme_color": "#ea580c",
   "lang": "es-AR",
   "icons": [
     {
