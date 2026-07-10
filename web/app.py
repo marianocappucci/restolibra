@@ -5,7 +5,7 @@ import re
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from fastapi import FastAPI, Request, Depends
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -92,6 +92,17 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/sw.js", include_in_schema=False)
+def salon_service_worker():
+    """Service worker del modo mozo. Servido desde la raíz (no /static) para
+    poder registrarse con scope=/salon sin necesitar el header
+    Service-Worker-Allowed."""
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "sw.js"),
+        media_type="application/javascript",
+    )
 
 
 @app.get("/suspendido")

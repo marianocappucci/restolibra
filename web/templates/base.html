@@ -4,6 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Restolibra{% endblock %}</title>
+  {% if active == 'salon' %}
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#1a1a2e">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  {% endif %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
@@ -539,6 +544,16 @@
   });
 })();
 </script>
+{% if active == 'salon' %}
+<script>
+// Modo mozo: registra el service worker para que /salon sea instalable como app.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('/sw.js', { scope: '/salon' });
+  });
+}
+</script>
+{% endif %}
 {% block scripts %}{% endblock %}
 </body>
 </html>
