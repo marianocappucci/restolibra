@@ -32,6 +32,14 @@ def kds_pantalla(request: Request, estacion: str, user: Auth):
     })
 
 
+@router.get("/kds/{estacion}/monitor")
+def kds_monitor(request: Request, estacion: str, user: Auth):
+    """Visor standalone (sin sidebar ni toggle) para separar en su propio monitor."""
+    if estacion not in _ESTACIONES_VALIDAS:
+        raise HTTPException(404)
+    return templates.TemplateResponse(request, "kds/monitor.html", {"estacion": estacion})
+
+
 @router.get("/kds/{estacion}/feed")
 def kds_feed(estacion: str, user: Auth):
     if estacion not in _ESTACIONES_VALIDAS:
