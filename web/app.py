@@ -46,7 +46,17 @@ app = FastAPI(title="Restolibra")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
-_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify"}
+_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js"}
+
+# El rol "mozo" solo opera mesas (salón) y pedidos sin mesa (barra/takeaway/delivery) —
+# no ve dashboard, caja, facturación ni el resto del admin.
+_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos"}
+_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/")
+
+
+def _mozo_puede_ver(path: str) -> bool:
+    return path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES)
+
 
 class CurrentUserMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -81,6 +91,13 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
                 and not path.startswith("/static")):
             from fastapi.responses import RedirectResponse as _RR
             return _RR("/suspendido")
+
+        cu = request.state.current_user
+        if (cu and cu.get("role") == "mozo"
+                and path not in _BYPASS_PATHS
+                and not _mozo_puede_ver(path)):
+            from fastapi.responses import RedirectResponse as _RR
+            return _RR("/salon")
 
         return await call_next(request)
 
@@ -166,7 +183,9 @@ async def login_post(request: Request):
     ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
     if check_credentials(username, password):
         db.registrar_auth_event("login", username, ip)
-        response = RedirectResponse("/dashboard", status_code=303)
+        user = db.get_usuario_by_username(username)
+        destino = "/salon" if user and user.get("role") == "mozo" else "/dashboard"
+        response = RedirectResponse(destino, status_code=303)
         create_session_cookie(response, username)
         return response
     db.registrar_auth_event("login_fallido", username, ip)
