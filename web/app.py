@@ -46,7 +46,7 @@ app = FastAPI(title="Restolibra")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
-_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico"}
+_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify"}
 
 class CurrentUserMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -173,6 +173,36 @@ def logout(request: Request):
     response = RedirectResponse("/login", status_code=303)
     clear_session_cookie(response)
     return response
+
+
+DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
+
+
+@app.post("/api/auth/verify", include_in_schema=False)
+async def api_auth_verify(request: Request):
+    """Verificación stateless de credenciales para la landing (acceso a /docs/).
+
+    Server-to-server únicamente: requiere el secreto compartido DOCS_AUTH_SECRET
+    en el header X-Internal-Auth. No crea sesión ni cookie en esta instancia.
+    """
+    if not DOCS_AUTH_SECRET or request.headers.get("x-internal-auth") != DOCS_AUTH_SECRET:
+        return JSONResponse({"valid": False}, status_code=401)
+
+    body = await request.json()
+    username = str(body.get("username", ""))
+    password = str(body.get("password", ""))
+
+    if request.state.servicio_estado != "activo":
+        return JSONResponse({"valid": False})
+
+    user = db.check_usuario_credentials(username, password)
+    if not user:
+        return JSONResponse({"valid": False})
+
+    return JSONResponse({
+        "valid": True,
+        "nombre_empresa": request.state.empresa_nombre,
+    })
 
 
 @app.get("/api/arca/estado", include_in_schema=False)

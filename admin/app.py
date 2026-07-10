@@ -9,13 +9,15 @@ desde la raíz del repo, con acceso al socket Docker y al directorio clientes/.
 import os
 
 from fastapi import FastAPI, Request, Form, Depends
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 
-from admin import auth
+from admin import auth, services
 from admin.templates_config import templates
 from admin.routers import clientes as clientes_router
 
 app = FastAPI(title="Restolibra Backoffice", docs_url=None, redoc_url=None)
+
+DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
 
 
 @app.get("/login")
@@ -44,6 +46,22 @@ def logout():
 @app.get("/health", include_in_schema=False)
 def health():
     return {"ok": True}
+
+
+@app.get("/api/clientes-publicos", include_in_schema=False)
+def clientes_publicos(request: Request):
+    """Lista mínima de clientes activos para poblar el login de documentación
+    en la landing (contalibra.com.ar). Server-to-server: requiere el secreto
+    compartido DOCS_AUTH_SECRET en el header X-Internal-Auth."""
+    if not DOCS_AUTH_SECRET or request.headers.get("x-internal-auth") != DOCS_AUTH_SECRET:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+
+    clientes = [
+        {"slug": c["slug"], "nombre": c["nombre"], "domain": c["domain"]}
+        for c in services.listar_clientes()
+        if c.get("domain") and c.get("estado") == "running"
+    ]
+    return JSONResponse({"clientes": clientes})
 
 
 app.include_router(clientes_router.router)

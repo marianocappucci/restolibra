@@ -305,9 +305,7 @@
           <dt class="col-sm-4">Número</dt><dd class="col-sm-8 font-monospace">{{ pv }}-{{ num }}</dd>
           <dt class="col-sm-4">Fecha</dt><dd class="col-sm-8">{{ factura.fecha|fecha }}</dd>
           <dt class="col-sm-4">Concepto</dt><dd class="col-sm-8">{{ concepto_label }}</dd>
-          {% if factura.condicion_venta %}
-          <dt class="col-sm-4">Cond. de venta</dt><dd class="col-sm-8">{{ factura.condicion_venta }}</dd>
-          {% endif %}
+          <dt class="col-sm-4">Cond. de venta</dt><dd class="col-sm-8">{{ factura.condicion_venta or "Contado" }}</dd>
           {% if factura_original %}
           <dt class="col-sm-4">Cbte. anulado</dt>
           <dd class="col-sm-8">

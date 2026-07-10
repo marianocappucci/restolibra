@@ -20,10 +20,11 @@ try:
 except Exception:
     _NPM_AVAILABLE = False
 
-REPO_ROOT    = Path(__file__).parent.parent.resolve()
-CLIENTES_DIR = REPO_ROOT / "clientes"
-IMAGE_NAME   = "restolibra:latest"
-BASE_PORT    = 8071
+REPO_ROOT        = Path(__file__).parent.parent.resolve()
+CLIENTES_DIR     = REPO_ROOT / "clientes"
+IMAGE_NAME       = "restolibra:latest"
+BASE_PORT        = 8071
+DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
 
 
 def slugify(name: str) -> str:
@@ -200,6 +201,7 @@ services:
       - ADMIN_USER={admin_user}
       - ADMIN_PASSWORD={admin_password}
       - ADMIN_NOMBRE={admin_nombre}
+      - DOCS_AUTH_SECRET={DOCS_AUTH_SECRET}
 {service_net}{top_net}"""
     (client_dir / "docker-compose.yml").write_text(compose)
 

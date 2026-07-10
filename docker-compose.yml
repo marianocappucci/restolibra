@@ -15,6 +15,7 @@ services:
       - ADMIN_NOMBRE=${ADMIN_NOMBRE:-Administrador}
       - DATA_DIR=/app/dev-data
       - ENV=development
+      - DOCS_AUTH_SECRET=${DOCS_AUTH_SECRET:-}
     networks:
       - stack-net
 

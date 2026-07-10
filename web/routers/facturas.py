@@ -649,6 +649,7 @@ async def factura_cobrar(request: Request, factura_id: int, user: Auth):
 
     # Crear un movimiento de caja por cada medio con monto > 0
     pagos_registrados = 0
+    total_cobrado_ahora = 0.0
     for medio_id, monto_s, ref in zip(medio_ids, montos, refs):
         try:
             monto = float(monto_s.replace(",", ".") or "0")
@@ -663,6 +664,20 @@ async def factura_cobrar(request: Request, factura_id: int, user: Auth):
             medio_pago=medio_id, usuario_id=uid,
         )
         pagos_registrados += 1
+        total_cobrado_ahora += monto
+
+    # Si la factura fue emitida a Cuenta Corriente, este cobro debe saldar
+    # (total o parcialmente) la deuda del cliente en Cuenta Corriente —
+    # sin este crédito, el saldo quedaba pendiente para siempre aunque la
+    # factura ya estuviera cobrada.
+    if total_cobrado_ahora > 0 and factura.get("condicion_venta") == "Cuenta Corriente":
+        cliente_cc = db.get_client_by_cuit(factura.get("cliente_cuit"))
+        if cliente_cc:
+            db.create_cc_pago(
+                cliente_id=cliente_cc["id"], monto=total_cobrado_ahora, fecha=fecha,
+                concepto=f"Cobro {tipo_label} {pv}-{num}",
+                referencia="", medio_pago="", caja_id=caja_id, usuario_id=uid,
+            )
 
     return RedirectResponse(f"/facturas/{factura_id}", status_code=303)
 
