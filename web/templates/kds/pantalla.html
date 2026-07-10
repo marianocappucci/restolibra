@@ -9,7 +9,8 @@
   </h1>
   <div class="btn-group btn-group-sm">
     {% for e in estaciones %}
-    <a href="/kds/{{ e }}" class="btn btn-outline-secondary {% if e == estacion %}active{% endif %}">{{ e|capitalize }}</a>
+    <a href="/kds/{{ e }}" target="_blank" rel="noopener"
+       class="btn btn-outline-secondary {% if e == estacion %}active{% endif %}">{{ e|capitalize }}</a>
     {% endfor %}
   </div>
 </div>
