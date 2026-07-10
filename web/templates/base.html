@@ -546,6 +546,19 @@
   });
 })();
 </script>
+<script>
+// Mantener el scroll del sidebar sobre el item activo: cada navegación recarga
+// la página entera (no es una SPA), así que sin esto el sidebar siempre vuelve
+// arriba aunque el item activo esté más abajo en la lista.
+(function () {
+  var nav = document.querySelector('.sidebar-nav');
+  var active = nav && nav.querySelector('a.nav-link.active');
+  if (nav && active) {
+    var offset = active.offsetTop - (nav.clientHeight / 2) + (active.clientHeight / 2);
+    nav.scrollTop = Math.max(0, offset);
+  }
+})();
+</script>
 {% if active == 'salon' %}
 <script>
 // Modo mozo: registra el service worker para que /salon sea instalable como app.
