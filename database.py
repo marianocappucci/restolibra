@@ -4024,8 +4024,8 @@ def pedido_total(pedido_id: int) -> float:
 def get_pedido(pid: int) -> dict | None:
     with get_connection() as conn:
         row = conn.execute(
-            """SELECT p.*, m.nombre AS mesa_nombre, s.nombre AS salon_nombre,
-                      u.username AS mozo
+            """SELECT p.*, m.nombre AS mesa_nombre, m.salon_id AS salon_id,
+                      s.nombre AS salon_nombre, u.username AS mozo
                FROM pedidos p
                LEFT JOIN mesas m ON m.id = p.mesa_id
                LEFT JOIN salones s ON s.id = m.salon_id

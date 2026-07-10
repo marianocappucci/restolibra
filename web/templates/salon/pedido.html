@@ -10,7 +10,7 @@
     <small class="text-muted fs-6">· Pedido {{ pedido.numero }}</small>
   </h1>
   {% if pedido.mesa_id %}
-  <a href="/salon?salon_id={{ pedido.salon_id or '' }}" class="btn btn-outline-secondary btn-sm">
+  <a href="/salon{{ '?salon_id=' ~ pedido.salon_id if pedido.salon_id else '' }}" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-arrow-left me-1"></i>Salón
   </a>
   {% else %}

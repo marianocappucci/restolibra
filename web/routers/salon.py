@@ -47,9 +47,13 @@ def _aplicar_cargos_automaticos(pedido_id: int, comensales: int):
 # ── Mapa de mesas ────────────────────────────────────────────────────────────
 
 @router.get("/salon")
-def salon_mapa(request: Request, user: Auth, salon_id: int = 0):
+def salon_mapa(request: Request, user: Auth, salon_id: str = ""):
+    try:
+        salon_id_int = int(salon_id)
+    except ValueError:
+        salon_id_int = 0
     salones = db.get_salones(solo_activos=True)
-    sel = salon_id or (salones[0]["id"] if salones else 0)
+    sel = salon_id_int or (salones[0]["id"] if salones else 0)
     mesas = db.get_mesas(salon_id=sel) if sel else []
     return templates.TemplateResponse(request, "salon/mapa.html", {
         "active": "salon", "salones": salones, "salon_sel": sel, "mesas": mesas,
