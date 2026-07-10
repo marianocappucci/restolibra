@@ -10,9 +10,16 @@
     body { background: #f4f6fb; padding: 1.25rem; }
     .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.07); border-radius: 12px; }
     .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
+    #btn-fullscreen { position: fixed; top: 10px; right: 10px; z-index: 1000; opacity: .55; }
+    #btn-fullscreen:hover { opacity: 1; }
   </style>
 </head>
 <body>
+  <button type="button" id="btn-fullscreen" class="btn btn-sm btn-outline-secondary"
+          onclick="toggleFullscreen()" title="Pantalla completa">
+    <i class="bi bi-arrows-fullscreen"></i>
+  </button>
+
   <h1 class="mb-3">
     <i class="bi {% if estacion == 'cocina' %}bi-fire text-danger{% else %}bi-cup-straw text-info{% endif %} me-2"></i>
     KDS {{ estacion|capitalize }}
@@ -34,6 +41,19 @@
   </div>
   <p class="text-muted small mt-3" id="kds-status">Actualizando…</p>
 
+  <script>
+function toggleFullscreen(){
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+document.addEventListener("fullscreenchange", () => {
+  const icon = document.querySelector("#btn-fullscreen i");
+  icon.className = document.fullscreenElement ? "bi bi-fullscreen-exit" : "bi bi-arrows-fullscreen";
+});
+  </script>
   {% include "kds/_pantalla_script.html" %}
 </body>
 </html>

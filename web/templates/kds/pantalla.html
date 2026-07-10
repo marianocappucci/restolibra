@@ -13,9 +13,9 @@
       <a href="/kds/{{ e }}" class="btn btn-outline-secondary {% if e == estacion %}active{% endif %}">{{ e|capitalize }}</a>
       {% endfor %}
     </div>
-    <a href="/kds/{{ estacion }}/monitor" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+    <button type="button" class="btn btn-outline-primary btn-sm" onclick="separarMonitor('{{ estacion }}')">
       <i class="bi bi-display me-1"></i>Separar monitor
-    </a>
+    </button>
   </div>
 </div>
 
@@ -37,5 +37,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+function separarMonitor(estacion){
+  const w = 1280, h = 800;
+  window.open(
+    `/kds/${estacion}/monitor`,
+    `kds_monitor_${estacion}`,
+    `toolbar=no,location=no,menubar=no,status=no,scrollbars=yes,resizable=yes,width=${w},height=${h}`
+  );
+}
+</script>
 {% include "kds/_pantalla_script.html" %}
 {% endblock %}
