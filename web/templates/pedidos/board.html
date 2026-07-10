@@ -7,49 +7,31 @@
 {% block content %}
 <div class="page-header">
   <h1><i class="bi bi-bag-check me-2 text-primary"></i>Pedidos (mostrador y delivery)</h1>
-  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="bi bi-grid-3x3-gap me-1"></i>Ir al salón</a>
+  <div class="d-flex gap-2">
+    <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="bi bi-grid-3x3-gap me-1"></i>Ir al salón</a>
+    <button type="button" class="btn btn-outline-primary btn-sm" onclick="separarMonitor()">
+      <i class="bi bi-display me-1"></i>Separar monitor
+    </button>
+  </div>
 </div>
 
 <div class="row g-3">
+  {% set es_monitor = false %}
   {% for canal, pedidos in por_canal.items() %}
-  <div class="col-md-4">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <h6 class="mb-0 text-{{ canal_color[canal] }}">
-        <i class="bi {{ canal_icon[canal] }} me-1"></i>{{ canal_label[canal] }}
-        <span class="badge bg-{{ canal_color[canal] }}">{{ pedidos|length }}</span>
-      </h6>
-      <a href="/pedidos/nuevo?canal={{ canal }}" class="btn btn-sm btn-{{ canal_color[canal] }}">
-        <i class="bi bi-plus-lg"></i> Nuevo
-      </a>
-    </div>
-    <div class="d-flex flex-column gap-2">
-      {% for p in pedidos %}
-      <a href="/salon/pedido/{{ p.id }}" class="text-decoration-none">
-        <div class="card border-{{ canal_color[canal] }}">
-          <div class="card-body p-2">
-            <div class="d-flex justify-content-between">
-              <strong>{{ p.cliente_nombre or p.numero }}</strong>
-              <span class="badge bg-{{ canal_color[canal] }}">${{ p.total|moneda }}</span>
-            </div>
-            <div class="small text-muted">
-              {{ p.numero }} · {{ p.n_items }} ítem(s)
-              {% if p.canal == 'takeaway' and p.hora_retiro %} · retiro {{ p.hora_retiro }}{% endif %}
-            </div>
-            {% if p.canal == 'delivery' %}
-            <div class="small">
-              {% if p.direccion %}<i class="bi bi-geo-alt"></i> {{ p.direccion }}{% endif %}
-              {% if p.repartidor %}<span class="ms-2"><i class="bi bi-person-badge"></i> {{ p.repartidor }}</span>{% endif %}
-            </div>
-            {% endif %}
-            {% if p.telefono %}<div class="small text-muted"><i class="bi bi-telephone"></i> {{ p.telefono }}</div>{% endif %}
-          </div>
-        </div>
-      </a>
-      {% else %}
-      <div class="text-muted small">Sin pedidos activos.</div>
-      {% endfor %}
-    </div>
-  </div>
+  {% include "pedidos/_columna_canal.html" %}
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function separarMonitor(){
+  const w = 1280, h = 800;
+  window.open(
+    "/pedidos/monitor",
+    "pedidos_monitor",
+    `toolbar=no,location=no,menubar=no,status=no,scrollbars=yes,resizable=yes,width=${w},height=${h}`
+  );
+}
+</script>
 {% endblock %}

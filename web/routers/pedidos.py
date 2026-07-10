@@ -31,6 +31,16 @@ def pedidos_board(request: Request, user: Auth):
     })
 
 
+@router.get("/pedidos/monitor")
+def pedidos_monitor(request: Request, user: Auth):
+    """Visor standalone (sin sidebar) para separar en su propio monitor, igual que KDS."""
+    activos = db.get_pedidos_activos(canales=CANALES_SIN_MESA)
+    por_canal = {c: [p for p in activos if p["canal"] == c] for c in CANALES_SIN_MESA}
+    return templates.TemplateResponse(request, "pedidos/monitor.html", {
+        "por_canal": por_canal, "canal_label": CANAL_LABEL,
+    })
+
+
 @router.get("/pedidos/nuevo")
 def pedido_nuevo_get(request: Request, user: Auth, canal: str = "barra"):
     if canal not in CANALES_SIN_MESA:
