@@ -12,19 +12,59 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <style>
-    /* Paleta de marca (misma que restolibra.com.ar) — pisa el azul default de Bootstrap
-       via sus variables, asi que btn-primary/text-primary/bg-primary/etc. la heredan
-       en toda la app sin tocar cada template. */
+    /* Paleta de marca (misma que restolibra.com.ar), pisando el azul default de
+       Bootstrap. Las utility classes (text-primary/bg-primary/border-primary) leen
+       --bs-primary-rgb en tiempo real, asi que con esto alcanza. Los componentes
+       (.btn-primary, .btn-outline-primary, nav-pills activo, foco de inputs) traen
+       sus propias variables ya resueltas a #0d6efd en el CSS compilado de Bootstrap
+       — no heredan de --bs-primary — asi que a esos hay que pisarlos aparte. */
     :root {
-      --bs-primary:               #ea580c;
-      --bs-primary-rgb:           234, 88, 12;
-      --bs-primary-text-emphasis: #c2410c;
-      --bs-primary-bg-subtle:     #fff7ed;
-      --bs-primary-border-subtle: #fed7aa;
-      --bs-link-color:            #ea580c;
-      --bs-link-color-rgb:        234, 88, 12;
-      --bs-link-hover-color:      #c2410c;
-      --bs-link-hover-color-rgb:  194, 65, 12;
+      --bs-primary:                    #ea580c;
+      --bs-primary-rgb:                234, 88, 12;
+      --bs-primary-text-emphasis:      #c2410c;
+      --bs-primary-bg-subtle:          #fff7ed;
+      --bs-primary-border-subtle:      #fed7aa;
+      --bs-link-color:                 #ea580c;
+      --bs-link-color-rgb:             234, 88, 12;
+      --bs-link-hover-color:           #c2410c;
+      --bs-link-hover-color-rgb:       194, 65, 12;
+      --bs-nav-pills-link-active-bg:   #ea580c;
+    }
+    .btn-primary {
+      --bs-btn-color: #fff;
+      --bs-btn-bg: #ea580c;
+      --bs-btn-border-color: #ea580c;
+      --bs-btn-hover-color: #fff;
+      --bs-btn-hover-bg: #c2410c;
+      --bs-btn-hover-border-color: #c2410c;
+      --bs-btn-focus-shadow-rgb: 234, 88, 12;
+      --bs-btn-active-color: #fff;
+      --bs-btn-active-bg: #c2410c;
+      --bs-btn-active-border-color: #c2410c;
+      --bs-btn-disabled-color: #fff;
+      --bs-btn-disabled-bg: #ea580c;
+      --bs-btn-disabled-border-color: #ea580c;
+    }
+    .btn-outline-primary {
+      --bs-btn-color: #ea580c;
+      --bs-btn-border-color: #ea580c;
+      --bs-btn-hover-color: #fff;
+      --bs-btn-hover-bg: #ea580c;
+      --bs-btn-hover-border-color: #ea580c;
+      --bs-btn-focus-shadow-rgb: 234, 88, 12;
+      --bs-btn-active-color: #fff;
+      --bs-btn-active-bg: #ea580c;
+      --bs-btn-active-border-color: #ea580c;
+      --bs-btn-disabled-color: #ea580c;
+      --bs-btn-disabled-border-color: #ea580c;
+    }
+    .form-control:focus, .form-select:focus, .form-check-input:focus {
+      border-color: #f0995f;
+      box-shadow: 0 0 0 .25rem rgba(234, 88, 12, .25);
+    }
+    .form-check-input:checked {
+      background-color: #ea580c;
+      border-color: #ea580c;
     }
     body { background: #fbf9f6; }
     .sidebar {
