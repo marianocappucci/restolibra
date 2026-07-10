@@ -2,16 +2,23 @@
 {% block title %}Salón — Restolibra{% endblock %}
 
 {% block content %}
+{% set es_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
 <div class="page-header">
   <h1><i class="bi bi-grid-3x3-gap me-2 text-primary"></i>Salón</h1>
+  {% if not es_mozo %}
   <a href="/salon/config" class="btn btn-outline-secondary btn-sm">
     <i class="bi bi-gear me-1"></i>Configurar salones y mesas
   </a>
+  {% endif %}
 </div>
 
 {% if not salones %}
 <div class="alert alert-info">
+  {% if es_mozo %}
+  Todavía no hay salones ni mesas configuradas. Pedile a un administrador que las configure.
+  {% else %}
   Todavía no hay salones ni mesas. <a href="/salon/config">Creá el primero</a>.
+  {% endif %}
 </div>
 {% else %}
 
@@ -32,7 +39,13 @@
 </div>
 
 {% if not mesas %}
-<div class="alert alert-light border">Este salón no tiene mesas. <a href="/salon/config">Agregá mesas</a>.</div>
+<div class="alert alert-light border">
+  {% if es_mozo %}
+  Este salón no tiene mesas configuradas. Pedile a un administrador que las agregue.
+  {% else %}
+  Este salón no tiene mesas. <a href="/salon/config">Agregá mesas</a>.
+  {% endif %}
+</div>
 {% else %}
 <div class="row g-3">
   {% for m in mesas %}

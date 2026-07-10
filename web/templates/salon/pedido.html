@@ -2,6 +2,7 @@
 {% block title %}Pedido {{ pedido.numero }} — Restolibra{% endblock %}
 
 {% block content %}
+{% set es_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
 <div class="page-header">
   <h1>
     <i class="bi bi-receipt-cutoff me-2 text-primary"></i>
@@ -165,7 +166,11 @@
           {% else %}
           <div class="col-12 text-center text-muted py-3">
             No hay productos{% if q %} para “{{ q }}”{% endif %}.
+            {% if es_mozo %}
+            Pedile a un administrador que cargue productos.
+            {% else %}
             <a href="/productos">Cargá productos</a> y asignales estación.
+            {% endif %}
           </div>
           {% endfor %}
         </div>
