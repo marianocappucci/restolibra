@@ -2,27 +2,27 @@
 {% block title %}{% if vista == 'nc' %}Notas de Crédito{% elif vista == 'nd' %}Notas de Débito{% else %}Facturas{% endif %} — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-receipt me-2 text-primary"></i>Comprobantes</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">receipt_long</span>Comprobantes</h1>
   <div class="dropdown">
     <button class="btn btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
-      <i class="ti ti-plus me-1"></i>Nuevo
+      <span class="material-symbols-outlined me-1">add</span>Nuevo
     </button>
     <ul class="dropdown-menu dropdown-menu-end">
       <li>
         <a class="dropdown-item" href="/facturas/nueva">
-          <i class="ti ti-file-text me-2 text-primary"></i>Factura
+          <span class="material-symbols-outlined me-2 text-primary">description</span>Factura
         </a>
       </li>
       <li><hr class="dropdown-divider"></li>
       <li>
         <span class="dropdown-item disabled">
-          <i class="ti ti-file-minus me-2 text-warning"></i>Nota de Crédito
+          <span class="material-symbols-outlined me-2 text-warning">description</span>Nota de Crédito
           <small class="d-block text-muted" style="font-size:0.75rem">Generá desde el detalle de una factura</small>
         </span>
       </li>
       <li>
         <span class="dropdown-item disabled">
-          <i class="ti ti-file-plus me-2 text-info"></i>Nota de Débito
+          <span class="material-symbols-outlined me-2 text-info">post_add</span>Nota de Débito
           <small class="d-block text-muted" style="font-size:0.75rem">Generá desde el detalle de una factura</small>
         </span>
       </li>
@@ -34,23 +34,23 @@
 <ul class="nav nav-tabs mb-3">
   <li class="nav-item">
     <a class="nav-link {% if vista == 'facturas' %}active{% endif %}" href="/facturas?vista=facturas">
-      <i class="ti ti-receipt me-1"></i>Facturas
+      <span class="material-symbols-outlined me-1">receipt_long</span>Facturas
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if vista == 'sin_cobrar' %}active{% endif %}" href="/facturas?vista=sin_cobrar">
-      <i class="ti ti-clock me-1"></i>Sin cobrar
+      <span class="material-symbols-outlined me-1">schedule</span>Sin cobrar
       {% if vista == 'sin_cobrar' and total_items %}<span class="badge bg-warning text-dark ms-1">{{ total_items }}</span>{% endif %}
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if vista == 'nc' %}active{% endif %}" href="/facturas?vista=nc">
-      <i class="ti ti-file-minus me-1"></i>Notas de Crédito
+      <span class="material-symbols-outlined me-1">description</span>Notas de Crédito
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if vista == 'nd' %}active{% endif %}" href="/facturas?vista=nd">
-      <i class="ti ti-file-plus me-1"></i>Notas de Débito
+      <span class="material-symbols-outlined me-1">post_add</span>Notas de Débito
     </a>
   </li>
 </ul>
@@ -72,9 +72,9 @@
                title="Hasta">
       </div>
       <div class="col-auto d-flex gap-2">
-        <button class="btn btn-outline-secondary" type="submit"><i class="ti ti-search"></i></button>
+        <button class="btn btn-outline-secondary" type="submit"><span class="material-symbols-outlined">search</span></button>
         {% if q or desde or hasta %}
-        <a href="/facturas?vista={{ vista }}" class="btn btn-outline-danger"><i class="ti ti-x"></i></a>
+        <a href="/facturas?vista={{ vista }}" class="btn btn-outline-danger"><span class="material-symbols-outlined">close</span></a>
         {% endif %}
       </div>
       {% if total_items is defined %}
@@ -140,14 +140,14 @@
                 {% if vista in ('facturas', 'sin_cobrar') %}
                   {% set tc = f.total_cobrado | float %}
                   {% if tc >= f.total %}
-                  <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i>Cobrada</span>
+                  <span class="badge bg-success"><span class="material-symbols-outlined me-1">check_circle</span>Cobrada</span>
                   {% elif tc > 0 %}
-                  <span class="badge bg-info text-dark"><i class="ti ti-history me-1"></i>Parcial</span>
+                  <span class="badge bg-info text-dark"><span class="material-symbols-outlined me-1">history</span>Parcial</span>
                   {% else %}
-                  <span class="badge bg-warning text-dark"><i class="ti ti-clock me-1"></i>Sin cobrar</span>
+                  <span class="badge bg-warning text-dark"><span class="material-symbols-outlined me-1">schedule</span>Sin cobrar</span>
                   {% endif %}
                 {% else %}
-                <span class="badge bg-success"><i class="ti ti-circle-check me-1"></i>Autorizada</span>
+                <span class="badge bg-success"><span class="material-symbols-outlined me-1">check_circle</span>Autorizada</span>
                 {% endif %}
               {% else %}
               <span class="badge bg-secondary">Sin CAE</span>
@@ -158,11 +158,11 @@
               {% if vista in ('facturas', 'sin_cobrar') and f.cae and tc < f.total %}
               <a href="/facturas/{{ f.id }}#modalCobro" class="btn btn-sm btn-success"
                  title="Registrar cobro" onclick="setTimeout(()=>{const m=document.getElementById('modalCobro');if(m)new bootstrap.Modal(m).show()},200)">
-                <i class="ti ti-coin"></i>
+                <span class="material-symbols-outlined">monetization_on</span>
               </a>
               {% endif %}
-              <a href="/facturas/{{ f.id }}" class="btn btn-sm btn-outline-secondary"><i class="ti ti-eye"></i></a>
-              <a href="/facturas/{{ f.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><i class="ti ti-file-type-pdf"></i></a>
+              <a href="/facturas/{{ f.id }}" class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">visibility</span></a>
+              <a href="/facturas/{{ f.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><span class="material-symbols-outlined">picture_as_pdf</span></a>
             </td>
           </tr>
           {% endfor %}

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-receipt me-2 text-primary"></i>
+    <span class="material-symbols-outlined me-2 text-primary">receipt_long</span>
     Venta {{ venta.numero }}
     {% if venta.estado == 'cobrada' %}
     <span class="badge ms-2" style="background:#d1e7dd;color:#0f5132;font-size:.6em;vertical-align:middle">Cobrada</span>
@@ -16,14 +16,14 @@
   </h1>
   <div class="d-flex gap-2">
     <a href="/ventas/{{ venta.id }}/ticket" target="_blank" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-printer me-1"></i>Ticket
+      <span class="material-symbols-outlined me-1">print</span>Ticket
     </a>
     {% if venta.pagos %}
     <a href="/ventas/{{ venta.id }}/recibo" target="_blank" class="btn btn-outline-success btn-sm">
-      <i class="ti ti-file-check me-1"></i>Recibo
+      <span class="material-symbols-outlined me-1">task</span>Recibo
     </a>
     {% endif %}
-    <a href="/ventas" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
+    <a href="/ventas" class="btn btn-outline-secondary"><span class="material-symbols-outlined me-1">arrow_back</span>Volver</a>
   </div>
 </div>
 
@@ -94,7 +94,7 @@
 
     <!-- Medios de pago -->
     <div class="card mb-3">
-      <div class="card-header"><i class="ti ti-credit-card me-1"></i>Pagos recibidos</div>
+      <div class="card-header"><span class="material-symbols-outlined me-1">credit_card</span>Pagos recibidos</div>
       <div class="card-body pb-2">
         {% for p in venta.pagos %}
         <div class="d-flex justify-content-between align-items-center mb-2">
@@ -105,7 +105,7 @@
         </div>
         {% if p.referencia %}
         <div class="text-muted small mb-2 ps-1">
-          <i class="ti ti-circle-check text-success me-1"></i>Ref: {{ p.referencia }}
+          <span class="material-symbols-outlined text-success me-1">check_circle</span>Ref: {{ p.referencia }}
         </div>
         {% endif %}
         {% endfor %}
@@ -120,12 +120,12 @@
         <div class="mt-3">
           {% if venta.mp_payment_id %}
           <div class="alert alert-success py-2 px-3 mb-0 small">
-            <i class="ti ti-circle-check me-1"></i>
+            <span class="material-symbols-outlined me-1">check_circle</span>
             Pago confirmado por MercadoPago <span class="text-muted">#{{ venta.mp_payment_id }}</span>
           </div>
           {% else %}
           <button class="btn btn-primary btn-sm w-100" onclick="abrirQR()">
-            <i class="ti ti-qrcode me-1"></i>Cobrar con QR
+            <span class="material-symbols-outlined me-1">qr_code</span>Cobrar con QR
           </button>
           {% endif %}
         </div>
@@ -140,18 +140,18 @@
       <div class="card-body d-grid gap-2">
         {% if request.state.modulos and 'facturacion' in request.state.modulos %}
         <a href="/facturas/nueva?from_venta={{ venta.id }}" class="btn btn-outline-primary btn-sm">
-          <i class="ti ti-receipt me-1"></i>Generar factura
+          <span class="material-symbols-outlined me-1">receipt_long</span>Generar factura
         </a>
         {% endif %}
         {% if request.state.modulos and 'remitos' in request.state.modulos %}
         <a href="/remitos/nuevo?from_venta={{ venta.id }}" class="btn btn-outline-secondary btn-sm">
-          <i class="ti ti-file-text me-1"></i>Generar remito
+          <span class="material-symbols-outlined me-1">description</span>Generar remito
         </a>
         {% endif %}
         <form method="post" action="/ventas/{{ venta.id }}/anular"
               onsubmit="return confirm('¿Anular esta venta? Los movimientos de caja asociados quedarán registrados.')">
           <button type="submit" class="btn btn-outline-danger btn-sm w-100">
-            <i class="ti ti-circle-x me-1"></i>Anular venta
+            <span class="material-symbols-outlined me-1">cancel</span>Anular venta
           </button>
         </form>
       </div>
@@ -160,13 +160,13 @@
 
     {% if venta.factura_id %}
     <div class="alert alert-light border small">
-      <i class="ti ti-receipt me-1"></i>
+      <span class="material-symbols-outlined me-1">receipt_long</span>
       Factura generada: <a href="/facturas/{{ venta.factura_id }}" class="fw-semibold">ver factura</a>
     </div>
     {% endif %}
     {% if venta.remito_id %}
     <div class="alert alert-light border small">
-      <i class="ti ti-file-text me-1"></i>
+      <span class="material-symbols-outlined me-1">description</span>
       Remito generado: <a href="/remitos/{{ venta.remito_id }}" class="fw-semibold">ver remito</a>
     </div>
     {% endif %}
@@ -179,7 +179,7 @@
   <div class="modal-dialog modal-dialog-centered" style="max-width:360px">
     <div class="modal-content">
       <div class="modal-header border-0 pb-0">
-        <h5 class="modal-title"><i class="ti ti-qrcode me-2 text-primary"></i>Cobrar con QR</h5>
+        <h5 class="modal-title"><span class="material-symbols-outlined me-2 text-primary">qr_code</span>Cobrar con QR</h5>
         <button type="button" class="btn-close" onclick="cancelarQR()"></button>
       </div>
       <div class="modal-body text-center">
@@ -202,14 +202,14 @@
         </div>
 
         <div id="qr-approved" style="display:none">
-          <div class="text-success my-3" style="font-size:3.5rem"><i class="ti ti-circle-check"></i></div>
+          <div class="text-success my-3" style="font-size:3.5rem"><span class="material-symbols-outlined">check_circle</span></div>
           <h5 class="text-success">¡Pago confirmado!</h5>
           <p class="text-muted small">El pago fue aprobado por MercadoPago.</p>
           <button class="btn btn-success w-100" onclick="location.reload()">Listo</button>
         </div>
 
         <div id="qr-error" style="display:none">
-          <div class="text-danger my-3" style="font-size:2.5rem"><i class="ti ti-alert-circle"></i></div>
+          <div class="text-danger my-3" style="font-size:2.5rem"><span class="material-symbols-outlined">error</span></div>
           <p id="qr-error-msg" class="text-danger small"></p>
           <button class="btn btn-outline-secondary btn-sm" onclick="cancelarQR()">Cerrar</button>
         </div>

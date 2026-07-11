@@ -109,14 +109,14 @@ _MEDIO_LABEL = {
 }
 
 _MEDIO_ICON = {
-    "efectivo":         "ti-cash",
-    "transferencia":    "ti-building-bank",
-    "mercadopago":      "ti-phone",
-    "cuenta_dni":       "ti-id",
-    "billetera":        "ti-wallet",
-    "cuenta_corriente": "ti-notebook",
-    "cheque":           "ti-file-text",
-    "sin_especificar":  "ti-help",
+    "efectivo":         "payments",
+    "transferencia":    "account_balance",
+    "mercadopago":      "call",
+    "cuenta_dni":       "badge",
+    "billetera":        "wallet",
+    "cuenta_corriente": "menu_book",
+    "cheque":           "description",
+    "sin_especificar":  "help",
 }
 
 

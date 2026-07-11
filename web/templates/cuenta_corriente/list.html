@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-notebook me-2 text-primary"></i>Cuenta Corriente</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">menu_book</span>Cuenta Corriente</h1>
 </div>
 
 <!-- Resumen -->
@@ -52,7 +52,7 @@
           </td>
           <td class="text-end">
             <a href="/cuenta-corriente/{{ c.id }}" class="btn btn-sm btn-outline-primary">
-              <i class="ti ti-eye me-1"></i>Ver
+              <span class="material-symbols-outlined me-1">visibility</span>Ver
             </a>
           </td>
         </tr>
@@ -61,7 +61,7 @@
     </table>
     {% else %}
     <div class="p-5 text-center text-muted">
-      <i class="ti ti-notebook fs-1 d-block mb-2 opacity-25"></i>
+      <span class="material-symbols-outlined fs-1 d-block mb-2 opacity-25">menu_book</span>
       No hay clientes con movimientos en cuenta corriente.
     </div>
     {% endif %}

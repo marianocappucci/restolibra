@@ -4,11 +4,11 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-history me-2 text-primary"></i>
+    <span class="material-symbols-outlined me-2 text-primary">history</span>
     Movimientos de stock
     {% if producto %}<span class="text-muted fw-normal fs-5 ms-2">· {{ producto.nombre }}</span>{% endif %}
   </h1>
-  <a href="/stock" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Stock</a>
+  <a href="/stock" class="btn btn-outline-secondary"><span class="material-symbols-outlined me-1">arrow_back</span>Stock</a>
 </div>
 
 <!-- Filtros -->
@@ -62,19 +62,19 @@
             <td class="text-center">
               {% if m.tipo == 'entrada' %}
               <span class="badge" style="background:#d1e7dd;color:#0f5132">
-                <i class="ti ti-package-import me-1"></i>Entrada
+                <span class="material-symbols-outlined me-1">move_to_inbox</span>Entrada
               </span>
               {% elif m.tipo == 'salida' %}
               <span class="badge" style="background:#f8d7da;color:#842029">
-                <i class="ti ti-package-export me-1"></i>Salida
+                <span class="material-symbols-outlined me-1">outbox</span>Salida
               </span>
               {% elif m.tipo == 'venta' %}
               <span class="badge bg-primary">
-                <i class="ti ti-shopping-cart me-1"></i>Venta
+                <span class="material-symbols-outlined me-1">shopping_cart</span>Venta
               </span>
               {% elif m.tipo == 'ajuste' %}
               <span class="badge bg-secondary">
-                <i class="ti ti-refresh me-1"></i>Ajuste
+                <span class="material-symbols-outlined me-1">refresh</span>Ajuste
               </span>
               {% else %}
               <span class="badge bg-light text-dark">{{ m.tipo }}</span>

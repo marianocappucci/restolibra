@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-cash me-2 text-primary"></i>Cajas</h1>
-  <a href="/cajas/nueva" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nueva caja</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">payments</span>Cajas</h1>
+  <a href="/cajas/nueva" class="btn btn-primary"><span class="material-symbols-outlined me-1">add</span>Nueva caja</a>
 </div>
 
 {% if error %}
@@ -18,7 +18,7 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h5 class="card-title mb-0">
-            <i class="ti ti-coin me-2 text-success"></i>{{ c.nombre }}
+            <span class="material-symbols-outlined me-2 text-success">monetization_on</span>{{ c.nombre }}
           </h5>
           <div>
             {% if c.es_default %}
@@ -47,20 +47,20 @@
 
         <div class="d-flex gap-2 flex-wrap">
           <a href="/caja?caja_id={{ c.id }}" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-eye me-1"></i>Ver movimientos
+            <span class="material-symbols-outlined me-1">visibility</span>Ver movimientos
           </a>
           <a href="/cajas/{{ c.id }}/editar" class="btn btn-sm btn-outline-secondary">
-            <i class="ti ti-pencil me-1"></i>Editar
+            <span class="material-symbols-outlined me-1">edit</span>Editar
           </a>
           {% if not c.es_default %}
           <form method="post" action="/cajas/{{ c.id }}/set-default" class="d-inline">
             <button class="btn btn-sm btn-outline-success" title="Usar como caja por defecto">
-              <i class="ti ti-star me-1"></i>Predeterminar
+              <span class="material-symbols-outlined me-1">star</span>Predeterminar
             </button>
           </form>
           <form method="post" action="/cajas/{{ c.id }}/eliminar" class="d-inline"
                 onsubmit="return confirm('¿Eliminar la caja «{{ c.nombre }}»?')">
-            <button class="btn btn-sm btn-outline-danger"><i class="ti ti-trash"></i></button>
+            <button class="btn btn-sm btn-outline-danger"><span class="material-symbols-outlined">delete</span></button>
           </form>
           {% endif %}
         </div>

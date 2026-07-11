@@ -5,14 +5,14 @@
 {% set num = '%08d' % factura.numero %}
 {% set es_nc = 'Crédito' in nota_tipo_label %}
 <div class="page-header">
-  <h1><i class="ti {{ nota_icono }} me-2 text-{{ nota_color }}"></i>Generar {{ nota_tipo_label }}</h1>
+  <h1><span class="material-symbols-outlined me-2 text-{{ nota_color }}">{{ nota_icono }}</span>Generar {{ nota_tipo_label }}</h1>
   <a href="/facturas/{{ factura.id }}" class="btn btn-outline-secondary">
-    <i class="ti ti-arrow-left me-1"></i>Volver
+    <span class="material-symbols-outlined me-1">arrow_back</span>Volver
   </a>
 </div>
 
 <div class="alert alert-{{ nota_color }} d-flex gap-2 align-items-start mb-4">
-  <i class="ti ti-alert-triangle fs-5 mt-1"></i>
+  <span class="material-symbols-outlined fs-5 mt-1">warning</span>
   <div>
     Estás por generar una <strong>{{ nota_tipo_label }}</strong>
     {% if es_nc %}que anula{% else %}asociada a{% endif %}
@@ -46,7 +46,7 @@
   <div class="d-flex gap-2">
     <a href="/facturas/{{ factura.id }}" class="btn btn-outline-secondary">Cancelar</a>
     <button type="submit" class="btn btn-{{ nota_color }} fw-semibold px-4">
-      <i class="ti {{ nota_icono }} me-1"></i>Confirmar y generar {{ nota_tipo_label }}
+      <span class="material-symbols-outlined me-1">{{ nota_icono }}</span>Confirmar y generar {{ nota_tipo_label }}
     </button>
   </div>
 </form>

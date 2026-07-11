@@ -4,18 +4,18 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-building me-2 text-primary"></i>{{ deposito.nombre }}
+    <span class="material-symbols-outlined me-2 text-primary">business</span>{{ deposito.nombre }}
     {% if deposito.es_default %}<span class="badge bg-success ms-2" style="font-size:.55em;vertical-align:middle">Por defecto</span>{% endif %}
   </h1>
   <div class="d-flex gap-2">
     <a href="/depositos/transferir/form" class="btn btn-outline-primary btn-sm">
-      <i class="ti ti-arrows-left-right me-1"></i>Transferir
+      <span class="material-symbols-outlined me-1">swap_horiz</span>Transferir
     </a>
     <a href="/depositos/{{ deposito.id }}/editar" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-pencil me-1"></i>Editar
+      <span class="material-symbols-outlined me-1">edit</span>Editar
     </a>
     <a href="/depositos" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-arrow-left me-1"></i>Volver
+      <span class="material-symbols-outlined me-1">arrow_back</span>Volver
     </a>
   </div>
 </div>
@@ -26,7 +26,7 @@
 
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <span><i class="ti ti-package me-1"></i>Stock en este depósito</span>
+    <span><span class="material-symbols-outlined me-1">inventory_2</span>Stock en este depósito</span>
     <span class="text-muted small">{{ stock|length }} productos</span>
   </div>
   <div class="card-body p-0">

@@ -3,10 +3,10 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-coin me-2 text-primary"></i>
+  <h1><span class="material-symbols-outlined me-2 text-primary">monetization_on</span>
     {% if caja %}Editar: {{ caja.nombre }}{% else %}Nueva caja{% endif %}
   </h1>
-  <a href="/cajas" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
+  <a href="/cajas" class="btn btn-outline-secondary"><span class="material-symbols-outlined me-1">arrow_back</span>Volver</a>
 </div>
 
 {% if error %}
@@ -61,7 +61,7 @@
 
           <div class="d-grid">
             <button type="submit" class="btn btn-primary">
-              <i class="ti ti-check me-1"></i>Guardar
+              <span class="material-symbols-outlined me-1">check</span>Guardar
             </button>
           </div>
         </form>

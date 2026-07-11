@@ -3,11 +3,11 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-user-cog me-2"></i>
+    <span class="material-symbols-outlined me-2">manage_accounts</span>
     {{ 'Editar usuario' if usuario else 'Nuevo usuario' }}
   </h1>
   <a href="/usuarios" class="btn btn-outline-secondary btn-sm">
-    <i class="ti ti-arrow-left me-1"></i>Volver
+    <span class="material-symbols-outlined me-1">arrow_back</span>Volver
   </a>
 </div>
 
@@ -74,7 +74,7 @@
 
       <div class="d-flex gap-2">
         <button type="submit" class="btn btn-primary">
-          <i class="ti ti-check me-1"></i>{{ 'Guardar cambios' if usuario else 'Crear usuario' }}
+          <span class="material-symbols-outlined me-1">check</span>{{ 'Guardar cambios' if usuario else 'Crear usuario' }}
         </button>
         <a href="/usuarios" class="btn btn-outline-secondary">Cancelar</a>
       </div>

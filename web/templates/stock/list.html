@@ -3,15 +3,15 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-archive me-2 text-primary"></i>Stock</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">archive</span>Stock</h1>
   <a href="/stock/movimientos" class="btn btn-outline-secondary">
-    <i class="ti ti-history me-1"></i>Historial de movimientos
+    <span class="material-symbols-outlined me-1">history</span>Historial de movimientos
   </a>
 </div>
 
 {% if alertas %}
 <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
-  <i class="ti ti-alert-triangle flex-shrink-0 mt-1"></i>
+  <span class="material-symbols-outlined flex-shrink-0 mt-1">warning</span>
   <div>
     <strong>{{ alertas|length }} producto{{ 's' if alertas|length > 1 else '' }} con stock bajo mínimo:</strong>
     {% for a in alertas %}
@@ -67,11 +67,11 @@
             <td class="text-end">
               <a href="/stock/movimientos?producto_id={{ p.id }}" class="btn btn-sm btn-outline-secondary"
                  title="Ver movimientos">
-                <i class="ti ti-history"></i>
+                <span class="material-symbols-outlined">history</span>
               </a>
               <a href="/stock/{{ p.id }}/ajuste" class="btn btn-sm btn-outline-primary"
                  title="Ajustar stock">
-                <i class="ti ti-edit"></i>
+                <span class="material-symbols-outlined">edit</span>
               </a>
             </td>
           </tr>

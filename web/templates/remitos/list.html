@@ -2,16 +2,16 @@
 {% block title %}Remitos — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-file-text me-2 text-primary"></i>Remitos</h1>
-  <a href="/remitos/nuevo" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nuevo remito</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">description</span>Remitos</h1>
+  <a href="/remitos/nuevo" class="btn btn-primary"><span class="material-symbols-outlined me-1">add</span>Nuevo remito</a>
 </div>
 
 <div class="card mb-3">
   <div class="card-body py-2">
     <form class="d-flex gap-2" method="get" action="/remitos">
       <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por número, cliente u observaciones…">
-      <button class="btn btn-outline-secondary" type="submit"><i class="ti ti-search"></i></button>
-      {% if q %}<a href="/remitos" class="btn btn-outline-danger"><i class="ti ti-x"></i></a>{% endif %}
+      <button class="btn btn-outline-secondary" type="submit"><span class="material-symbols-outlined">search</span></button>
+      {% if q %}<a href="/remitos" class="btn btn-outline-danger"><span class="material-symbols-outlined">close</span></a>{% endif %}
     </form>
   </div>
 </div>
@@ -36,8 +36,8 @@
             <td>{{ r.date|fecha }}</td>
             <td>{{ r.client_name }}</td>
             <td class="text-end">
-              <a href="/remitos/{{ r.id }}" class="btn btn-sm btn-outline-secondary"><i class="ti ti-eye"></i></a>
-              <a href="/remitos/{{ r.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><i class="ti ti-file-type-pdf"></i></a>
+              <a href="/remitos/{{ r.id }}" class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">visibility</span></a>
+              <a href="/remitos/{{ r.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><span class="material-symbols-outlined">picture_as_pdf</span></a>
             </td>
           </tr>
           {% endfor %}

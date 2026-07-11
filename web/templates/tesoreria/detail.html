@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-building-bank me-2 text-primary"></i>{{ cuenta.nombre }}
+    <span class="material-symbols-outlined me-2 text-primary">account_balance</span>{{ cuenta.nombre }}
     <span class="badge ms-2 fs-6 {% if cuenta.saldo >= 0 %}bg-success{% else %}bg-danger{% endif %}">
       $ {{ cuenta.saldo|moneda }}
     </span>
@@ -12,16 +12,16 @@
   <div class="d-flex gap-2">
     {% if todas %}
     <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalTransferencia">
-      <i class="ti ti-arrows-left-right me-1"></i>Transferir
+      <span class="material-symbols-outlined me-1">swap_horiz</span>Transferir
     </button>
     {% endif %}
     <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalMovimiento">
-      <i class="ti ti-plus me-1"></i>Movimiento
+      <span class="material-symbols-outlined me-1">add</span>Movimiento
     </button>
     <a href="/tesoreria/{{ cuenta.id }}/editar" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-pencil me-1"></i>Editar
+      <span class="material-symbols-outlined me-1">edit</span>Editar
     </a>
-    <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Volver</a>
+    <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><span class="material-symbols-outlined me-1">arrow_back</span>Volver</a>
   </div>
 </div>
 
@@ -101,9 +101,9 @@
             {% elif m.tipo == 'egreso' %}
               <span class="badge" style="background:#f8d7da;color:#842029">Egreso</span>
             {% elif m.tipo == 'transferencia_entrada' %}
-              <span class="badge bg-info text-dark"><i class="ti ti-arrow-down-left me-1"></i>desde {{ m.cuenta_destino_nombre }}</span>
+              <span class="badge bg-info text-dark"><span class="material-symbols-outlined me-1">south_west</span>desde {{ m.cuenta_destino_nombre }}</span>
             {% elif m.tipo == 'transferencia_salida' %}
-              <span class="badge bg-warning text-dark"><i class="ti ti-arrow-up-right me-1"></i>hacia {{ m.cuenta_destino_nombre }}</span>
+              <span class="badge bg-warning text-dark"><span class="material-symbols-outlined me-1">north_east</span>hacia {{ m.cuenta_destino_nombre }}</span>
             {% endif %}
           </td>
           <td>{{ m.concepto }}</td>
@@ -117,7 +117,7 @@
             <form method="post" action="/tesoreria/movimientos/{{ m.id }}/eliminar?cid={{ cuenta.id }}"
                   onsubmit="return confirm('¿Eliminar este movimiento?')">
               <button type="submit" class="btn btn-sm btn-outline-danger border-0 py-0">
-                <i class="ti ti-trash"></i>
+                <span class="material-symbols-outlined">delete</span>
               </button>
             </form>
           </td>
@@ -137,7 +137,7 @@
     <div class="modal-content">
       <form method="post" action="/tesoreria/{{ cuenta.id }}/movimiento">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="ti ti-circle-plus me-2"></i>Registrar movimiento</h5>
+          <h5 class="modal-title"><span class="material-symbols-outlined me-2">add_circle</span>Registrar movimiento</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -145,9 +145,9 @@
             <label class="form-label fw-semibold">Tipo</label>
             <div class="btn-group w-100" role="group">
               <input type="radio" class="btn-check" name="tipo" id="tipo-ingreso" value="ingreso" checked>
-              <label class="btn btn-outline-success" for="tipo-ingreso"><i class="ti ti-arrow-down-left me-1"></i>Ingreso</label>
+              <label class="btn btn-outline-success" for="tipo-ingreso"><span class="material-symbols-outlined me-1">south_west</span>Ingreso</label>
               <input type="radio" class="btn-check" name="tipo" id="tipo-egreso" value="egreso">
-              <label class="btn btn-outline-danger" for="tipo-egreso"><i class="ti ti-arrow-up-right me-1"></i>Egreso</label>
+              <label class="btn btn-outline-danger" for="tipo-egreso"><span class="material-symbols-outlined me-1">north_east</span>Egreso</label>
             </div>
           </div>
           <div class="row g-3 mb-3">
@@ -177,7 +177,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
-            <i class="ti ti-check me-1"></i>Guardar
+            <span class="material-symbols-outlined me-1">check</span>Guardar
           </button>
         </div>
       </form>
@@ -193,7 +193,7 @@
       <form method="post" action="/tesoreria/transferencia">
         <input type="hidden" name="cuenta_origen_id" value="{{ cuenta.id }}">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="ti ti-arrows-left-right me-2"></i>Transferir desde {{ cuenta.nombre }}</h5>
+          <h5 class="modal-title"><span class="material-symbols-outlined me-2">swap_horiz</span>Transferir desde {{ cuenta.nombre }}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -230,7 +230,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
-            <i class="ti ti-arrows-left-right me-1"></i>Transferir
+            <span class="material-symbols-outlined me-1">swap_horiz</span>Transferir
           </button>
         </div>
       </form>

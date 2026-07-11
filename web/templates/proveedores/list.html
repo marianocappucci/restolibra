@@ -2,16 +2,16 @@
 {% block title %}Proveedores — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-truck me-2 text-secondary"></i>Proveedores</h1>
-  <a href="/proveedores/nuevo" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nuevo proveedor</a>
+  <h1><span class="material-symbols-outlined me-2 text-secondary">local_shipping</span>Proveedores</h1>
+  <a href="/proveedores/nuevo" class="btn btn-primary"><span class="material-symbols-outlined me-1">add</span>Nuevo proveedor</a>
 </div>
 
 <div class="card mb-3">
   <div class="card-body py-2">
     <form class="d-flex gap-2" method="get" action="/proveedores">
       <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nombre o CUIT…">
-      <button class="btn btn-outline-secondary" type="submit"><i class="ti ti-search"></i></button>
-      {% if q %}<a href="/proveedores" class="btn btn-outline-danger"><i class="ti ti-x"></i></a>{% endif %}
+      <button class="btn btn-outline-secondary" type="submit"><span class="material-symbols-outlined">search</span></button>
+      {% if q %}<a href="/proveedores" class="btn btn-outline-danger"><span class="material-symbols-outlined">close</span></a>{% endif %}
     </form>
   </div>
 </div>
@@ -38,8 +38,8 @@
             <td class="small text-muted">{{ p.email or '—' }}</td>
             <td class="small text-muted">{{ p.phone or '—' }}</td>
             <td class="text-end">
-              <a href="/proveedores/{{ p.id }}" class="btn btn-sm btn-outline-secondary"><i class="ti ti-eye"></i></a>
-              <a href="/proveedores/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary"><i class="ti ti-pencil"></i></a>
+              <a href="/proveedores/{{ p.id }}" class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">visibility</span></a>
+              <a href="/proveedores/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">edit</span></a>
             </td>
           </tr>
           {% endfor %}

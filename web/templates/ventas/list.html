@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-shopping-cart me-2 text-primary"></i>Ventas</h1>
-  <a href="/ventas/nueva" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nueva venta</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">shopping_cart</span>Ventas</h1>
+  <a href="/ventas/nueva" class="btn btn-primary"><span class="material-symbols-outlined me-1">add</span>Nueva venta</a>
 </div>
 
 <!-- Tabs -->
@@ -102,7 +102,7 @@
             <td class="text-center">
               {% if v.factura_display %}
               <a href="/facturas/{{ v.factura_id }}" class="text-decoration-none small fw-semibold text-success">
-                <i class="ti ti-receipt me-1"></i>{{ v.factura_display }}
+                <span class="material-symbols-outlined me-1">receipt_long</span>{{ v.factura_display }}
               </a>
               {% elif v.estado != 'anulada' %}
               <span class="badge" style="background:#fff3cd;color:#664d03">Sin facturar</span>
@@ -112,7 +112,7 @@
             </td>
             <td class="text-end">
               <a href="/ventas/{{ v.id }}" class="btn btn-sm btn-outline-secondary">
-                <i class="ti ti-eye"></i>
+                <span class="material-symbols-outlined">visibility</span>
               </a>
             </td>
           </tr>

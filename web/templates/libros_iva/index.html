@@ -2,7 +2,7 @@
 {% block title %}Libros IVA — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-notebook me-2 text-primary"></i>Libros IVA Digital</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">menu_book</span>Libros IVA Digital</h1>
 </div>
 
 {# ── Selector de período ── #}
@@ -19,7 +19,7 @@
         <input type="date" class="form-control form-control-sm" name="hasta" value="{{ hasta }}" required>
       </div>
       <button type="submit" class="btn btn-primary btn-sm">
-        <i class="ti ti-filter me-1"></i>Filtrar
+        <span class="material-symbols-outlined me-1">filter_alt</span>Filtrar
       </button>
       <div class="ms-2 d-flex gap-1">
         {% set y = desde[:4] %}{% set m = desde[5:7] %}
@@ -35,14 +35,14 @@
   <li class="nav-item">
     <a class="nav-link {% if tab == 'ventas' %}active{% endif %}"
        href="/libros-iva?desde={{ desde }}&hasta={{ hasta }}&tab=ventas">
-      <i class="ti ti-circle-arrow-up-right me-1"></i>IVA Ventas
+      <span class="material-symbols-outlined me-1">north_east</span>IVA Ventas
       <span class="badge bg-secondary ms-1">{{ facturas|length }}</span>
     </a>
   </li>
   <li class="nav-item">
     <a class="nav-link {% if tab == 'compras' %}active{% endif %}"
        href="/libros-iva?desde={{ desde }}&hasta={{ hasta }}&tab=compras">
-      <i class="ti ti-circle-arrow-down-left me-1"></i>IVA Compras
+      <span class="material-symbols-outlined me-1">south_west</span>IVA Compras
       <span class="badge bg-secondary ms-1">{{ egresos|length }}</span>
     </a>
   </li>
@@ -131,11 +131,11 @@
     <div class="d-flex gap-2">
       <a href="/libros-iva/export/ventas-cbte?desde={{ desde }}&hasta={{ hasta }}"
          class="btn btn-sm btn-outline-primary">
-        <i class="ti ti-download me-1"></i>REGINFO_VENTAS_CBTE.txt
+        <span class="material-symbols-outlined me-1">download</span>REGINFO_VENTAS_CBTE.txt
       </a>
       <a href="/libros-iva/export/ventas-alicuotas?desde={{ desde }}&hasta={{ hasta }}"
          class="btn btn-sm btn-outline-primary">
-        <i class="ti ti-download me-1"></i>REGINFO_VENTAS_ALICUOTAS.txt
+        <span class="material-symbols-outlined me-1">download</span>REGINFO_VENTAS_ALICUOTAS.txt
       </a>
     </div>
   </div>
@@ -186,7 +186,7 @@
     </div>
     {% else %}
     <div class="p-5 text-center text-muted">
-      <i class="ti ti-receipt fs-1 d-block mb-2 opacity-25"></i>
+      <span class="material-symbols-outlined fs-1 d-block mb-2 opacity-25">receipt_long</span>
       No hay comprobantes en el período seleccionado.
     </div>
     {% endif %}
@@ -194,7 +194,7 @@
 </div>
 
 <div class="alert alert-info small">
-  <i class="ti ti-info-circle me-1"></i>
+  <span class="material-symbols-outlined me-1">info</span>
   Los archivos <strong>REGINFO_VENTAS_CBTE</strong> y <strong>REGINFO_VENTAS_ALICUOTAS</strong>
   se importan en el <strong>Aplicativo REGINFO</strong> de ARCA (RG 3685).
   Comprobantes tipo C (Monotributista) van con <code>cantAlicuotas=0</code>.
@@ -282,11 +282,11 @@
     <div class="d-flex gap-2">
       <a href="/libros-iva/export/compras-cbte?desde={{ desde }}&hasta={{ hasta }}"
          class="btn btn-sm btn-outline-success">
-        <i class="ti ti-download me-1"></i>REGINFO_COMPRAS_CBTE.txt
+        <span class="material-symbols-outlined me-1">download</span>REGINFO_COMPRAS_CBTE.txt
       </a>
       <a href="/libros-iva/export/compras-alicuotas?desde={{ desde }}&hasta={{ hasta }}"
          class="btn btn-sm btn-outline-success">
-        <i class="ti ti-download me-1"></i>REGINFO_COMPRAS_ALICUOTAS.txt
+        <span class="material-symbols-outlined me-1">download</span>REGINFO_COMPRAS_ALICUOTAS.txt
       </a>
     </div>
   </div>
@@ -333,7 +333,7 @@
     </div>
     {% else %}
     <div class="p-5 text-center text-muted">
-      <i class="ti ti-truck fs-1 d-block mb-2 opacity-25"></i>
+      <span class="material-symbols-outlined fs-1 d-block mb-2 opacity-25">local_shipping</span>
       No hay facturas de compra en el período seleccionado.<br>
       <small>Solo se incluyen egresos con tipo "Factura".</small>
     </div>
@@ -342,7 +342,7 @@
 </div>
 
 <div class="alert alert-info small">
-  <i class="ti ti-info-circle me-1"></i>
+  <span class="material-symbols-outlined me-1">info</span>
   Los archivos <strong>REGINFO_COMPRAS_CBTE</strong> y <strong>REGINFO_COMPRAS_ALICUOTAS</strong>
   se importan en el <strong>Aplicativo REGINFO</strong> de ARCA (RG 3685).
   Solo se incluyen egresos registrados como <strong>Factura</strong>.

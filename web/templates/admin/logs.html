@@ -3,12 +3,12 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-notebook me-2 text-primary"></i>Logs de actividad</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">menu_book</span>Logs de actividad</h1>
   <a href="{{ request.url.path }}?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&export=1"
      class="btn btn-outline-secondary btn-sm d-none" id="btn-export-nav"></a>
   <a href="/admin/logs/export?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}"
      class="btn btn-outline-secondary">
-    <i class="ti ti-download me-1"></i>Exportar CSV
+    <span class="material-symbols-outlined me-1">download</span>Exportar CSV
   </a>
 </div>
 
@@ -30,7 +30,7 @@
                      {% if t in tipos_sel or not tipos_sel %}checked{% endif %}>
               <label class="form-check-label" for="chk-{{ t }}">
                 <span class="badge" style="background:{{ m.bg }};color:{{ m.color }};font-weight:600">
-                  <i class="ti {{ m.icon }} me-1"></i>{{ m.label }}
+                  <span class="material-symbols-outlined me-1">{{ m.icon }}</span>{{ m.label }}
                 </span>
               </label>
             </div>
@@ -71,7 +71,7 @@
 
         <div class="col-md-3 d-flex gap-2">
           <button type="submit" class="btn btn-primary btn-sm flex-fill">
-            <i class="ti ti-filter me-1"></i>Filtrar
+            <span class="material-symbols-outlined me-1">filter_alt</span>Filtrar
           </button>
           <a href="/admin/logs" class="btn btn-outline-secondary btn-sm">Limpiar</a>
         </div>
@@ -90,12 +90,12 @@
   <div class="d-flex gap-1 align-items-center">
     {% if page > 1 %}
     <a href="?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&page={{ page - 1 }}"
-       class="btn btn-sm btn-outline-secondary"><i class="ti ti-chevron-left"></i></a>
+       class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">chevron_left</span></a>
     {% endif %}
     <span class="small text-muted px-2">Pág {{ page }} / {{ total_pages }}</span>
     {% if page < total_pages %}
     <a href="?tipo={{ tipos_sel|join(',') }}&usuario_id={{ usuario_id }}&turno_id={{ turno_id }}&desde={{ desde }}&hasta={{ hasta }}&page={{ page + 1 }}"
-       class="btn btn-sm btn-outline-secondary"><i class="ti ti-chevron-right"></i></a>
+       class="btn btn-sm btn-outline-secondary"><span class="material-symbols-outlined">chevron_right</span></a>
     {% endif %}
   </div>
 </div>
@@ -125,17 +125,17 @@
           <tr class="table-secondary">
             <td colspan="7" class="py-1 px-3">
               <small class="fw-semibold text-muted">
-                <i class="ti ti-calendar me-1"></i>{{ r.fecha|fecha }}
+                <span class="material-symbols-outlined me-1">calendar_month</span>{{ r.fecha|fecha }}
               </small>
             </td>
           </tr>
           {% endif %}
-          {% set m = tipo_meta.get(r.tipo, {'label': r.tipo, 'icon': 'ti-circle', 'color': '#666', 'bg': '#eee'}) %}
+          {% set m = tipo_meta.get(r.tipo, {'label': r.tipo, 'icon': 'circle', 'color': '#666', 'bg': '#eee'}) %}
           <tr>
             <td class="text-muted small ps-4">{{ r.ts[11:19] if r.ts and r.ts|length > 10 else '—' }}</td>
             <td>
               <span class="badge" style="background:{{ m.bg }};color:{{ m.color }};font-size:.75em">
-                <i class="ti {{ m.icon }} me-1"></i>{{ m.label }}
+                <span class="material-symbols-outlined me-1">{{ m.icon }}</span>{{ m.label }}
               </span>
             </td>
             <td class="small">{{ r.descripcion }}</td>
@@ -145,7 +145,7 @@
               {% else %}—{% endif %}
             </td>
             <td class="small text-muted">
-              {% if r.usuario %}<i class="ti ti-user me-1"></i>{{ r.usuario }}{% else %}—{% endif %}
+              {% if r.usuario %}<span class="material-symbols-outlined me-1">person</span>{{ r.usuario }}{% else %}—{% endif %}
             </td>
             <td class="text-center">
               {% if r.turno_id %}
@@ -156,15 +156,15 @@
             </td>
             <td class="text-end pe-3">
               {% if r.ref_tabla == 'ventas' %}
-              <a href="/ventas/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="ti ti-external-link"></i></a>
+              <a href="/ventas/{{ r.ref_id }}" class="text-muted" title="Ver"><span class="material-symbols-outlined">open_in_new</span></a>
               {% elif r.ref_tabla == 'facturas' %}
-              <a href="/facturas/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="ti ti-external-link"></i></a>
+              <a href="/facturas/{{ r.ref_id }}" class="text-muted" title="Ver"><span class="material-symbols-outlined">open_in_new</span></a>
               {% elif r.ref_tabla == 'remitos' %}
-              <a href="/remitos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="ti ti-external-link"></i></a>
+              <a href="/remitos/{{ r.ref_id }}" class="text-muted" title="Ver"><span class="material-symbols-outlined">open_in_new</span></a>
               {% elif r.ref_tabla == 'presupuestos' %}
-              <a href="/presupuestos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="ti ti-external-link"></i></a>
+              <a href="/presupuestos/{{ r.ref_id }}" class="text-muted" title="Ver"><span class="material-symbols-outlined">open_in_new</span></a>
               {% elif r.ref_tabla == 'turnos_caja' %}
-              <a href="/turnos/{{ r.ref_id }}" class="text-muted" title="Ver"><i class="ti ti-external-link"></i></a>
+              <a href="/turnos/{{ r.ref_id }}" class="text-muted" title="Ver"><span class="material-symbols-outlined">open_in_new</span></a>
               {% endif %}
             </td>
           </tr>
@@ -174,7 +174,7 @@
     </div>
     {% else %}
     <div class="p-5 text-center text-muted">
-      <i class="ti ti-inbox fs-1 d-block mb-2"></i>
+      <span class="material-symbols-outlined fs-1 d-block mb-2">inbox</span>
       No hay registros para los filtros seleccionados.
     </div>
     {% endif %}
@@ -200,7 +200,7 @@
 <!-- Accesos de usuarios -->
 <div class="card mt-4">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <span><i class="ti ti-shield-lock me-1"></i>Accesos de usuarios</span>
+    <span><span class="material-symbols-outlined me-1">security</span>Accesos de usuarios</span>
     <span class="text-muted small">Últimos 100 eventos</span>
   </div>
   {% if auth_log %}
@@ -222,11 +222,11 @@
             <td class="text-muted font-monospace" style="white-space:nowrap">{{ e.ts }}</td>
             <td>
               {% if e.evento == 'login' %}
-              <span class="badge bg-success"><i class="ti ti-login me-1"></i>Login</span>
+              <span class="badge bg-success"><span class="material-symbols-outlined me-1">login</span>Login</span>
               {% elif e.evento == 'logout' %}
-              <span class="badge bg-secondary"><i class="ti ti-logout me-1"></i>Logout</span>
+              <span class="badge bg-secondary"><span class="material-symbols-outlined me-1">logout</span>Logout</span>
               {% elif e.evento == 'login_fallido' %}
-              <span class="badge bg-danger"><i class="ti ti-circle-x me-1"></i>Intento fallido</span>
+              <span class="badge bg-danger"><span class="material-symbols-outlined me-1">cancel</span>Intento fallido</span>
               {% else %}
               <span class="badge bg-light text-dark border">{{ e.evento }}</span>
               {% endif %}
@@ -242,7 +242,7 @@
   </div>
   {% else %}
   <div class="card-body text-center text-muted py-4">
-    <i class="ti ti-shield-check fs-2 d-block mb-2 opacity-25"></i>
+    <span class="material-symbols-outlined fs-2 d-block mb-2 opacity-25">verified_user</span>
     Aún no hay eventos de acceso registrados.
   </div>
   {% endif %}

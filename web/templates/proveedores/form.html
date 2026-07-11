@@ -2,10 +2,10 @@
 {% block title %}{% if proveedor %}Editar proveedor{% else %}Nuevo proveedor{% endif %} — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-truck me-2 text-secondary"></i>
+  <h1><span class="material-symbols-outlined me-2 text-secondary">local_shipping</span>
     {% if proveedor %}Editar: {{ proveedor.nombre }}{% else %}Nuevo proveedor{% endif %}
   </h1>
-  <a href="/proveedores" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
+  <a href="/proveedores" class="btn btn-outline-secondary"><span class="material-symbols-outlined me-1">arrow_back</span>Volver</a>
 </div>
 
 {% if error %}
@@ -67,7 +67,7 @@
 
           <div class="d-grid">
             <button type="submit" class="btn btn-primary">
-              <i class="ti ti-check me-1"></i>Guardar proveedor
+              <span class="material-symbols-outlined me-1">check</span>Guardar proveedor
             </button>
           </div>
         </form>

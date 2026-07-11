@@ -4,10 +4,10 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti ti-package me-2 text-primary"></i>
+    <span class="material-symbols-outlined me-2 text-primary">inventory_2</span>
     {{ 'Editar producto' if producto else 'Nuevo producto' }}
   </h1>
-  <a href="/productos" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
+  <a href="/productos" class="btn btn-outline-secondary"><span class="material-symbols-outlined me-1">arrow_back</span>Volver</a>
 </div>
 
 {% if error %}
@@ -116,7 +116,7 @@
         <!-- Margen (solo lectura, calculado) -->
         <div class="col-12">
           <div class="alert alert-light border py-2 px-3 small mb-0" id="margen-info">
-            <i class="ti ti-chart-line me-1"></i>
+            <span class="material-symbols-outlined me-1">show_chart</span>
             Margen: <strong id="margen-val">—</strong>
           </div>
         </div>
@@ -151,11 +151,11 @@
 
       <div class="d-flex gap-2 mt-4">
         <button type="submit" class="btn btn-primary">
-          <i class="ti ti-check me-1"></i>{{ 'Guardar cambios' if producto else 'Crear producto' }}
+          <span class="material-symbols-outlined me-1">check</span>{{ 'Guardar cambios' if producto else 'Crear producto' }}
         </button>
         {% if producto %}
         <a href="/productos/{{ producto.id }}/receta" class="btn btn-outline-primary">
-          <i class="ti ti-clipboard-data me-1"></i>Receta / insumos
+          <span class="material-symbols-outlined me-1">content_paste</span>Receta / insumos
         </a>
         {% endif %}
         <a href="/productos" class="btn btn-outline-secondary">Cancelar</a>
