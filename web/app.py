@@ -48,12 +48,14 @@ app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js"}
 
-# El rol "mozo" solo opera mesas (salón) y pedidos sin mesa (barra/takeaway/delivery) —
-# no ve dashboard, caja, facturación ni el resto del admin. Se permite reimprimir el
-# ticket de una comanda ya enviada (botón en salon/pedido.html) sin habilitar las
-# pantallas de KDS (/kds/cocina, /kds/barra), que son para cocina/barra, no para el mozo.
-_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos"}
-_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/", "/kds/comanda/")
+# El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery) y
+# reservas (para cargar/sentar reservas telefónicas) — no ve dashboard, caja, facturación
+# ni el resto del admin. Se permite reimprimir el ticket de una comanda ya enviada (botón
+# en salon/pedido.html) sin habilitar las pantallas de KDS (/kds/cocina, /kds/barra), que
+# son para cocina/barra, no para el mozo.
+_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas"}
+_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/", "/kds/comanda/",
+                          "/salon/reservas/")
 
 
 def _mozo_puede_ver(path: str) -> bool:

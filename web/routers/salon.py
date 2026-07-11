@@ -55,8 +55,10 @@ def salon_mapa(request: Request, user: Auth, salon_id: str = ""):
     salones = db.get_salones(solo_activos=True)
     sel = salon_id_int or (salones[0]["id"] if salones else 0)
     mesas = db.get_mesas(salon_id=sel) if sel else []
+    reservas_por_mesa = db.get_proximas_reservas_por_mesa(date.today().isoformat())
     return templates.TemplateResponse(request, "salon/mapa.html", {
         "active": "salon", "salones": salones, "salon_sel": sel, "mesas": mesas,
+        "reservas_por_mesa": reservas_por_mesa,
     })
 
 
@@ -68,8 +70,10 @@ def salon_mesa(request: Request, mesa_id: int, user: Auth):
     pedido = db.get_pedido_abierto_de_mesa(mesa_id)
     if pedido:
         return RedirectResponse(f"/salon/pedido/{pedido['id']}", status_code=303)
+    reservas_hoy = [r for r in db.get_reservas(date.today().isoformat(), estado="pendiente")
+                     if r["mesa_id"] == mesa_id]
     return templates.TemplateResponse(request, "salon/abrir.html", {
-        "active": "salon", "mesa": mesa,
+        "active": "salon", "mesa": mesa, "reservas_hoy": reservas_hoy,
     })
 
 
@@ -335,6 +339,71 @@ def salon_config_mesa_eliminar(mid: int, user: Auth):
     ok = db.delete_mesa(mid)
     msg = "" if ok else "No se puede eliminar la mesa: tiene un pedido abierto."
     return RedirectResponse(f"/salon/config?msg={msg}", status_code=303)
+
+
+# ── Reservas ─────────────────────────────────────────────────────────────────
+
+@router.get("/salon/reservas")
+def salon_reservas(request: Request, user: Auth, fecha: str = "", mesa_id: str = ""):
+    f = fecha or date.today().isoformat()
+    reservas = db.get_reservas(f)
+    mesas = db.get_mesas(solo_activas=True)
+    try:
+        mesa_sel = int(mesa_id)
+    except ValueError:
+        mesa_sel = 0
+    return templates.TemplateResponse(request, "salon/reservas.html", {
+        "active": "salon_reservas", "reservas": reservas, "fecha": f,
+        "hoy": date.today().isoformat(), "mesas": mesas, "mesa_sel": mesa_sel,
+    })
+
+
+@router.post("/salon/reservas")
+async def salon_reservas_crear(request: Request, user: Auth):
+    form = await request.form()
+    mesa_id = form.get("mesa_id")
+    fecha = str(form.get("fecha", "")).strip()
+    hora = str(form.get("hora", "")).strip()
+    cliente_nombre = str(form.get("cliente_nombre", "")).strip()
+    if mesa_id and fecha and hora and cliente_nombre:
+        try:
+            comensales = max(1, int(form.get("comensales") or 1))
+        except ValueError:
+            comensales = 1
+        db.crear_reserva(
+            int(mesa_id), fecha, hora, cliente_nombre, comensales=comensales,
+            telefono=str(form.get("telefono", "")).strip(),
+            notas=str(form.get("notas", "")).strip(),
+        )
+    return RedirectResponse(f"/salon/reservas?fecha={fecha}", status_code=303)
+
+
+@router.post("/salon/reservas/{rid}/cancelar")
+def salon_reserva_cancelar(rid: int, user: Auth):
+    reserva = db.get_reserva(rid)
+    db.cancelar_reserva(rid)
+    fecha = reserva["fecha"] if reserva else ""
+    return RedirectResponse(f"/salon/reservas?fecha={fecha}", status_code=303)
+
+
+@router.post("/salon/reservas/{rid}/sentar")
+def salon_reserva_sentar(rid: int, user: Auth):
+    reserva = db.get_reserva(rid)
+    if not reserva or reserva["estado"] != "pendiente":
+        raise HTTPException(400, "Reserva no disponible")
+    mesa_id = reserva["mesa_id"]
+    existente = db.get_pedido_abierto_de_mesa(mesa_id)
+    if existente:
+        db.cumplir_reserva(rid)
+        return RedirectResponse(f"/salon/pedido/{existente['id']}", status_code=303)
+    pid = db.crear_pedido(
+        canal="salon", mesa_id=mesa_id, comensales=reserva["comensales"],
+        usuario_id=_usuario_id(user), cliente_nombre=reserva["cliente_nombre"],
+        telefono=reserva.get("telefono", ""),
+    )
+    _aplicar_cargos_automaticos(pid, reserva["comensales"])
+    db.cumplir_reserva(rid)
+    return RedirectResponse(f"/salon/pedido/{pid}", status_code=303)
 
 
 # ── Reportes gastronómicos ───────────────────────────────────────────────────

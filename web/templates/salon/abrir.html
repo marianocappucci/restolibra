@@ -11,6 +11,30 @@
 
 <div class="row justify-content-center">
   <div class="col-md-5">
+    {% if reservas_hoy %}
+    <div class="card mb-3 border-info">
+      <div class="card-header bg-info bg-opacity-10"><i class="bi bi-calendar-event me-1"></i>Reservas de hoy</div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <tbody>
+            {% for r in reservas_hoy %}
+            <tr>
+              <td class="fw-semibold">{{ r.hora }}</td>
+              <td>{{ r.cliente_nombre }}</td>
+              <td>{{ r.comensales }} cub.</td>
+              <td class="text-end">
+                <form method="post" action="/salon/reservas/{{ r.id }}/sentar">
+                  <button class="btn btn-sm btn-outline-primary">Sentar</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endif %}
+
     <div class="card">
       <div class="card-body">
         <p class="text-muted">{{ mesa.salon_nombre }} · capacidad {{ mesa.capacidad }} cubiertos</p>
@@ -19,6 +43,9 @@
           <input type="number" name="comensales" class="form-control mb-3" value="{{ mesa.capacidad }}" min="1">
           <button class="btn btn-primary w-100"><i class="bi bi-play-circle me-1"></i>Abrir pedido</button>
         </form>
+        <a href="/salon/reservas?mesa_id={{ mesa.id }}" class="btn btn-outline-secondary w-100 mt-2">
+          <i class="bi bi-calendar-plus me-1"></i>Reservar esta mesa
+        </a>
       </div>
     </div>
   </div>
