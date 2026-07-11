@@ -24,7 +24,7 @@
 <body>
   <button type="button" id="btn-fullscreen" class="btn btn-sm btn-outline-secondary"
           onclick="toggleFullscreen()" title="Pantalla completa">
-    <i class="bi bi-arrows-fullscreen"></i>
+    <i class="ti ti-arrows-maximize"></i>
   </button>
 
   <h1 class="mb-3">
@@ -34,15 +34,15 @@
 
   <div class="row g-3">
     <div class="col-md-4">
-      <h6 class="text-danger"><i class="bi bi-hourglass-split"></i> Pendientes</h6>
+      <h6 class="text-danger"><i class="ti ti-hourglass"></i> Pendientes</h6>
       <div id="col-pendiente" class="d-flex flex-column gap-2"></div>
     </div>
     <div class="col-md-4">
-      <h6 class="text-warning"><i class="bi bi-fire"></i> En preparación</h6>
+      <h6 class="text-warning"><i class="ti ti-flame"></i> En preparación</h6>
       <div id="col-preparacion" class="d-flex flex-column gap-2"></div>
     </div>
     <div class="col-md-4">
-      <h6 class="text-success"><i class="bi bi-check2-circle"></i> Listas</h6>
+      <h6 class="text-success"><i class="ti ti-circle-check"></i> Listas</h6>
       <div id="col-listo" class="d-flex flex-column gap-2"></div>
     </div>
   </div>
@@ -58,7 +58,7 @@ function toggleFullscreen(){
 }
 document.addEventListener("fullscreenchange", () => {
   const icon = document.querySelector("#btn-fullscreen i");
-  icon.className = document.fullscreenElement ? "bi bi-fullscreen-exit" : "bi bi-arrows-fullscreen";
+  icon.className = document.fullscreenElement ? "ti ti-arrows-minimize" : "ti ti-arrows-maximize";
 });
   </script>
   {% include "kds/_pantalla_script.html" %}

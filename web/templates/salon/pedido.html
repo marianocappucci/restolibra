@@ -5,17 +5,17 @@
 {% set es_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-receipt-cutoff me-2 text-primary"></i>
+    <i class="ti ti-receipt-2 me-2 text-primary"></i>
     {% if pedido.mesa_nombre %}Mesa {{ pedido.mesa_nombre }}{% else %}{{ pedido.canal|capitalize }}{% endif %}
     <small class="text-muted fs-6">· Pedido {{ pedido.numero }}</small>
   </h1>
   {% if pedido.mesa_id %}
   <a href="/salon{{ '?salon_id=' ~ pedido.salon_id if pedido.salon_id else '' }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Salón
+    <i class="ti ti-arrow-left me-1"></i>Salón
   </a>
   {% else %}
   <a href="/pedidos" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Pedidos
+    <i class="ti ti-arrow-left me-1"></i>Pedidos
   </a>
   {% endif %}
 </div>
@@ -23,13 +23,13 @@
 {% if not pedido.mesa_id %}
 <div class="alert alert-light border d-flex flex-wrap gap-3 py-2">
   <span class="badge bg-primary align-self-center">{{ pedido.canal|capitalize }}</span>
-  {% if pedido.cliente_nombre %}<span><i class="bi bi-person"></i> {{ pedido.cliente_nombre }}</span>{% endif %}
-  {% if pedido.telefono %}<span><i class="bi bi-telephone"></i> {{ pedido.telefono }}</span>{% endif %}
-  {% if pedido.canal == 'takeaway' and pedido.hora_retiro %}<span><i class="bi bi-clock"></i> Retiro {{ pedido.hora_retiro }}</span>{% endif %}
+  {% if pedido.cliente_nombre %}<span><i class="ti ti-user"></i> {{ pedido.cliente_nombre }}</span>{% endif %}
+  {% if pedido.telefono %}<span><i class="ti ti-phone"></i> {{ pedido.telefono }}</span>{% endif %}
+  {% if pedido.canal == 'takeaway' and pedido.hora_retiro %}<span><i class="ti ti-clock"></i> Retiro {{ pedido.hora_retiro }}</span>{% endif %}
   {% if pedido.canal == 'delivery' %}
-    {% if pedido.direccion %}<span><i class="bi bi-geo-alt"></i> {{ pedido.direccion }}</span>{% endif %}
-    {% if pedido.repartidor %}<span><i class="bi bi-person-badge"></i> {{ pedido.repartidor }}</span>{% endif %}
-    {% if pedido.costo_envio and pedido.costo_envio > 0 %}<span><i class="bi bi-scooter"></i> Envío ${{ pedido.costo_envio|moneda }}</span>{% endif %}
+    {% if pedido.direccion %}<span><i class="ti ti-map-pin"></i> {{ pedido.direccion }}</span>{% endif %}
+    {% if pedido.repartidor %}<span><i class="ti ti-id-badge-2"></i> {{ pedido.repartidor }}</span>{% endif %}
+    {% if pedido.costo_envio and pedido.costo_envio > 0 %}<span><i class="ti ti-scooter"></i> Envío ${{ pedido.costo_envio|moneda }}</span>{% endif %}
   {% endif %}
 </div>
 {% endif %}
@@ -39,7 +39,7 @@
   <div class="col-lg-5">
     <div class="card mb-3">
       <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-list-check me-1"></i>Pedido</span>
+        <span><i class="ti ti-list-check me-1"></i>Pedido</span>
         <small class="text-muted">{{ pedido.comensales }} comensales · {{ pedido.mozo or '—' }}</small>
       </div>
       <div class="card-body p-0">
@@ -50,26 +50,26 @@
               <td class="text-center" style="width:2.5rem">{{ it.qty|entero }}</td>
               <td>
                 {{ it.nombre }}
-                {% if it.estacion == 'cocina' %}<i class="bi bi-fire text-danger" title="Cocina"></i>
-                {% elif it.estacion == 'barra' %}<i class="bi bi-cup-straw text-info" title="Barra"></i>{% endif %}
+                {% if it.estacion == 'cocina' %}<i class="ti ti-flame text-danger" title="Cocina"></i>
+                {% elif it.estacion == 'barra' %}<i class="ti ti-glass-cocktail text-info" title="Barra"></i>{% endif %}
                 {% if it.estado == 'nuevo' %}<span class="badge bg-secondary">nuevo</span>
                 {% else %}<span class="badge bg-info">enviado</span>{% endif %}
                 {% if it.modificadores_resumen %}
-                <div class="small text-primary"><i class="bi bi-sliders"></i> {{ it.modificadores_resumen }}</div>
+                <div class="small text-primary"><i class="ti ti-adjustments-horizontal"></i> {{ it.modificadores_resumen }}</div>
                 {% endif %}
                 <form method="post" action="/salon/pedido/{{ pedido.id }}/item/{{ it.id }}/nota"
                       class="input-group input-group-sm mt-1">
-                  <span class="input-group-text py-0 px-1" title="Observación para la comanda"><i class="bi bi-chat-left-text"></i></span>
+                  <span class="input-group-text py-0 px-1" title="Observación para la comanda"><i class="ti ti-message"></i></span>
                   <input name="nota" value="{{ it.nota or '' }}" class="form-control py-0"
                          placeholder="Observación (sin aderezo, agregar…)" style="font-size:.78rem">
-                  <button class="btn btn-outline-secondary py-0 px-1" title="Guardar observación"><i class="bi bi-check-lg"></i></button>
+                  <button class="btn btn-outline-secondary py-0 px-1" title="Guardar observación"><i class="ti ti-check"></i></button>
                 </form>
               </td>
               <td class="text-end">${{ it.subtotal|moneda }}</td>
               <td class="text-end" style="width:2.5rem">
                 {% if it.estado == 'nuevo' %}
                 <form method="post" action="/salon/pedido/{{ pedido.id }}/item/{{ it.id }}/eliminar">
-                  <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar"><i class="bi bi-x"></i></button>
+                  <button class="btn btn-sm btn-outline-danger py-0 px-1" title="Quitar"><i class="ti ti-x"></i></button>
                 </form>
                 {% endif %}
               </td>
@@ -81,7 +81,7 @@
           <tfoot>
             {% if pedido.costo_envio and pedido.costo_envio > 0 %}
             <tr class="border-top">
-              <td colspan="2"><i class="bi bi-scooter"></i> Envío</td>
+              <td colspan="2"><i class="ti ti-scooter"></i> Envío</td>
               <td class="text-end" colspan="2">${{ pedido.costo_envio|moneda }}</td>
             </tr>
             {% endif %}
@@ -95,23 +95,23 @@
       <div class="card-footer d-flex gap-2 flex-wrap">
         <form method="post" action="/salon/pedido/{{ pedido.id }}/enviar">
           <button class="btn btn-warning btn-sm" {% if not hay_nuevos %}disabled{% endif %}>
-            <i class="bi bi-send me-1"></i>Enviar a cocina/barra
+            <i class="ti ti-send me-1"></i>Enviar a cocina/barra
           </button>
         </form>
         <a href="/salon/pedido/{{ pedido.id }}/cobrar"
            class="btn btn-success btn-sm {% if not pedido['items'] %}disabled{% endif %}">
-          <i class="bi bi-cash-coin me-1"></i>Cobrar
+          <i class="ti ti-coin me-1"></i>Cobrar
         </a>
         <form method="post" action="/salon/pedido/{{ pedido.id }}/anular"
               onsubmit="return confirm('¿Anular el pedido y liberar la mesa?')">
-          <button class="btn btn-outline-danger btn-sm"><i class="bi bi-trash me-1"></i>Anular</button>
+          <button class="btn btn-outline-danger btn-sm"><i class="ti ti-trash me-1"></i>Anular</button>
         </form>
       </div>
     </div>
 
     {% if pedido['comandas'] %}
     <div class="card">
-      <div class="card-header"><i class="bi bi-printer me-1"></i>Comandas enviadas</div>
+      <div class="card-header"><i class="ti ti-printer me-1"></i>Comandas enviadas</div>
       <ul class="list-group list-group-flush">
         {% for c in pedido['comandas'] %}
         <li class="list-group-item d-flex justify-content-between align-items-center">
@@ -121,7 +121,7 @@
             <span class="badge bg-secondary">{{ c.estado }}</span>
           </span>
           <a href="/kds/comanda/{{ c.id }}/ticket" target="_blank" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-printer"></i>
+            <i class="ti ti-printer"></i>
           </a>
         </li>
         {% endfor %}
@@ -134,11 +134,11 @@
   <div class="col-lg-7">
     <div class="card">
       <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <span><i class="bi bi-grid me-1"></i>Agregar productos</span>
+        <span><i class="ti ti-grid-dots me-1"></i>Agregar productos</span>
         <form class="d-flex" method="get" action="/salon/pedido/{{ pedido.id }}">
           <input type="text" name="q" value="{{ q }}" class="form-control form-control-sm"
                  placeholder="Buscar producto…" style="max-width:220px">
-          <button class="btn btn-sm btn-outline-primary ms-1"><i class="bi bi-search"></i></button>
+          <button class="btn btn-sm btn-outline-primary ms-1"><i class="ti ti-search"></i></button>
         </form>
       </div>
       <div class="card-body">
@@ -151,15 +151,15 @@
                 <div class="fw-semibold small">{{ p.nombre }}</div>
                 <div class="d-flex justify-content-between align-items-center">
                   <span class="text-muted small">${{ p.precio_venta|moneda }}</span>
-                  {% if p.estacion == 'cocina' %}<i class="bi bi-fire text-danger"></i>
-                  {% elif p.estacion == 'barra' %}<i class="bi bi-cup-straw text-info"></i>{% endif %}
+                  {% if p.estacion == 'cocina' %}<i class="ti ti-flame text-danger"></i>
+                  {% elif p.estacion == 'barra' %}<i class="ti ti-glass-cocktail text-info"></i>{% endif %}
                 </div>
               </button>
             </form>
             {% if p.id in recetas_por_producto %}
             <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-muted"
                     onclick="abrirModificadores({{ p.id }}, '{{ p.nombre|replace("'", "") }}', {{ p.precio_venta }})">
-              <i class="bi bi-sliders"></i> Personalizar
+              <i class="ti ti-adjustments-horizontal"></i> Personalizar
             </button>
             {% endif %}
           </div>
@@ -214,7 +214,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Agregar al pedido</button>
+          <button type="submit" class="btn btn-primary"><i class="ti ti-check me-1"></i>Agregar al pedido</button>
         </div>
       </form>
     </div>

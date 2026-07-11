@@ -4,10 +4,10 @@
 {% block content %}
 {% set es_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
 <div class="page-header">
-  <h1><i class="bi bi-grid-3x3-gap me-2 text-primary"></i>Salón</h1>
+  <h1><i class="ti ti-layout-grid me-2 text-primary"></i>Salón</h1>
   {% if not es_mozo %}
   <a href="/salon/config" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-gear me-1"></i>Configurar salones y mesas
+    <i class="ti ti-settings me-1"></i>Configurar salones y mesas
   </a>
   {% endif %}
 </div>
@@ -33,9 +33,9 @@
 </ul>
 
 <div class="d-flex gap-2 mb-3 small text-muted">
-  <span><i class="bi bi-circle-fill text-success"></i> Libre</span>
-  <span><i class="bi bi-circle-fill text-danger"></i> Ocupada</span>
-  <span><i class="bi bi-circle-fill text-warning"></i> Cuenta pedida</span>
+  <span><span class="d-inline-block rounded-circle bg-success" style="width:.6rem;height:.6rem"></span> Libre</span>
+  <span><span class="d-inline-block rounded-circle bg-danger" style="width:.6rem;height:.6rem"></span> Ocupada</span>
+  <span><span class="d-inline-block rounded-circle bg-warning" style="width:.6rem;height:.6rem"></span> Cuenta pedida</span>
 </div>
 
 {% if not mesas %}
@@ -55,7 +55,7 @@
     <a href="/salon/mesa/{{ m.id }}" class="text-decoration-none">
       <div class="card border-{{ color }} h-100 text-center">
         <div class="card-body p-2">
-          <div class="fs-4 fw-bold text-{{ color }}"><i class="bi bi-shop"></i></div>
+          <div class="fs-4 fw-bold text-{{ color }}"><i class="ti ti-tools-kitchen-2"></i></div>
           <div class="fw-semibold">{{ m.nombre }}</div>
           <div class="small text-muted">{{ m.capacidad }} cub.</div>
           {% if m.pedido_id %}
@@ -64,7 +64,7 @@
           <div class="badge bg-light text-success mt-1">Libre</div>
           {% endif %}
           {% if prox %}
-          <div class="small text-info mt-1"><i class="bi bi-calendar-event"></i> {{ prox.hora }} {{ prox.cliente_nombre }}</div>
+          <div class="small text-info mt-1"><i class="ti ti-calendar-event"></i> {{ prox.hora }} {{ prox.cliente_nombre }}</div>
           {% endif %}
         </div>
       </div>
@@ -76,7 +76,7 @@
 
 <div class="mt-3">
   <a href="/salon/reservas" class="btn btn-outline-primary btn-sm">
-    <i class="bi bi-calendar-event me-1"></i>Ver / crear reservas
+    <i class="ti ti-calendar-event me-1"></i>Ver / crear reservas
   </a>
 </div>
 {% endif %}

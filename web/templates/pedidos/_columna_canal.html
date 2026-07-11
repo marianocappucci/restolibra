@@ -6,7 +6,7 @@
     </h6>
     {% if not es_monitor %}
     <a href="/pedidos/nuevo?canal={{ canal }}" class="btn btn-sm btn-{{ canal_color[canal] }}">
-      <i class="bi bi-plus-lg"></i> Nuevo
+      <i class="ti ti-plus"></i> Nuevo
     </a>
     {% endif %}
   </div>
@@ -25,11 +25,11 @@
           </div>
           {% if p.canal == 'delivery' %}
           <div class="small">
-            {% if p.direccion %}<i class="bi bi-geo-alt"></i> {{ p.direccion }}{% endif %}
-            {% if p.repartidor %}<span class="ms-2"><i class="bi bi-person-badge"></i> {{ p.repartidor }}</span>{% endif %}
+            {% if p.direccion %}<i class="ti ti-map-pin"></i> {{ p.direccion }}{% endif %}
+            {% if p.repartidor %}<span class="ms-2"><i class="ti ti-id-badge-2"></i> {{ p.repartidor }}</span>{% endif %}
           </div>
           {% endif %}
-          {% if p.telefono %}<div class="small text-muted"><i class="bi bi-telephone"></i> {{ p.telefono }}</div>{% endif %}
+          {% if p.telefono %}<div class="small text-muted"><i class="ti ti-phone"></i> {{ p.telefono }}</div>{% endif %}
         </div>
       </div>
     </a>

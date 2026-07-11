@@ -23,10 +23,10 @@
 <body>
   <button type="button" id="btn-fullscreen" class="btn btn-sm btn-outline-secondary"
           onclick="toggleFullscreen()" title="Pantalla completa">
-    <i class="bi bi-arrows-fullscreen"></i>
+    <i class="ti ti-arrows-maximize"></i>
   </button>
 
-  <h1 class="mb-3"><i class="bi bi-bag-check me-2 text-primary"></i>Pedidos (mostrador y delivery)</h1>
+  <h1 class="mb-3"><i class="ti ti-clipboard-list me-2 text-primary"></i>Pedidos (mostrador y delivery)</h1>
 
   {% set canal_icon = {'barra': 'bi-cup-straw', 'takeaway': 'bi-bag', 'delivery': 'bi-scooter'} %}
   {% set canal_color = {'barra': 'info', 'takeaway': 'secondary', 'delivery': 'primary'} %}
@@ -47,7 +47,7 @@ function toggleFullscreen(){
 }
 document.addEventListener("fullscreenchange", () => {
   const icon = document.querySelector("#btn-fullscreen i");
-  icon.className = document.fullscreenElement ? "bi bi-fullscreen-exit" : "bi bi-arrows-fullscreen";
+  icon.className = document.fullscreenElement ? "ti ti-arrows-minimize" : "ti ti-arrows-maximize";
 });
 setTimeout(() => location.reload(), 15000);
   </script>

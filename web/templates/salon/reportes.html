@@ -6,8 +6,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-graph-up me-2 text-primary"></i>Reportes de salón</h1>
-  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Salón</a>
+  <h1><i class="ti ti-chart-line me-2 text-primary"></i>Reportes de salón</h1>
+  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Salón</a>
 </div>
 
 <form method="get" action="/salon/reportes" class="row g-2 align-items-end mb-3">
@@ -20,7 +20,7 @@
     <input type="date" name="hasta" value="{{ rep.hasta }}" class="form-control form-control-sm">
   </div>
   <div class="col-auto">
-    <button class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button>
+    <button class="btn btn-sm btn-primary"><i class="ti ti-filter me-1"></i>Aplicar</button>
   </div>
 </form>
 
@@ -28,7 +28,7 @@
   <!-- Ventas por canal -->
   <div class="col-lg-7">
     <div class="card">
-      <div class="card-header"><i class="bi bi-pie-chart me-1"></i>Ventas por canal</div>
+      <div class="card-header"><i class="ti ti-chart-pie me-1"></i>Ventas por canal</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0 align-middle">
           <thead>
@@ -62,7 +62,7 @@
   <!-- Tiempos de comanda -->
   <div class="col-lg-5">
     <div class="card">
-      <div class="card-header"><i class="bi bi-stopwatch me-1"></i>Tiempos de comanda (min)</div>
+      <div class="card-header"><i class="ti ti-stopwatch me-1"></i>Tiempos de comanda (min)</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0 align-middle">
           <thead>
