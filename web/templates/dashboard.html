@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Dashboard — Restolibra{% endblock %}
+
+{% set canal_label = {'salon': 'Salón', 'barra': 'Barra', 'takeaway': 'Takeaway', 'delivery': 'Delivery'} %}
+{% set canal_icon = {'salon': 'ti-tools-kitchen-2', 'barra': 'ti-glass-cocktail', 'takeaway': 'ti-shopping-bag', 'delivery': 'ti-scooter'} %}
+
 {% block content %}
 
 <div class="page-header">
@@ -8,7 +12,150 @@
   <span class="text-muted">{{ mes_nombre }}</span>
 </div>
 
-{# ── KPIs ── #}
+{# ── Salón ahora ── #}
+<div class="row g-3 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <a href="/salon" class="text-decoration-none text-reset">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <p class="text-muted small mb-1">Mesas ocupadas</p>
+              <h3 class="fw-bold mb-0 text-danger">{{ resumen_salon.ocupadas + resumen_salon.cuenta }}</h3>
+              <p class="text-muted small mt-1 mb-0">de {{ resumen_salon.total }} mesas</p>
+            </div>
+            <span class="bg-danger bg-opacity-10 text-danger rounded-3 p-2 fs-4">
+              <i class="ti ti-tools-kitchen-2"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <a href="/salon" class="text-decoration-none text-reset">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <p class="text-muted small mb-1">Mesas libres</p>
+              <h3 class="fw-bold mb-0 text-success">{{ resumen_salon.libres }}</h3>
+              <p class="text-muted small mt-1 mb-0">listas para sentar</p>
+            </div>
+            <span class="bg-success bg-opacity-10 text-success rounded-3 p-2 fs-4">
+              <i class="ti ti-tools-kitchen-2"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <a href="/pedidos" class="text-decoration-none text-reset">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <p class="text-muted small mb-1">Pedidos activos</p>
+              <h3 class="fw-bold mb-0 text-primary">{{ pedidos_activos|length }}</h3>
+              <p class="text-muted small mt-1 mb-0">barra · takeaway · delivery</p>
+            </div>
+            <span class="bg-primary bg-opacity-10 text-primary rounded-3 p-2 fs-4">
+              <i class="ti ti-clipboard-list"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+  <div class="col-sm-6 col-xl-3">
+    <a href="/salon/reservas" class="text-decoration-none text-reset">
+      <div class="card h-100">
+        <div class="card-body">
+          <div class="d-flex align-items-start justify-content-between">
+            <div>
+              <p class="text-muted small mb-1">Reservas de hoy</p>
+              <h3 class="fw-bold mb-0 text-info">{{ reservas_hoy|length }}</h3>
+              <p class="text-muted small mt-1 mb-0">
+                {% if reservas_hoy %}próxima {{ reservas_hoy[0].hora }} · {{ reservas_hoy[0].cliente_nombre }}{% else %}sin reservas pendientes{% endif %}
+              </p>
+            </div>
+            <span class="bg-info bg-opacity-10 text-info rounded-3 p-2 fs-4">
+              <i class="ti ti-calendar-event"></i>
+            </span>
+          </div>
+        </div>
+      </div>
+    </a>
+  </div>
+</div>
+
+{# ── Ventas de hoy ── #}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="ti ti-chart-line text-primary me-1"></i>Ventas de hoy</span>
+        <span class="fw-bold">$ {{ rep_hoy.total_total|moneda0 }} · {{ rep_hoy.total_n }} pedido{% if rep_hoy.total_n != 1 %}s{% endif %}</span>
+      </div>
+      {% if rep_hoy.canales %}
+      <div class="table-responsive">
+        <table class="table align-middle mb-0">
+          <thead class="table-light">
+            <tr><th>Canal</th><th class="text-end">Pedidos</th><th class="text-end">Total</th><th class="text-end">Ticket prom.</th></tr>
+          </thead>
+          <tbody>
+            {% for c in rep_hoy.canales %}
+            <tr>
+              <td><i class="ti {{ canal_icon.get(c.canal, 'ti-point') }} me-1"></i>{{ canal_label.get(c.canal, c.canal) }}</td>
+              <td class="text-end">{{ c.n }}</td>
+              <td class="text-end">$ {{ c.total|moneda0 }}</td>
+              <td class="text-end">$ {{ c.ticket|moneda0 }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="card-body text-center text-muted py-4">
+        <i class="ti ti-inbox fs-3 d-block mb-2"></i>
+        Todavía no hay ventas cobradas hoy
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ── Accesos rápidos ── #}
+<div class="row g-2 mb-4">
+  <div class="col-auto">
+    <a href="/salon" class="btn btn-primary btn-sm">
+      <i class="ti ti-tools-kitchen-2 me-1"></i>Abrir mesa
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/pedidos/nuevo?canal=barra" class="btn btn-outline-primary btn-sm">
+      <i class="ti ti-plus me-1"></i>Nuevo pedido
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/salon/reservas" class="btn btn-outline-secondary btn-sm">
+      <i class="ti ti-calendar-event me-1"></i>Reservas
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/kds" class="btn btn-outline-secondary btn-sm">
+      <i class="ti ti-flame me-1"></i>KDS
+    </a>
+  </div>
+  <div class="col-auto">
+    <a href="/facturas/nueva" class="btn btn-outline-secondary btn-sm">
+      <i class="ti ti-plus me-1"></i>Nueva factura
+    </a>
+  </div>
+</div>
+
+{# ── Resumen contable del mes ── #}
 <div class="row g-3 mb-4">
   <div class="col-sm-6 col-xl-3">
     <div class="card h-100">
@@ -76,30 +223,6 @@
         </div>
       </div>
     </div>
-  </div>
-</div>
-
-{# ── Accesos rápidos ── #}
-<div class="row g-2 mb-4">
-  <div class="col-auto">
-    <a href="/facturas/nueva" class="btn btn-primary btn-sm">
-      <i class="ti ti-plus me-1"></i>Nueva Factura
-    </a>
-  </div>
-  <div class="col-auto">
-    <a href="/presupuestos/nuevo" class="btn btn-outline-primary btn-sm">
-      <i class="ti ti-plus me-1"></i>Nuevo Presupuesto
-    </a>
-  </div>
-  <div class="col-auto">
-    <a href="/remitos/nuevo" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-plus me-1"></i>Nuevo Remito
-    </a>
-  </div>
-  <div class="col-auto">
-    <a href="/caja/nuevo" class="btn btn-outline-secondary btn-sm">
-      <i class="ti ti-plus me-1"></i>Movimiento de Caja
-    </a>
   </div>
 </div>
 

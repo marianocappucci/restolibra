@@ -3942,6 +3942,25 @@ def delete_mesa(mid: int) -> bool:
     return True
 
 
+def resumen_salon_ahora() -> dict:
+    """Foto en vivo del salón: cantidad de mesas activas por estado."""
+    with get_connection() as conn:
+        row = conn.execute(
+            """SELECT
+                 COUNT(*) AS total,
+                 SUM(CASE WHEN estado='libre'   THEN 1 ELSE 0 END) AS libres,
+                 SUM(CASE WHEN estado='ocupada' THEN 1 ELSE 0 END) AS ocupadas,
+                 SUM(CASE WHEN estado='cuenta'  THEN 1 ELSE 0 END) AS cuenta
+               FROM mesas WHERE activo=1"""
+        ).fetchone()
+    return {
+        "total": row["total"] or 0,
+        "libres": row["libres"] or 0,
+        "ocupadas": row["ocupadas"] or 0,
+        "cuenta": row["cuenta"] or 0,
+    }
+
+
 def delete_salon(sid: int) -> bool:
     """Elimina un salón y sus mesas (cascade). Bloquea si alguna mesa tiene pedido abierto."""
     with get_connection() as conn:
