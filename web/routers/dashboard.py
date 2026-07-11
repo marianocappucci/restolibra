@@ -40,7 +40,6 @@ def dashboard(request: Request, user: Auth):
 
     return templates.TemplateResponse(request, "dashboard.html", {
         **data,
-        "mes_nombre": hoy.strftime("%B %Y").capitalize(),
         "active": "dashboard",
         "resumen_salon": resumen_salon,
         "pedidos_activos": pedidos_activos,
