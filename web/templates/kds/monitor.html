@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>KDS {{ estacion|capitalize }} — Restolibra</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="/static/vendor/tabler-icons/tabler-icons.min.css" rel="stylesheet">
+  <link href="/static/vendor/material-symbols/material-symbols-outlined.css" rel="stylesheet">
   <style>
     :root {
       --bs-primary:               #ea580c;
@@ -28,12 +28,12 @@
 <body>
   <button type="button" id="btn-fullscreen" class="btn btn-sm btn-outline-secondary"
           onclick="toggleFullscreen()" title="Pantalla completa">
-    <i class="ti ti-arrows-maximize"></i>
+    <span class="material-symbols-outlined">fullscreen</span>
   </button>
 
   <div class="page-header">
     <h1 class="mb-0">
-      <i class="ti {% if estacion == 'cocina' %}ti-flame text-danger{% else %}ti-glass-cocktail text-info{% endif %} me-2"></i>
+      <span class="material-symbols-outlined {% if estacion == 'cocina' %}text-danger{% else %}text-info{% endif %} me-2">{% if estacion == 'cocina' %}local_fire_department{% else %}local_bar{% endif %}</span>
       KDS {{ estacion|capitalize }}
     </h1>
     {% include "_reloj.html" %}
@@ -42,15 +42,15 @@
 
   <div class="row g-3">
     <div class="col-md-4">
-      <h6 class="text-danger"><i class="ti ti-hourglass"></i> Pendientes</h6>
+      <h6 class="text-danger"><span class="material-symbols-outlined">hourglass_empty</span> Pendientes</h6>
       <div id="col-pendiente" class="d-flex flex-column gap-2"></div>
     </div>
     <div class="col-md-4">
-      <h6 class="text-warning"><i class="ti ti-flame"></i> En preparación</h6>
+      <h6 class="text-warning"><span class="material-symbols-outlined">local_fire_department</span> En preparación</h6>
       <div id="col-preparacion" class="d-flex flex-column gap-2"></div>
     </div>
     <div class="col-md-4">
-      <h6 class="text-success"><i class="ti ti-circle-check"></i> Listas</h6>
+      <h6 class="text-success"><span class="material-symbols-outlined">check_circle</span> Listas</h6>
       <div id="col-listo" class="d-flex flex-column gap-2"></div>
     </div>
   </div>
@@ -65,8 +65,8 @@ function toggleFullscreen(){
   }
 }
 document.addEventListener("fullscreenchange", () => {
-  const icon = document.querySelector("#btn-fullscreen i");
-  icon.className = document.fullscreenElement ? "ti ti-arrows-minimize" : "ti ti-arrows-maximize";
+  const icon = document.querySelector("#btn-fullscreen span");
+  icon.textContent = document.fullscreenElement ? "fullscreen_exit" : "fullscreen";
 });
   </script>
   {% include "kds/_pantalla_script.html" %}

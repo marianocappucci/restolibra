@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="ti {% if estacion == 'cocina' %}ti-flame text-danger{% else %}ti-glass-cocktail text-info{% endif %} me-2"></i>
+    <span class="material-symbols-outlined {% if estacion == 'cocina' %}text-danger{% else %}text-info{% endif %} me-2">{% if estacion == 'cocina' %}local_fire_department{% else %}local_bar{% endif %}</span>
     KDS {{ estacion|capitalize }}
   </h1>
   {% include "_reloj.html" %}
@@ -15,22 +15,22 @@
       {% endfor %}
     </div>
     <button type="button" class="btn btn-outline-primary btn-sm" onclick="separarMonitor('{{ estacion }}')">
-      <i class="ti ti-device-tv me-1"></i>Separar monitor
+      <span class="material-symbols-outlined me-1">monitor</span>Separar monitor
     </button>
   </div>
 </div>
 
 <div class="row g-3">
   <div class="col-md-4">
-    <h6 class="text-danger"><i class="ti ti-hourglass"></i> Pendientes</h6>
+    <h6 class="text-danger"><span class="material-symbols-outlined">hourglass_empty</span> Pendientes</h6>
     <div id="col-pendiente" class="d-flex flex-column gap-2"></div>
   </div>
   <div class="col-md-4">
-    <h6 class="text-warning"><i class="ti ti-flame"></i> En preparación</h6>
+    <h6 class="text-warning"><span class="material-symbols-outlined">local_fire_department</span> En preparación</h6>
     <div id="col-preparacion" class="d-flex flex-column gap-2"></div>
   </div>
   <div class="col-md-4">
-    <h6 class="text-success"><i class="ti ti-circle-check"></i> Listas</h6>
+    <h6 class="text-success"><span class="material-symbols-outlined">check_circle</span> Listas</h6>
     <div id="col-listo" class="d-flex flex-column gap-2"></div>
   </div>
 </div>

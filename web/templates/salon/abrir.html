@@ -3,9 +3,9 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-tools-kitchen-2 me-2 text-primary"></i>Mesa {{ mesa.nombre }}</h1>
+  <h1><span class="material-symbols-outlined me-2 text-primary">restaurant</span>Mesa {{ mesa.nombre }}</h1>
   <a href="/salon?salon_id={{ mesa.salon_id }}" class="btn btn-outline-secondary btn-sm">
-    <i class="ti ti-arrow-left me-1"></i>Volver al salón
+    <span class="material-symbols-outlined me-1">arrow_back</span>Volver al salón
   </a>
 </div>
 
@@ -13,7 +13,7 @@
   <div class="col-md-5">
     {% if reservas_hoy %}
     <div class="card mb-3 border-info">
-      <div class="card-header bg-info bg-opacity-10"><i class="ti ti-calendar-event me-1"></i>Reservas de hoy</div>
+      <div class="card-header bg-info bg-opacity-10"><span class="material-symbols-outlined me-1">event</span>Reservas de hoy</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0">
           <tbody>
@@ -41,10 +41,10 @@
         <form method="post" action="/salon/mesa/{{ mesa.id }}/abrir">
           <label class="form-label">Comensales</label>
           <input type="number" name="comensales" class="form-control mb-3" value="{{ mesa.capacidad }}" min="1">
-          <button class="btn btn-primary w-100"><i class="ti ti-player-play me-1"></i>Abrir pedido</button>
+          <button class="btn btn-primary w-100"><span class="material-symbols-outlined me-1">play_circle</span>Abrir pedido</button>
         </form>
         <a href="/salon/reservas?mesa_id={{ mesa.id }}" class="btn btn-outline-secondary w-100 mt-2">
-          <i class="ti ti-calendar-plus me-1"></i>Reservar esta mesa
+          <span class="material-symbols-outlined me-1">event</span>Reservar esta mesa
         </a>
       </div>
     </div>

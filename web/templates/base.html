@@ -11,6 +11,10 @@
   {% endif %}
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="/static/vendor/tabler-icons/tabler-icons.min.css" rel="stylesheet">
+  {# Prueba: Material Symbols auto-hosteado (sin CDN) para sidebar y modulo restaurant.
+     tabler-icons se mantiene para el resto del sistema hasta decidir si se
+     reemplaza por completo. #}
+  <link href="/static/vendor/material-symbols/material-symbols-outlined.css" rel="stylesheet">
   <style>
     /* Paleta de marca (misma que restolibra.com.ar), pisando el azul default de
        Bootstrap. Las utility classes (text-primary/bg-primary/border-primary) leen
@@ -262,16 +266,16 @@
 <body>
 <div class="mobile-topbar d-flex d-md-none">
   <button type="button" class="mobile-menu-btn" id="mobileMenuToggle" aria-label="Abrir menú" aria-expanded="false">
-    <i class="ti ti-menu-2"></i>
+    <span class="material-symbols-outlined">menu</span>
   </button>
-  <span class="mobile-topbar-brand"><i class="ti ti-chef-hat me-1"></i>Restolibra</span>
+  <span class="mobile-topbar-brand"><span class="material-symbols-outlined me-1">storefront</span>Restolibra</span>
 </div>
 <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 <div class="d-flex">
   <nav class="sidebar">
     {% set is_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
     <a href="{{ '/salon' if is_mozo else '/dashboard' }}" class="brand">
-      <i class="ti ti-chef-hat me-2"></i>Restolibra
+      <span class="material-symbols-outlined me-2">storefront</span>Restolibra
       {% if request.state.empresa_nombre %}
       <span class="brand-sub">{{ request.state.empresa_nombre }}</span>
       {% endif %}
@@ -289,7 +293,7 @@
       {% if not is_mozo %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'dashboard' %}active{% endif %}" href="/dashboard">
-          <i class="ti ti-gauge"></i>Dashboard
+          <span class="material-symbols-outlined">speed</span>Dashboard
         </a>
       </li>
       {% endif %}
@@ -299,33 +303,33 @@
       <li><div class="sidebar-section">Salón</div></li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'salon' %}active{% endif %}" href="/salon">
-          <i class="ti ti-layout-grid"></i>Mesas
+          <span class="material-symbols-outlined">grid_view</span>Mesas
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'pedidos' %}active{% endif %}" href="/pedidos">
-          <i class="ti ti-clipboard-list"></i>Pedidos
+          <span class="material-symbols-outlined">assignment</span>Pedidos
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'salon_reservas' %}active{% endif %}" href="/salon/reservas">
-          <i class="ti ti-calendar-event"></i>Reservas
+          <span class="material-symbols-outlined">event</span>Reservas
         </a>
       </li>
       {% if not is_mozo %}
       <li class="nav-item">
         <a class="nav-link {% if active in ('kds_cocina', 'kds_barra') %}active{% endif %}" href="/kds">
-          <i class="ti ti-flame"></i>KDS
+          <span class="material-symbols-outlined">local_fire_department</span>KDS
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'salon_reportes' %}active{% endif %}" href="/salon/reportes">
-          <i class="ti ti-chart-line"></i>Reportes
+          <span class="material-symbols-outlined">show_chart</span>Reportes
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'salon_config' %}active{% endif %}" href="/salon/config">
-          <i class="ti ti-settings"></i>Config. salón
+          <span class="material-symbols-outlined">settings</span>Config. salón
         </a>
       </li>
       {% endif %}
@@ -338,41 +342,41 @@
       {% if 'facturacion' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'facturas' %}active{% endif %}" href="/facturas">
-          <i class="ti ti-receipt"></i>Comprobantes
+          <span class="material-symbols-outlined">receipt_long</span>Comprobantes
         </a>
       </li>
       {% endif %}
       {% if 'presupuestos' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'presupuestos' %}active{% endif %}" href="/presupuestos">
-          <i class="ti ti-calculator"></i>Presupuestos
+          <span class="material-symbols-outlined">calculate</span>Presupuestos
         </a>
       </li>
       {% endif %}
       {% if 'remitos' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'remitos' %}active{% endif %}" href="/remitos">
-          <i class="ti ti-file-text"></i>Remitos
+          <span class="material-symbols-outlined">description</span>Remitos
         </a>
       </li>
       {% endif %}
       {% if 'ventas' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'ventas' %}active{% endif %}" href="/ventas">
-          <i class="ti ti-shopping-cart"></i>Ventas POS
+          <span class="material-symbols-outlined">shopping_cart</span>Ventas POS
         </a>
       </li>
       {% endif %}
       {% if 'clientes' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'clientes' %}active{% endif %}" href="/clientes">
-          <i class="ti ti-users"></i>Clientes
+          <span class="material-symbols-outlined">group</span>Clientes
         </a>
         {% if 'cuenta_corriente' in mods %}
         <ul class="nav flex-column ms-3" style="font-size:.85em">
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'cuenta_corriente' %}active{% endif %}" href="/cuenta-corriente">
-              <i class="ti ti-notebook me-1"></i>Cuenta Corriente
+              <span class="material-symbols-outlined me-1">menu_book</span>Cuenta Corriente
             </a>
           </li>
         </ul>
@@ -381,7 +385,7 @@
       {% elif 'cuenta_corriente' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'cuenta_corriente' %}active{% endif %}" href="/cuenta-corriente">
-          <i class="ti ti-notebook"></i>Cuenta Corriente
+          <span class="material-symbols-outlined">menu_book</span>Cuenta Corriente
         </a>
       </li>
       {% endif %}
@@ -393,14 +397,14 @@
       {% if 'egresos' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'egresos' %}active{% endif %}" href="/egresos">
-          <i class="ti ti-shopping-bag"></i>Egresos
+          <span class="material-symbols-outlined">shopping_bag</span>Egresos
         </a>
       </li>
       {% endif %}
       {% if 'proveedores' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'proveedores' %}active{% endif %}" href="/proveedores">
-          <i class="ti ti-truck"></i>Proveedores
+          <span class="material-symbols-outlined">local_shipping</span>Proveedores
         </a>
       </li>
       {% endif %}
@@ -412,27 +416,27 @@
       {% if 'productos' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'productos' %}active{% endif %}" href="/productos">
-          <i class="ti ti-package"></i>Productos
+          <span class="material-symbols-outlined">inventory_2</span>Productos
         </a>
         <ul class="nav flex-column ms-3" style="font-size:.85em">
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'categorias_producto' %}active{% endif %}"
                href="/config/categorias-producto">
-              <i class="ti ti-tags me-1"></i>Categorías
+              <span class="material-symbols-outlined me-1">style</span>Categorías
             </a>
           </li>
           {% if 'listas_precio' in mods %}
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'listas_precio' %}active{% endif %}"
                href="/listas-precio">
-              <i class="ti ti-tag me-1"></i>Listas de precios
+              <span class="material-symbols-outlined me-1">sell</span>Listas de precios
             </a>
           </li>
           {% endif %}
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'reportes_costos' %}active{% endif %}"
                href="/productos/reportes-costos">
-              <i class="ti ti-trending-up me-1"></i>Food cost
+              <span class="material-symbols-outlined me-1">trending_up</span>Food cost
             </a>
           </li>
         </ul>
@@ -441,14 +445,14 @@
       {% if 'stock' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'stock' %}active{% endif %}" href="/stock">
-          <i class="ti ti-archive"></i>Stock
+          <span class="material-symbols-outlined">archive</span>Stock
         </a>
       </li>
       {% endif %}
       {% if 'depositos' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'depositos' %}active{% endif %}" href="/depositos">
-          <i class="ti ti-building"></i>Depósitos
+          <span class="material-symbols-outlined">business</span>Depósitos
         </a>
       </li>
       {% endif %}
@@ -460,17 +464,17 @@
       {% if 'caja' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'caja' %}active{% endif %}" href="/caja">
-          <i class="ti ti-cash"></i>Caja
+          <span class="material-symbols-outlined">payments</span>Caja
         </a>
         <ul class="nav flex-column ms-3" style="font-size:.85em">
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'turnos' %}active{% endif %}" href="/turnos">
-              <i class="ti ti-id-badge-2 me-1"></i>Turnos
+              <span class="material-symbols-outlined me-1">badge</span>Turnos
             </a>
           </li>
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'cajas_config' %}active{% endif %}" href="/cajas">
-              <i class="ti ti-coin me-1"></i>Gestionar cajas
+              <span class="material-symbols-outlined me-1">monetization_on</span>Gestionar cajas
             </a>
           </li>
         </ul>
@@ -479,7 +483,7 @@
       {% if 'tesoreria' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'tesoreria' %}active{% endif %}" href="/tesoreria">
-          <i class="ti ti-building-bank"></i>Cuentas bancarias
+          <span class="material-symbols-outlined">account_balance</span>Cuentas bancarias
         </a>
       </li>
       {% endif %}
@@ -487,7 +491,7 @@
       <li class="nav-item">
         <a class="nav-link {% if active == 'mp_bandeja' %}active{% endif %}" href="/integraciones/mp/bandeja"
            style="display:flex;align-items:center;justify-content:space-between">
-          <span><i class="ti ti-credit-card" style="color:#009ee3"></i>Pagos MercadoPago</span>
+          <span><span class="material-symbols-outlined" style="color:#009ee3">credit_card</span>Pagos MercadoPago</span>
           {% if request.state.mp_pending_count > 0 %}
           <span class="badge rounded-pill bg-danger" style="font-size:.7rem;min-width:1.4rem">
             {{ request.state.mp_pending_count }}
@@ -502,13 +506,13 @@
       {% if 'reportes' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'reportes' %}active{% endif %}" href="/reportes">
-          <i class="ti ti-chart-bar"></i>Reportes
+          <span class="material-symbols-outlined">bar_chart</span>Reportes
         </a>
         <ul class="nav flex-column ms-3" style="font-size:.85em">
           <li class="nav-item">
             <a class="nav-link py-1 {% if active == 'reporte_caja_medios' %}active{% endif %}"
                href="/reportes/caja-medios">
-              <i class="ti ti-cash me-1"></i>Caja por medio
+              <span class="material-symbols-outlined me-1">payments</span>Caja por medio
             </a>
           </li>
         </ul>
@@ -517,7 +521,7 @@
       {% if 'libros_iva' in mods %}
       <li class="nav-item">
         <a class="nav-link {% if active == 'libros_iva' %}active{% endif %}" href="/libros-iva">
-          <i class="ti ti-notebook"></i>Libros IVA
+          <span class="material-symbols-outlined">menu_book</span>Libros IVA
         </a>
       </li>
       {% endif %}
@@ -527,7 +531,7 @@
       <li><div class="sidebar-divider"></div></li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'config' %}active{% endif %}" href="/config">
-          <i class="ti ti-settings"></i>Configuración
+          <span class="material-symbols-outlined">settings</span>Configuración
         </a>
       </li>
 
@@ -536,12 +540,12 @@
       <li><div class="sidebar-section">Administración</div></li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'usuarios' %}active{% endif %}" href="/usuarios">
-          <i class="ti ti-user-cog"></i>Usuarios
+          <span class="material-symbols-outlined">manage_accounts</span>Usuarios
         </a>
       </li>
       <li class="nav-item">
         <a class="nav-link {% if active == 'logs' %}active{% endif %}" href="/admin/logs">
-          <i class="ti ti-notebook"></i>Logs
+          <span class="material-symbols-outlined">menu_book</span>Logs
         </a>
       </li>
       {% endif %}
@@ -554,12 +558,12 @@
       {% if cu %}
       <div style="padding: 0.6rem 1.2rem 0.3rem; font-size: 0.8rem; color: #a89a8c;">
         <a href="/mi-cuenta" style="color:#c9beb2; text-decoration:none;">
-          <i class="ti ti-user-circle me-1"></i>{{ cu.nombre }}
+          <span class="material-symbols-outlined me-1">account_circle</span>{{ cu.nombre }}
         </a>
         <span class="ms-1" style="font-size:0.72rem; opacity:.7;">({{ cu.role }})</span>
       </div>
       {% endif %}
-      <a href="/logout" class="logout-link mb-2"><i class="ti ti-logout me-1"></i>Cerrar sesión</a>
+      <a href="/logout" class="logout-link mb-2"><span class="material-symbols-outlined me-1">logout</span>Cerrar sesión</a>
       <div style="padding: 0.3rem 1.2rem 0.6rem; font-size: 0.68rem; color: #8a7a6c; display:flex; align-items:center; gap:0.4rem;">
         <span>v{{ app_version }}</span>
         {% if app_env == 'development' %}
@@ -572,7 +576,7 @@
     {% if request.state.servicio_estado == 'pausado' %}
     <div class="alert alert-warning d-flex align-items-center gap-2 mb-4 py-2 px-3" role="alert"
          style="border-radius:8px;border-left:4px solid #ffc107">
-      <i class="ti ti-alert-triangle flex-shrink-0"></i>
+      <span class="material-symbols-outlined flex-shrink-0">warning</span>
       <div>
         <strong>Servicio pausado.</strong>
         {% if request.state.servicio_mensaje %}

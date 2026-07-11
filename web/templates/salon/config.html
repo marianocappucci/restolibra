@@ -3,14 +3,14 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-settings me-2 text-primary"></i>Salones y mesas</h1>
-  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Ir al salón</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">settings</span>Salones y mesas</h1>
+  <a href="/salon" class="btn btn-outline-secondary btn-sm"><span class="material-symbols-outlined me-1">arrow_back</span>Ir al salón</a>
 </div>
 
 {% if msg %}<div class="alert alert-warning py-2">{{ msg }}</div>{% endif %}
 
 <div class="card mb-3">
-  <div class="card-header"><i class="ti ti-cash me-1"></i>Cargos automáticos por mesa</div>
+  <div class="card-header"><span class="material-symbols-outlined me-1">payments</span>Cargos automáticos por mesa</div>
   <div class="card-body">
     <p class="text-muted small mb-2">Se agregan al abrir una mesa (sin comanda): el
       <strong>cubierto por comensal</strong> y la <strong>panera, una por mesa</strong>.
@@ -50,7 +50,7 @@
 <div class="row g-3">
   <div class="col-md-4">
     <div class="card">
-      <div class="card-header"><i class="ti ti-circle-plus me-1"></i>Nuevo salón</div>
+      <div class="card-header"><span class="material-symbols-outlined me-1">add_circle</span>Nuevo salón</div>
       <div class="card-body">
         <form method="post" action="/salon/config/salon">
           <input name="nombre" class="form-control mb-2" placeholder="Nombre (ej: Salón principal)" required>
@@ -66,7 +66,7 @@
     <div class="card mb-3">
       <div class="card-header">
         <form method="post" action="/salon/config/salon/{{ s.id }}/editar" class="row g-2 align-items-center">
-          <div class="col-auto"><i class="ti ti-columns"></i></div>
+          <div class="col-auto"><span class="material-symbols-outlined">view_column</span></div>
           <div class="col"><input name="nombre" value="{{ s.nombre }}" class="form-control form-control-sm" required></div>
           <div class="col-auto">
             <div class="form-check mb-0">
@@ -93,11 +93,11 @@
             <div style="width:3rem" class="text-center">
               <input class="form-check-input" type="checkbox" name="activo" {% if m.activo %}checked{% endif %}>
             </div>
-            <button class="btn btn-sm btn-outline-primary" title="Guardar cambios"><i class="ti ti-check"></i></button>
+            <button class="btn btn-sm btn-outline-primary" title="Guardar cambios"><span class="material-symbols-outlined">check</span></button>
           </form>
           <form method="post" action="/salon/config/mesa/{{ m.id }}/eliminar"
                 onsubmit="return confirm('¿Eliminar la mesa {{ m.nombre }}?')">
-            <button class="btn btn-sm btn-outline-danger" title="Eliminar mesa"><i class="ti ti-trash"></i></button>
+            <button class="btn btn-sm btn-outline-danger" title="Eliminar mesa"><span class="material-symbols-outlined">delete</span></button>
           </form>
         </div>
         {% else %}
@@ -120,7 +120,7 @@
         <div class="text-end mt-3">
           <form method="post" action="/salon/config/salon/{{ s.id }}/eliminar" class="d-inline"
                 onsubmit="return confirm('¿Eliminar el salón {{ s.nombre }} y todas sus mesas?')">
-            <button class="btn btn-sm btn-outline-danger"><i class="ti ti-trash me-1"></i>Eliminar salón</button>
+            <button class="btn btn-sm btn-outline-danger"><span class="material-symbols-outlined me-1">delete</span>Eliminar salón</button>
           </form>
         </div>
       </div>

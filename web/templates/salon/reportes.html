@@ -2,12 +2,12 @@
 {% block title %}Reportes de salón — Restolibra{% endblock %}
 
 {% set canal_label = {'salon': 'Salón', 'barra': 'Barra', 'takeaway': 'Takeaway', 'delivery': 'Delivery'} %}
-{% set canal_icon = {'salon': 'ti-tools-kitchen-2', 'barra': 'ti-glass-cocktail', 'takeaway': 'ti-shopping-bag', 'delivery': 'ti-scooter'} %}
+{% set canal_icon = {'salon': 'restaurant', 'barra': 'local_bar', 'takeaway': 'shopping_bag', 'delivery': 'delivery_dining'} %}
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-chart-line me-2 text-primary"></i>Reportes de salón</h1>
-  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Salón</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">show_chart</span>Reportes de salón</h1>
+  <a href="/salon" class="btn btn-outline-secondary btn-sm"><span class="material-symbols-outlined me-1">arrow_back</span>Salón</a>
 </div>
 
 <form method="get" action="/salon/reportes" class="row g-2 align-items-end mb-3">
@@ -20,7 +20,7 @@
     <input type="date" name="hasta" value="{{ rep.hasta }}" class="form-control form-control-sm">
   </div>
   <div class="col-auto">
-    <button class="btn btn-sm btn-primary"><i class="ti ti-filter me-1"></i>Aplicar</button>
+    <button class="btn btn-sm btn-primary"><span class="material-symbols-outlined me-1">filter_alt</span>Aplicar</button>
   </div>
 </form>
 
@@ -28,7 +28,7 @@
   <!-- Ventas por canal -->
   <div class="col-lg-7">
     <div class="card">
-      <div class="card-header"><i class="ti ti-chart-pie me-1"></i>Ventas por canal</div>
+      <div class="card-header"><span class="material-symbols-outlined me-1">pie_chart</span>Ventas por canal</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0 align-middle">
           <thead>
@@ -37,7 +37,7 @@
           <tbody>
             {% for c in rep.canales %}
             <tr>
-              <td><i class="ti {{ canal_icon.get(c.canal, 'ti-point') }} me-1"></i>{{ canal_label.get(c.canal, c.canal) }}</td>
+              <td><span class="material-symbols-outlined me-1">{{ canal_icon.get(c.canal, 'circle') }}</span>{{ canal_label.get(c.canal, c.canal) }}</td>
               <td class="text-end">{{ c.n }}</td>
               <td class="text-end">${{ c.total|moneda }}</td>
               <td class="text-end">${{ c.ticket|moneda }}</td>
@@ -62,7 +62,7 @@
   <!-- Tiempos de comanda -->
   <div class="col-lg-5">
     <div class="card">
-      <div class="card-header"><i class="ti ti-stopwatch me-1"></i>Tiempos de comanda (min)</div>
+      <div class="card-header"><span class="material-symbols-outlined me-1">timer</span>Tiempos de comanda (min)</div>
       <div class="card-body p-0">
         <table class="table table-sm mb-0 align-middle">
           <thead>

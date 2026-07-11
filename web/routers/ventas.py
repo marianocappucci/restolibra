@@ -18,12 +18,12 @@ router = APIRouter()
 Auth = Annotated[str, Depends(require_auth)]
 
 MEDIOS_PAGO = [
-    {"id": "efectivo",         "label": "Efectivo",         "icon": "ti-cash"},
-    {"id": "transferencia",    "label": "Transferencia",    "icon": "ti-building-bank"},
-    {"id": "mercadopago",      "label": "Mercado Pago",     "icon": "ti-phone"},
-    {"id": "cuenta_dni",       "label": "Cuenta DNI",       "icon": "ti-id"},
-    {"id": "billetera",        "label": "Otras billeteras", "icon": "ti-wallet"},
-    {"id": "cuenta_corriente", "label": "Cuenta corriente", "icon": "ti-notebook"},
+    {"id": "efectivo",         "label": "Efectivo",         "icon": "ti-cash",          "icon_material": "payments"},
+    {"id": "transferencia",    "label": "Transferencia",    "icon": "ti-building-bank", "icon_material": "account_balance"},
+    {"id": "mercadopago",      "label": "Mercado Pago",     "icon": "ti-phone",         "icon_material": "call"},
+    {"id": "cuenta_dni",       "label": "Cuenta DNI",       "icon": "ti-id",            "icon_material": "perm_identity"},
+    {"id": "billetera",        "label": "Otras billeteras", "icon": "ti-wallet",        "icon_material": "account_balance_wallet"},
+    {"id": "cuenta_corriente", "label": "Cuenta corriente", "icon": "ti-notebook",      "icon_material": "menu_book"},
 ]
 
 MEDIO_LABELS = {m["id"]: m["label"] for m in MEDIOS_PAGO}

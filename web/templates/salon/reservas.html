@@ -6,14 +6,14 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="ti ti-calendar-event me-2 text-primary"></i>Reservas</h1>
-  <a href="/salon" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Salón</a>
+  <h1><span class="material-symbols-outlined me-2 text-primary">event</span>Reservas</h1>
+  <a href="/salon" class="btn btn-outline-secondary btn-sm"><span class="material-symbols-outlined me-1">arrow_back</span>Salón</a>
 </div>
 
 <div class="row g-3">
   <div class="col-lg-4">
     <div class="card mb-3">
-      <div class="card-header"><i class="ti ti-circle-plus me-1"></i>Nueva reserva</div>
+      <div class="card-header"><span class="material-symbols-outlined me-1">add_circle</span>Nueva reserva</div>
       <div class="card-body">
         <form method="post" action="/salon/reservas">
           <label class="form-label small mb-0">Mesa</label>
@@ -54,7 +54,7 @@
           <label class="form-label small mb-0">Notas</label>
           <textarea name="notas" class="form-control mb-3" rows="2" placeholder="Ej: cumpleaños, alergias, etc."></textarea>
 
-          <button class="btn btn-primary w-100"><i class="ti ti-calendar-check me-1"></i>Reservar</button>
+          <button class="btn btn-primary w-100"><span class="material-symbols-outlined me-1">event_available</span>Reservar</button>
         </form>
       </div>
     </div>
@@ -67,7 +67,7 @@
         <input type="date" name="fecha" value="{{ fecha }}" class="form-control form-control-sm">
       </div>
       <div class="col-auto">
-        <button class="btn btn-sm btn-primary"><i class="ti ti-filter me-1"></i>Ver</button>
+        <button class="btn btn-sm btn-primary"><span class="material-symbols-outlined me-1">filter_alt</span>Ver</button>
       </div>
       {% if fecha != hoy %}
       <div class="col-auto">
@@ -98,13 +98,13 @@
                 {% if r.estado == 'pendiente' %}
                 <form method="post" action="/salon/reservas/{{ r.id }}/sentar" class="d-inline">
                   <button class="btn btn-sm btn-outline-primary" title="Sentar (abre pedido en la mesa)">
-                    <i class="ti ti-player-play"></i>
+                    <span class="material-symbols-outlined">play_circle</span>
                   </button>
                 </form>
                 <form method="post" action="/salon/reservas/{{ r.id }}/cancelar" class="d-inline"
                       onsubmit="return confirm('¿Cancelar la reserva de {{ r.cliente_nombre }}?')">
                   <button class="btn btn-sm btn-outline-danger" title="Cancelar">
-                    <i class="ti ti-x"></i>
+                    <span class="material-symbols-outlined">close</span>
                   </button>
                 </form>
                 {% endif %}
