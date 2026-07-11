@@ -2,7 +2,7 @@
 {% block title %}Reportes de salón — Restolibra{% endblock %}
 
 {% set canal_label = {'salon': 'Salón', 'barra': 'Barra', 'takeaway': 'Takeaway', 'delivery': 'Delivery'} %}
-{% set canal_icon = {'salon': 'bi-shop', 'barra': 'bi-cup-straw', 'takeaway': 'bi-bag', 'delivery': 'bi-scooter'} %}
+{% set canal_icon = {'salon': 'ti-tools-kitchen-2', 'barra': 'ti-glass-cocktail', 'takeaway': 'ti-shopping-bag', 'delivery': 'ti-scooter'} %}
 
 {% block content %}
 <div class="page-header">
@@ -37,7 +37,7 @@
           <tbody>
             {% for c in rep.canales %}
             <tr>
-              <td><i class="bi {{ canal_icon.get(c.canal, 'bi-dot') }} me-1"></i>{{ canal_label.get(c.canal, c.canal) }}</td>
+              <td><i class="ti {{ canal_icon.get(c.canal, 'ti-point') }} me-1"></i>{{ canal_label.get(c.canal, c.canal) }}</td>
               <td class="text-end">{{ c.n }}</td>
               <td class="text-end">${{ c.total|moneda }}</td>
               <td class="text-end">${{ c.ticket|moneda }}</td>
