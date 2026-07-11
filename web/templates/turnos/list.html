@@ -3,17 +3,17 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-person-badge me-2 text-primary"></i>Turnos de caja</h1>
+  <h1><i class="ti ti-id-badge-2 me-2 text-primary"></i>Turnos de caja</h1>
   {% if not turno_activo %}
   <a href="/turnos/abrir" class="btn btn-success">
-    <i class="bi bi-play-circle me-1"></i>Abrir turno
+    <i class="ti ti-player-play me-1"></i>Abrir turno
   </a>
   {% endif %}
 </div>
 
 {% if turno_activo %}
 <div class="alert alert-success d-flex align-items-center gap-3 mb-4">
-  <i class="bi bi-circle-fill" style="color:#198754;font-size:1.1rem"></i>
+  <span class="d-inline-block rounded-circle" style="width:.75rem;height:.75rem;background:#198754"></span>
   <div>
     <strong>Turno abierto</strong> desde {{ turno_activo.apertura }}
     — Fondo inicial: <strong>$ {{ turno_activo.monto_inicial|moneda }}</strong>
@@ -21,7 +21,7 @@
   <div class="ms-auto d-flex gap-2">
     <a href="/turnos/{{ turno_activo.id }}" class="btn btn-sm btn-outline-success">Ver detalle</a>
     <a href="/turnos/{{ turno_activo.id }}/cerrar" class="btn btn-sm btn-danger">
-      <i class="bi bi-stop-circle me-1"></i>Cerrar turno
+      <i class="ti ti-player-stop me-1"></i>Cerrar turno
     </a>
   </div>
 </div>
@@ -88,7 +88,7 @@
             </td>
             <td class="text-end">
               <a href="/turnos/{{ t.id }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-eye"></i>
+                <i class="ti ti-eye"></i>
               </a>
             </td>
           </tr>

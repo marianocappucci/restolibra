@@ -2,8 +2,8 @@
 {% block title %}Presupuestos — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-calculator me-2 text-primary"></i>Presupuestos</h1>
-  <a href="/presupuestos/nuevo" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo presupuesto</a>
+  <h1><i class="ti ti-calculator me-2 text-primary"></i>Presupuestos</h1>
+  <a href="/presupuestos/nuevo" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nuevo presupuesto</a>
 </div>
 
 <div class="card mb-3">
@@ -11,8 +11,8 @@
     <form class="d-flex gap-2" method="get" action="/presupuestos">
       {% if estado %}<input type="hidden" name="estado" value="{{ estado }}">{% endif %}
       <input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por número, cliente u observaciones…">
-      <button class="btn btn-outline-secondary" type="submit"><i class="bi bi-search"></i></button>
-      {% if q %}<a href="/presupuestos{% if estado %}?estado={{ estado }}{% endif %}" class="btn btn-outline-danger"><i class="bi bi-x"></i></a>{% endif %}
+      <button class="btn btn-outline-secondary" type="submit"><i class="ti ti-search"></i></button>
+      {% if q %}<a href="/presupuestos{% if estado %}?estado={{ estado }}{% endif %}" class="btn btn-outline-danger"><i class="ti ti-x"></i></a>{% endif %}
     </form>
   </div>
 </div>
@@ -71,11 +71,11 @@
             <td>{{ p.valid_until|fecha }}</td>
             <td class="text-end fw-semibold">$ {{ p.total|moneda }}</td>
             <td class="text-end">
-              <a href="/presupuestos/{{ p.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              <a href="/presupuestos/{{ p.id }}" class="btn btn-sm btn-outline-secondary"><i class="ti ti-eye"></i></a>
               {% if p.status == 'borrador' %}
-              <a href="/presupuestos/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+              <a href="/presupuestos/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary"><i class="ti ti-pencil"></i></a>
               {% endif %}
-              <a href="/presupuestos/{{ p.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><i class="bi bi-file-pdf"></i></a>
+              <a href="/presupuestos/{{ p.id }}/pdf" class="btn btn-sm btn-outline-primary" target="_blank"><i class="ti ti-file-type-pdf"></i></a>
             </td>
           </tr>
           {% endfor %}

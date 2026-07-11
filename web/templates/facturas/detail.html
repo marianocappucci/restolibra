@@ -5,33 +5,33 @@
 {% set num = '%08d' % factura.numero %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-receipt me-2 text-primary"></i>
+    <i class="ti ti-receipt me-2 text-primary"></i>
     {{ tipo_label }}
     <span class="font-monospace fs-5 fw-normal ms-2">{{ pv }}-{{ num }}</span>
   </h1>
   <div class="d-flex gap-2">
     <a href="/facturas/{{ factura.id }}/pdf" class="btn btn-outline-primary" target="_blank">
-      <i class="bi bi-file-pdf me-1"></i>Ver PDF
+      <i class="ti ti-file-type-pdf me-1"></i>Ver PDF
     </a>
     <a href="/facturas/{{ factura.id }}/ticket" class="btn btn-outline-secondary" target="_blank">
-      <i class="bi bi-printer me-1"></i>Ticket
+      <i class="ti ti-printer me-1"></i>Ticket
     </a>
     {% if cobros %}
     <a href="/facturas/{{ factura.id }}/recibo" class="btn btn-outline-success" target="_blank">
-      <i class="bi bi-file-earmark-check me-1"></i>Recibo
+      <i class="ti ti-file-check me-1"></i>Recibo
     </a>
     {% endif %}
     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalEmail">
-      <i class="bi bi-envelope me-1"></i>Enviar por email
+      <i class="ti ti-mail me-1"></i>Enviar por email
     </button>
-    <a href="/facturas" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    <a href="/facturas" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
   </div>
 </div>
 
 <!-- Factura original (cuando este comprobante es una NC) -->
 {% if factura_original %}
 <div class="alert alert-secondary d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-arrow-return-left fs-5"></i>
+  <i class="ti ti-corner-down-left fs-5"></i>
   <div>
     Este comprobante anula la
     <strong>{{ tipo_labels.get(factura_original.tipo, 'Factura') }}</strong>
@@ -46,7 +46,7 @@
 <!-- Notas de crédito que anulan esta factura -->
 {% if notas_credito %}
 <div class="alert alert-warning d-flex align-items-start gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill fs-5 mt-1"></i>
+  <i class="ti ti-alert-triangle fs-5 mt-1"></i>
   <div>
     <strong>{% if notas_credito|length == 1 %}Nota de crédito asociada{% else %}Notas de crédito asociadas{% endif %}:</strong>
     <ul class="mb-0 mt-1">
@@ -67,7 +67,7 @@
 <!-- Notas de débito asociadas a esta factura -->
 {% if notas_debito %}
 <div class="alert alert-info d-flex align-items-start gap-2 mb-3">
-  <i class="bi bi-info-circle-fill fs-5 mt-1"></i>
+  <i class="ti ti-info-circle fs-5 mt-1"></i>
   <div>
     <strong>{% if notas_debito|length == 1 %}Nota de débito asociada{% else %}Notas de débito asociadas{% endif %}:</strong>
     <ul class="mb-0 mt-1">
@@ -91,7 +91,7 @@
   {% if pendiente <= 0 %}
   <div class="alert alert-success d-flex align-items-center justify-content-between mb-3">
     <div>
-      <i class="bi bi-check-circle-fill me-2"></i>
+      <i class="ti ti-circle-check me-2"></i>
       <strong>Cobrado completo</strong> &mdash; $ {{ total_cobrado|moneda }}
       {% if cobros|length > 1 %}<span class="text-muted small ms-1">({{ cobros|length }} pagos)</span>{% endif %}
     </div>
@@ -100,20 +100,20 @@
   {% else %}
   <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
     <div>
-      <i class="bi bi-cash-coin me-2"></i>
+      <i class="ti ti-coin me-2"></i>
       <strong>Pago parcial</strong> &mdash; Cobrado: $ {{ total_cobrado|moneda }}
       <span class="ms-2 text-danger fw-semibold">Pendiente: $ {{ pendiente|moneda }}</span>
     </div>
     <button type="button" class="btn btn-success btn-sm fw-semibold"
             data-bs-toggle="modal" data-bs-target="#modalCobro">
-      <i class="bi bi-cash me-1"></i>Registrar cobro
+      <i class="ti ti-cash me-1"></i>Registrar cobro
     </button>
   </div>
   {% endif %}
   <!-- Detalle de cobros -->
   <div class="card mb-3" style="border-left: 3px solid #198754;">
     <div class="card-body py-2 px-3">
-      <div class="small fw-semibold text-success mb-1"><i class="bi bi-list-check me-1"></i>Cobros registrados</div>
+      <div class="small fw-semibold text-success mb-1"><i class="ti ti-list-check me-1"></i>Cobros registrados</div>
       {% for c in cobros %}
       <div class="d-flex justify-content-between align-items-center py-1 {% if not loop.last %}border-bottom{% endif %}">
         <span class="small text-muted">{{ c.fecha|fecha }}
@@ -128,12 +128,12 @@
 {% elif factura.cae %}
 <div class="alert alert-secondary d-flex align-items-center justify-content-between mb-3">
   <div>
-    <i class="bi bi-hourglass-split me-2"></i>
+    <i class="ti ti-hourglass me-2"></i>
     <strong>Pendiente de cobro</strong> &mdash; $ {{ factura.total|moneda }}
   </div>
   <button type="button" class="btn btn-success btn-sm fw-semibold"
           data-bs-toggle="modal" data-bs-target="#modalCobro">
-    <i class="bi bi-cash me-1"></i>Registrar cobro
+    <i class="ti ti-cash me-1"></i>Registrar cobro
   </button>
 </div>
 {% endif %}
@@ -148,7 +148,7 @@
       <form method="post" action="/facturas/{{ factura.id }}/cobrar" id="formCobro">
         <div class="modal-header">
           <h5 class="modal-title">
-            <i class="bi bi-cash me-2 text-success"></i>Registrar cobro
+            <i class="ti ti-cash me-2 text-success"></i>Registrar cobro
           </h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -220,10 +220,10 @@
               <div class="fw-bold text-danger">$ {{ (pendiente if pendiente > 0 else factura.total)|moneda }}</div>
               <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-decoration-none"
                       onclick="cobrarTodo()" style="font-size:.8rem">
-                <i class="bi bi-lightning-fill me-1"></i>Cobrar todo
+                <i class="ti ti-bolt me-1"></i>Cobrar todo
               </button>
             </div>
-            <i class="bi bi-arrow-right text-muted"></i>
+            <i class="ti ti-arrow-right text-muted"></i>
             <div class="text-end">
               <div class="small text-muted">Ingresado</div>
               <div class="fw-bold text-success fs-5" id="cobro-total-lbl">$ 0,00</div>
@@ -235,7 +235,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-success fw-semibold" id="cobro-btn" disabled>
-            <i class="bi bi-check-lg me-1"></i>Confirmar cobro
+            <i class="ti ti-check me-1"></i>Confirmar cobro
           </button>
         </div>
       </form>
@@ -248,14 +248,14 @@
 <!-- CAE banner -->
 {% if arca_error %}
 <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-x-circle-fill fs-5"></i>
+  <i class="ti ti-circle-x fs-5"></i>
   <div><strong>Error al autorizar en ARCA:</strong> {{ arca_error }}</div>
 </div>
 {% endif %}
 
 {% if factura.cae %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-check-circle-fill fs-5"></i>
+  <i class="ti ti-circle-check fs-5"></i>
   <div>
     <strong>Comprobante autorizado por ARCA</strong> &mdash;
     CAE: <code>{{ factura.cae }}</code>
@@ -265,12 +265,12 @@
 {% else %}
 <div class="alert alert-warning d-flex align-items-center justify-content-between mb-3">
   <div>
-    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+    <i class="ti ti-alert-triangle me-2"></i>
     Comprobante <strong>pendiente de autorización ARCA</strong>.
   </div>
   <form method="post" action="/facturas/{{ factura.id }}/autorizar" class="ms-3">
     <button class="btn btn-warning btn-sm fw-semibold">
-      <i class="bi bi-send me-1"></i>Autorizar ahora
+      <i class="ti ti-send me-1"></i>Autorizar ahora
     </button>
   </form>
 </div>
@@ -370,27 +370,27 @@
   </div>
 
   {% if email_ok %}
-  <div class="col-12"><div class="alert alert-success"><i class="bi bi-check-circle me-1"></i>{{ email_ok }}</div></div>
+  <div class="col-12"><div class="alert alert-success"><i class="ti ti-circle-check me-1"></i>{{ email_ok }}</div></div>
   {% endif %}
   {% if email_error %}
-  <div class="col-12"><div class="alert alert-danger"><i class="bi bi-x-circle me-1"></i>{{ email_error }}</div></div>
+  <div class="col-12"><div class="alert alert-danger"><i class="ti ti-circle-x me-1"></i>{{ email_error }}</div></div>
   {% endif %}
 
   <div class="col-12 d-flex justify-content-end gap-2 pb-4">
     {% if factura.tipo in (1, 6, 11) %}
     <a href="/facturas/{{ factura.id }}/nota-debito" class="btn btn-outline-info">
-      <i class="bi bi-file-plus me-1"></i>Nota de Débito
+      <i class="ti ti-file-plus me-1"></i>Nota de Débito
     </a>
     <a href="/facturas/{{ factura.id }}/nota-credito" class="btn btn-outline-warning">
-      <i class="bi bi-file-minus me-1"></i>Nota de Crédito
+      <i class="ti ti-file-minus me-1"></i>Nota de Crédito
     </a>
     {% endif %}
     <a href="/facturas/nueva?from_factura={{ factura.id }}" class="btn btn-outline-secondary">
-      <i class="bi bi-copy me-1"></i>Duplicar
+      <i class="ti ti-copy me-1"></i>Duplicar
     </a>
     <form method="post" action="/facturas/{{ factura.id }}/eliminar"
           onsubmit="return confirm('¿Eliminar esta factura? Esta acción no se puede deshacer.')">
-      <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Eliminar</button>
+      <button class="btn btn-outline-danger"><i class="ti ti-trash me-1"></i>Eliminar</button>
     </form>
   </div>
 </div>
@@ -401,7 +401,7 @@
     <div class="modal-content">
       <form method="post" action="/facturas/{{ factura.id }}/enviar-email">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Enviar comprobante por email</h5>
+          <h5 class="modal-title"><i class="ti ti-mail me-2"></i>Enviar comprobante por email</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -412,7 +412,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-send me-1"></i>Enviar</button>
+          <button type="submit" class="btn btn-primary"><i class="ti ti-send me-1"></i>Enviar</button>
         </div>
       </form>
     </div>
@@ -469,12 +469,12 @@ function cobroActualizarTotal() {
     btn && (btn.disabled = true);
   } else if (diff > 0.01) {
     alerta.className = 'alert alert-danger py-1 px-2 small mt-2 mb-0';
-    alerta.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i>El total supera el pendiente (${fmt(PENDIENTE_COB)}).`;
+    alerta.innerHTML = `<i class="ti ti-alert-triangle me-1"></i>El total supera el pendiente (${fmt(PENDIENTE_COB)}).`;
     alerta.style.display = '';
     btn && (btn.disabled = true);
   } else if (diff < -0.01) {
     alerta.className = 'alert alert-info py-1 px-2 small mt-2 mb-0';
-    alerta.innerHTML = `<i class="bi bi-info-circle me-1"></i>Pago parcial — quedará pendiente ${fmt(-diff)}.`;
+    alerta.innerHTML = `<i class="ti ti-info-circle me-1"></i>Pago parcial — quedará pendiente ${fmt(-diff)}.`;
     alerta.style.display = '';
     btn && (btn.disabled = false);
   } else {

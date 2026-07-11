@@ -4,21 +4,21 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-tag me-2 text-primary"></i>{{ lista.nombre }}
+    <i class="ti ti-tag me-2 text-primary"></i>{{ lista.nombre }}
     {% if not lista.activa %}<span class="badge bg-secondary ms-2 fs-6">Inactiva</span>{% endif %}
   </h1>
   <div class="d-flex gap-2 flex-wrap">
     <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalLote">
-      <i class="bi bi-percent me-1"></i>Actualizar en lote
+      <i class="ti ti-percentage me-1"></i>Actualizar en lote
     </button>
     <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalImportar">
-      <i class="bi bi-download me-1"></i>Importar precios
+      <i class="ti ti-download me-1"></i>Importar precios
     </button>
     <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modalConfig">
-      <i class="bi bi-gear me-1"></i>Configurar
+      <i class="ti ti-settings me-1"></i>Configurar
     </button>
     <a href="/listas-precio" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Volver
+      <i class="ti ti-arrow-left me-1"></i>Volver
     </a>
   </div>
 </div>
@@ -50,10 +50,10 @@
       <span class="fw-semibold">Precios</span>
       <div class="d-flex gap-2 align-items-center">
         <span class="text-muted small" id="lbl-modificados" style="display:none">
-          <i class="bi bi-pencil text-warning me-1"></i><span id="cnt-mod">0</span> modificado(s)
+          <i class="ti ti-pencil text-warning me-1"></i><span id="cnt-mod">0</span> modificado(s)
         </span>
         <button type="submit" class="btn btn-success btn-sm">
-          <i class="bi bi-check-lg me-1"></i>Guardar precios
+          <i class="ti ti-check me-1"></i>Guardar precios
         </button>
       </div>
     </div>
@@ -109,7 +109,7 @@
     {% if items %}
     <div class="card-footer d-flex justify-content-end">
       <button type="submit" class="btn btn-success btn-sm">
-        <i class="bi bi-check-lg me-1"></i>Guardar precios
+        <i class="ti ti-check me-1"></i>Guardar precios
       </button>
     </div>
     {% endif %}
@@ -122,7 +122,7 @@
     <div class="modal-content">
       <form method="post" action="/listas-precio/{{ lista.id }}/actualizar-en-lote">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-percent me-2"></i>Actualizar precios en lote</h5>
+          <h5 class="modal-title"><i class="ti ti-percentage me-2"></i>Actualizar precios en lote</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -153,14 +153,14 @@
             </select>
           </div>
           <div class="alert alert-warning py-2 small mb-0">
-            <i class="bi bi-exclamation-triangle me-1"></i>
+            <i class="ti ti-alert-triangle me-1"></i>
             Esta acción reemplaza los precios calculados. Los precios que no estén en la lista se van a insertar.
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-check-lg me-1"></i>Aplicar
+            <i class="ti ti-check me-1"></i>Aplicar
           </button>
         </div>
       </form>
@@ -174,7 +174,7 @@
     <div class="modal-content">
       <form method="post" action="/listas-precio/{{ lista.id }}/importar">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-download me-2"></i>Importar precios</h5>
+          <h5 class="modal-title"><i class="ti ti-download me-2"></i>Importar precios</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -207,7 +207,7 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
           <button type="submit" class="btn btn-primary">
-            <i class="bi bi-download me-1"></i>Importar
+            <i class="ti ti-download me-1"></i>Importar
           </button>
         </div>
       </form>
@@ -221,7 +221,7 @@
     <div class="modal-content">
       <form method="post" action="/listas-precio/{{ lista.id }}/editar">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-gear me-2"></i>Configurar lista</h5>
+          <h5 class="modal-title"><i class="ti ti-settings me-2"></i>Configurar lista</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
@@ -243,7 +243,7 @@
           <form method="post" action="/listas-precio/{{ lista.id }}/eliminar"
                 onsubmit="return confirm('¿Eliminar esta lista y todos sus precios?')">
             <button type="submit" class="btn btn-outline-danger btn-sm">
-              <i class="bi bi-trash me-1"></i>Eliminar lista
+              <i class="ti ti-trash me-1"></i>Eliminar lista
             </button>
           </form>
           <div class="d-flex gap-2">

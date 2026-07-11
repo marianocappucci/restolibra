@@ -4,10 +4,10 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-clipboard-data me-2 text-primary"></i>
+    <i class="ti ti-clipboard-data me-2 text-primary"></i>
     Receta de {{ producto.nombre }}
   </h1>
-  <a href="/productos/{{ producto.id }}/editar" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver al producto</a>
+  <a href="/productos/{{ producto.id }}/editar" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver al producto</a>
 </div>
 
 <div class="row g-3">
@@ -16,7 +16,7 @@
       <div class="card-header d-flex justify-content-between align-items-center">
         Ingredientes
         <button type="button" class="btn btn-sm btn-outline-primary" id="add-row">
-          <i class="bi bi-plus-lg me-1"></i>Agregar ingrediente
+          <i class="ti ti-plus me-1"></i>Agregar ingrediente
         </button>
       </div>
       <div class="card-body p-0">
@@ -58,7 +58,7 @@
                   <td><input type="number" class="form-control form-control-sm cantidad" name="cantidad" min="0" step="any" value="{{ it.cantidad }}" required></td>
                   <td><span class="text-muted small unidad-label">{{ it.ingrediente_unidad }}</span></td>
                   <td class="text-end subtotal fw-semibold">$ 0,00</td>
-                  <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>
+                  <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="ti ti-trash"></i></button></td>
                 </tr>
                 {% endfor %}
                 {% endif %}
@@ -106,11 +106,11 @@
             <textarea name="notas" class="form-control" rows="2" placeholder="Notas de preparación (opcional)">{{ receta.notas if receta else '' }}</textarea>
           </div>
           <div class="d-flex gap-2 p-3 border-top">
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Guardar receta</button>
+            <button type="submit" class="btn btn-primary"><i class="ti ti-check me-1"></i>Guardar receta</button>
             {% if receta %}
             <button type="submit" form="eliminar-form" class="btn btn-outline-danger"
                     onclick="return confirm('¿Eliminar la receta? El producto volverá a descontar stock de sí mismo al venderse.')">
-              <i class="bi bi-trash me-1"></i>Eliminar receta
+              <i class="ti ti-trash me-1"></i>Eliminar receta
             </button>
             {% endif %}
           </div>
@@ -147,7 +147,7 @@
 
     {% if receta and receta.ingredientes %}
     <div class="card">
-      <div class="card-header"><i class="bi bi-boxes me-1"></i>Producir lote</div>
+      <div class="card-header"><i class="ti ti-stack-2 me-1"></i>Producir lote</div>
       <div class="card-body">
         <p class="small text-muted">
           Para elaborados (ej. una salsa): descuenta los insumos de la receta y suma stock
@@ -156,7 +156,7 @@
         <form method="post" action="/productos/{{ producto.id }}/receta/producir" class="d-flex gap-2">
           <input type="number" name="cantidad_producir" class="form-control form-control-sm"
                  step="any" min="0" placeholder="Cantidad a producir ({{ producto.unidad }})" required>
-          <button class="btn btn-sm btn-primary text-nowrap"><i class="bi bi-check-lg me-1"></i>Producir</button>
+          <button class="btn btn-sm btn-primary text-nowrap"><i class="ti ti-check me-1"></i>Producir</button>
         </form>
       </div>
     </div>
@@ -224,7 +224,7 @@ let recalcAll;
       <td><input type="number" class="form-control form-control-sm cantidad" name="cantidad" min="0" step="any" value="1" required></td>
       <td><span class="text-muted small unidad-label"></span></td>
       <td class="text-end subtotal fw-semibold">$ 0,00</td>
-      <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="bi bi-trash"></i></button></td>`;
+      <td><button type="button" class="btn btn-sm btn-outline-danger remove-row"><i class="ti ti-trash"></i></button></td>`;
     tbody.appendChild(tr);
     bindRow(tr);
     recalcAll();

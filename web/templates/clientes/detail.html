@@ -3,13 +3,13 @@
 {% block content %}
 
 <div class="page-header">
-  <h1><i class="bi bi-person-circle me-2 text-primary"></i>{{ cliente.name }}</h1>
+  <h1><i class="ti ti-user-circle me-2 text-primary"></i>{{ cliente.name }}</h1>
   <div class="d-flex gap-2">
     <a href="/clientes/{{ cliente.id }}/editar" class="btn btn-outline-secondary">
-      <i class="bi bi-pencil me-1"></i>Editar
+      <i class="ti ti-pencil me-1"></i>Editar
     </a>
     <a href="/clientes" class="btn btn-outline-secondary">
-      <i class="bi bi-arrow-left me-1"></i>Volver
+      <i class="ti ti-arrow-left me-1"></i>Volver
     </a>
   </div>
 </div>
@@ -18,7 +18,7 @@
 <div class="row g-3 mb-4">
   <div class="col-md-6">
     <div class="card h-100">
-      <div class="card-header"><i class="bi bi-person me-1"></i>Datos del cliente</div>
+      <div class="card-header"><i class="ti ti-user me-1"></i>Datos del cliente</div>
       <div class="card-body">
         <dl class="row mb-0">
           <dt class="col-sm-4">Nombre</dt>
@@ -67,7 +67,7 @@
 
   <div class="col-md-6">
     <div class="card h-100">
-      <div class="card-header"><i class="bi bi-bar-chart me-1"></i>Resumen</div>
+      <div class="card-header"><i class="ti ti-chart-bar me-1"></i>Resumen</div>
       <div class="card-body">
         <div class="row g-3 text-center">
           <div class="col-4">
@@ -101,9 +101,9 @@
 {% if facturas %}
 <div class="card mb-4">
   <div class="card-header d-flex justify-content-between align-items-center">
-    <span><i class="bi bi-receipt me-1"></i>Facturas y comprobantes</span>
+    <span><i class="ti ti-receipt me-1"></i>Facturas y comprobantes</span>
     <a href="/facturas/nueva" class="btn btn-sm btn-outline-primary">
-      <i class="bi bi-plus-lg me-1"></i>Nueva factura
+      <i class="ti ti-plus me-1"></i>Nueva factura
     </a>
   </div>
   <div class="card-body p-0">
@@ -140,7 +140,7 @@
             </td>
             <td class="text-end">
               <a href="/facturas/{{ f.id }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-eye"></i>
+                <i class="ti ti-eye"></i>
               </a>
             </td>
           </tr>
@@ -156,7 +156,7 @@
 {% if presupuestos %}
 <div class="card mb-4">
   <div class="card-header">
-    <i class="bi bi-file-text me-1"></i>Presupuestos
+    <i class="ti ti-file-text me-1"></i>Presupuestos
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -189,7 +189,7 @@
             </td>
             <td class="text-end">
               <a href="/presupuestos/{{ p.id }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-eye"></i>
+                <i class="ti ti-eye"></i>
               </a>
             </td>
           </tr>
@@ -205,7 +205,7 @@
 {% if remitos %}
 <div class="card mb-4">
   <div class="card-header">
-    <i class="bi bi-truck me-1"></i>Remitos
+    <i class="ti ti-truck me-1"></i>Remitos
   </div>
   <div class="card-body p-0">
     <div class="table-responsive">
@@ -226,7 +226,7 @@
             <td class="text-end fw-semibold">$ {{ r.total|moneda }}</td>
             <td class="text-end">
               <a href="/remitos/{{ r.id }}" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-eye"></i>
+                <i class="ti ti-eye"></i>
               </a>
             </td>
           </tr>
@@ -241,14 +241,14 @@
 {% if not facturas and not presupuestos and not remitos %}
 <div class="card">
   <div class="card-body text-center text-muted py-5">
-    <i class="bi bi-inbox fs-1 d-block mb-3 opacity-25"></i>
+    <i class="ti ti-inbox fs-1 d-block mb-3 opacity-25"></i>
     <p class="mb-3">Este cliente no tiene comprobantes asociados todavía.</p>
     <div class="d-flex gap-2 justify-content-center">
       <a href="/facturas/nueva" class="btn btn-outline-primary btn-sm">
-        <i class="bi bi-receipt me-1"></i>Nueva factura
+        <i class="ti ti-receipt me-1"></i>Nueva factura
       </a>
       <a href="/presupuestos/nuevo" class="btn btn-outline-secondary btn-sm">
-        <i class="bi bi-file-text me-1"></i>Nuevo presupuesto
+        <i class="ti ti-file-text me-1"></i>Nuevo presupuesto
       </a>
     </div>
   </div>

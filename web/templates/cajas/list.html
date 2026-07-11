@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-cash-stack me-2 text-primary"></i>Cajas</h1>
-  <a href="/cajas/nueva" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nueva caja</a>
+  <h1><i class="ti ti-cash me-2 text-primary"></i>Cajas</h1>
+  <a href="/cajas/nueva" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nueva caja</a>
 </div>
 
 {% if error %}
@@ -18,7 +18,7 @@
       <div class="card-body">
         <div class="d-flex justify-content-between align-items-start mb-2">
           <h5 class="card-title mb-0">
-            <i class="bi bi-cash-coin me-2 text-success"></i>{{ c.nombre }}
+            <i class="ti ti-coin me-2 text-success"></i>{{ c.nombre }}
           </h5>
           <div>
             {% if c.es_default %}
@@ -47,20 +47,20 @@
 
         <div class="d-flex gap-2 flex-wrap">
           <a href="/caja?caja_id={{ c.id }}" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-eye me-1"></i>Ver movimientos
+            <i class="ti ti-eye me-1"></i>Ver movimientos
           </a>
           <a href="/cajas/{{ c.id }}/editar" class="btn btn-sm btn-outline-secondary">
-            <i class="bi bi-pencil me-1"></i>Editar
+            <i class="ti ti-pencil me-1"></i>Editar
           </a>
           {% if not c.es_default %}
           <form method="post" action="/cajas/{{ c.id }}/set-default" class="d-inline">
             <button class="btn btn-sm btn-outline-success" title="Usar como caja por defecto">
-              <i class="bi bi-star me-1"></i>Predeterminar
+              <i class="ti ti-star me-1"></i>Predeterminar
             </button>
           </form>
           <form method="post" action="/cajas/{{ c.id }}/eliminar" class="d-inline"
                 onsubmit="return confirm('¿Eliminar la caja «{{ c.nombre }}»?')">
-            <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+            <button class="btn btn-sm btn-outline-danger"><i class="ti ti-trash"></i></button>
           </form>
           {% endif %}
         </div>

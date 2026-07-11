@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-box-seam me-2 text-primary"></i>Productos</h1>
-  <a href="/productos/nuevo" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Nuevo producto</a>
+  <h1><i class="ti ti-package me-2 text-primary"></i>Productos</h1>
+  <a href="/productos/nuevo" class="btn btn-primary"><i class="ti ti-plus me-1"></i>Nuevo producto</a>
 </div>
 
 <!-- Buscador -->
@@ -53,14 +53,14 @@
             </td>
             <td class="text-end">
               <a href="/productos/{{ p.id }}/receta" class="btn btn-sm btn-outline-secondary" title="Receta / insumos">
-                <i class="bi bi-clipboard-data"></i>
+                <i class="ti ti-clipboard-data"></i>
               </a>
               <a href="/productos/{{ p.id }}/editar" class="btn btn-sm btn-outline-secondary">
-                <i class="bi bi-pencil"></i>
+                <i class="ti ti-pencil"></i>
               </a>
               <form class="d-inline" method="post" action="/productos/{{ p.id }}/eliminar"
                     onsubmit="return confirm('¿Eliminar {{ p.nombre }}?')">
-                <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                <button class="btn btn-sm btn-outline-danger"><i class="ti ti-trash"></i></button>
               </form>
             </td>
           </tr>

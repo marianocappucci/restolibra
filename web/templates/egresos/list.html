@@ -2,8 +2,8 @@
 {% block title %}Egresos — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-arrow-up-circle me-2 text-danger"></i>Egresos</h1>
-  <a href="/egresos/nuevo" class="btn btn-danger"><i class="bi bi-plus-lg me-1"></i>Nuevo egreso</a>
+  <h1><i class="ti ti-circle-arrow-up me-2 text-danger"></i>Egresos</h1>
+  <a href="/egresos/nuevo" class="btn btn-danger"><i class="ti ti-plus me-1"></i>Nuevo egreso</a>
 </div>
 
 <!-- Resumen -->
@@ -57,8 +57,8 @@
         <option value="pagado"    {% if estado == 'pagado'    %}selected{% endif %}>Pagado</option>
       </select>
 
-      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="bi bi-funnel"></i></button>
-      <a href="/egresos" class="btn btn-sm btn-outline-danger"><i class="bi bi-x"></i></a>
+      <button class="btn btn-sm btn-outline-secondary" type="submit"><i class="ti ti-filter"></i></button>
+      <a href="/egresos" class="btn btn-sm btn-outline-danger"><i class="ti ti-x"></i></a>
     </div>
   </div>
 </form>
@@ -112,7 +112,7 @@
             </td>
             <td class="text-end fw-semibold text-danger">$ {{ e.total|moneda }}</td>
             <td class="text-end">
-              <a href="/egresos/{{ e.id }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i></a>
+              <a href="/egresos/{{ e.id }}" class="btn btn-sm btn-outline-secondary"><i class="ti ti-eye"></i></a>
             </td>
           </tr>
           {% endfor %}

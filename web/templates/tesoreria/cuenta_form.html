@@ -3,8 +3,8 @@
 
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-bank me-2"></i>{{ 'Editar cuenta' if cuenta else 'Nueva cuenta' }}</h1>
-  <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+  <h1><i class="ti ti-building-bank me-2"></i>{{ 'Editar cuenta' if cuenta else 'Nueva cuenta' }}</h1>
+  <a href="/tesoreria" class="btn btn-outline-secondary btn-sm"><i class="ti ti-arrow-left me-1"></i>Volver</a>
 </div>
 
 <div class="row justify-content-center">
@@ -65,7 +65,7 @@
           <div class="d-flex gap-2 justify-content-end">
             <a href="/tesoreria" class="btn btn-outline-secondary">Cancelar</a>
             <button type="submit" class="btn btn-primary">
-              <i class="bi bi-check-lg me-1"></i>{{ 'Guardar cambios' if cuenta else 'Crear cuenta' }}
+              <i class="ti ti-check me-1"></i>{{ 'Guardar cambios' if cuenta else 'Crear cuenta' }}
             </button>
           </div>
         </form>
@@ -76,7 +76,7 @@
       <form method="post" action="/tesoreria/{{ cuenta.id }}/eliminar"
             onsubmit="return confirm('¿Archivar esta cuenta? Los movimientos se conservan.')">
         <button type="submit" class="btn btn-sm btn-outline-danger">
-          <i class="bi bi-archive me-1"></i>Archivar cuenta
+          <i class="ti ti-archive me-1"></i>Archivar cuenta
         </button>
       </form>
     </div>

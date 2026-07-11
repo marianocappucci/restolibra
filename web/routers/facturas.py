@@ -579,7 +579,7 @@ def nc_confirm_get(request: Request, factura_id: int, user: Auth):
         "nota_tipo_label": _TIPO_LABEL[nc_tipo],
         "nota_url":        f"/facturas/{factura_id}/nota-credito",
         "nota_color":      "warning",
-        "nota_icono":      "bi-file-minus",
+        "nota_icono":      "ti-file-minus",
     })
 
 
@@ -608,7 +608,7 @@ def nd_confirm_get(request: Request, factura_id: int, user: Auth):
         "nota_tipo_label": _TIPO_LABEL[nd_tipo],
         "nota_url":        f"/facturas/{factura_id}/nota-debito",
         "nota_color":      "info",
-        "nota_icono":      "bi-file-plus",
+        "nota_icono":      "ti-file-plus",
     })
 
 

@@ -4,11 +4,11 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-clock-history me-2 text-primary"></i>
+    <i class="ti ti-history me-2 text-primary"></i>
     Movimientos de stock
     {% if producto %}<span class="text-muted fw-normal fs-5 ms-2">· {{ producto.nombre }}</span>{% endif %}
   </h1>
-  <a href="/stock" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Stock</a>
+  <a href="/stock" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Stock</a>
 </div>
 
 <!-- Filtros -->
@@ -62,19 +62,19 @@
             <td class="text-center">
               {% if m.tipo == 'entrada' %}
               <span class="badge" style="background:#d1e7dd;color:#0f5132">
-                <i class="bi bi-box-arrow-in-down me-1"></i>Entrada
+                <i class="ti ti-package-import me-1"></i>Entrada
               </span>
               {% elif m.tipo == 'salida' %}
               <span class="badge" style="background:#f8d7da;color:#842029">
-                <i class="bi bi-box-arrow-up me-1"></i>Salida
+                <i class="ti ti-package-export me-1"></i>Salida
               </span>
               {% elif m.tipo == 'venta' %}
               <span class="badge bg-primary">
-                <i class="bi bi-cart me-1"></i>Venta
+                <i class="ti ti-shopping-cart me-1"></i>Venta
               </span>
               {% elif m.tipo == 'ajuste' %}
               <span class="badge bg-secondary">
-                <i class="bi bi-arrow-repeat me-1"></i>Ajuste
+                <i class="ti ti-refresh me-1"></i>Ajuste
               </span>
               {% else %}
               <span class="badge bg-light text-dark">{{ m.tipo }}</span>

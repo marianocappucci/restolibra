@@ -2,9 +2,9 @@
 {% block title %}Caja por Medio de Cobro — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-cash-stack me-2 text-primary"></i>Caja por Medio de Cobro</h1>
+  <h1><i class="ti ti-cash me-2 text-primary"></i>Caja por Medio de Cobro</h1>
   <a href="/reportes" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Reportes
+    <i class="ti ti-arrow-left me-1"></i>Reportes
   </a>
 </div>
 
@@ -32,11 +32,11 @@
       </div>
       {% endif %}
       <button type="submit" class="btn btn-primary btn-sm">
-        <i class="bi bi-funnel me-1"></i>Filtrar
+        <i class="ti ti-filter me-1"></i>Filtrar
       </button>
       <a href="/reportes/caja-medios/export?desde={{ desde }}&hasta={{ hasta }}&caja_id={{ caja_id }}"
          class="btn btn-outline-secondary btn-sm ms-auto">
-        <i class="bi bi-download me-1"></i>Exportar CSV
+        <i class="ti ti-download me-1"></i>Exportar CSV
       </a>
     </form>
   </div>
@@ -84,7 +84,7 @@
 {% if totales %}
 <div class="card mb-4">
   <div class="card-header fw-semibold">
-    <i class="bi bi-pie-chart me-1 text-success"></i>Ingresos por medio de cobro — todas las cajas
+    <i class="ti ti-chart-pie me-1 text-success"></i>Ingresos por medio de cobro — todas las cajas
   </div>
   <div class="card-body p-0">
     <table class="table table-sm align-middle mb-0">
@@ -104,7 +104,7 @@
         {% set pct = ((vals.ingresos / gran_total_ing * 100) | round(1)) if gran_total_ing else 0 %}
         <tr>
           <td>
-            <i class="bi {{ medio_icon.get(medio, 'bi-cash') }} me-1 text-muted"></i>
+            <i class="ti {{ medio_icon.get(medio, 'ti-cash') }} me-1 text-muted"></i>
             {{ medio_label.get(medio, medio) }}
           </td>
           <td class="text-center text-muted small">{{ vals.ingresos_ops }}</td>
@@ -148,14 +148,14 @@
 <div class="card mb-3">
   <div class="card-header d-flex justify-content-between align-items-center">
     <span class="fw-semibold">
-      <i class="bi bi-cash-stack me-1 text-primary"></i>{{ caja.nombre }}
+      <i class="ti ti-cash me-1 text-primary"></i>{{ caja.nombre }}
     </span>
     <div class="d-flex gap-3 text-sm">
       <span class="text-success fw-semibold">
-        <i class="bi bi-arrow-up me-1"></i>$ {{ caja.total_ingresos|moneda }}
+        <i class="ti ti-arrow-up me-1"></i>$ {{ caja.total_ingresos|moneda }}
       </span>
       <span class="text-danger fw-semibold">
-        <i class="bi bi-arrow-down me-1"></i>$ {{ caja.total_egresos|moneda }}
+        <i class="ti ti-arrow-down me-1"></i>$ {{ caja.total_egresos|moneda }}
       </span>
       <span class="fw-bold {% if caja.saldo >= 0 %}text-primary{% else %}text-danger{% endif %}">
         Saldo: $ {{ caja.saldo|moneda }}
@@ -179,7 +179,7 @@
         {% set saldo_m = vals.ingresos - vals.egresos %}
         <tr>
           <td>
-            <i class="bi {{ medio_icon.get(medio, 'bi-cash') }} me-1 text-muted"></i>
+            <i class="ti {{ medio_icon.get(medio, 'ti-cash') }} me-1 text-muted"></i>
             {{ medio_label.get(medio, medio) }}
           </td>
           <td class="text-center text-muted small">
@@ -220,7 +220,7 @@
 {% else %}
 <div class="card">
   <div class="card-body p-5 text-center text-muted">
-    <i class="bi bi-cash-stack fs-1 d-block mb-2 opacity-25"></i>
+    <i class="ti ti-cash fs-1 d-block mb-2 opacity-25"></i>
     No hay movimientos de caja en el período seleccionado.
   </div>
 </div>

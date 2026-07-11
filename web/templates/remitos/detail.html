@@ -2,12 +2,12 @@
 {% block title %}Remito {{ remito.number }} — Restolibra{% endblock %}
 {% block content %}
 <div class="page-header">
-  <h1><i class="bi bi-file-earmark-text me-2 text-primary"></i>Remito <span class="font-monospace">{{ remito.number }}</span></h1>
+  <h1><i class="ti ti-file-text me-2 text-primary"></i>Remito <span class="font-monospace">{{ remito.number }}</span></h1>
   <div class="d-flex gap-2">
     <a href="/remitos/{{ remito.id }}/pdf" class="btn btn-outline-primary" target="_blank">
-      <i class="bi bi-file-pdf me-1"></i>Ver PDF
+      <i class="ti ti-file-type-pdf me-1"></i>Ver PDF
     </a>
-    <a href="/remitos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    <a href="/remitos" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
   </div>
 </div>
 
@@ -78,7 +78,7 @@
   <div class="col-12 d-flex justify-content-end pb-4">
     <form method="post" action="/remitos/{{ remito.id }}/eliminar"
           onsubmit="return confirm('¿Eliminar este remito? Esta acción no se puede deshacer.')">
-      <button class="btn btn-outline-danger"><i class="bi bi-trash me-1"></i>Eliminar remito</button>
+      <button class="btn btn-outline-danger"><i class="ti ti-trash me-1"></i>Eliminar remito</button>
     </form>
   </div>
 </div>

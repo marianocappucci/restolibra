@@ -44,15 +44,15 @@
   {% set tipo = payment_type or '' %}
   {% set metodo = payment_method or '' %}
   {% if tipo == 'account_money' %}
-    <span class="badge rounded-pill" style="background:#009ee3;font-size:.78rem"><i class="bi bi-wallet2 me-1"></i>Cuenta MP</span>
+    <span class="badge rounded-pill" style="background:#009ee3;font-size:.78rem"><i class="ti ti-wallet me-1"></i>Cuenta MP</span>
   {% elif tipo == 'credit_card' %}
-    <span class="badge rounded-pill bg-success" style="font-size:.78rem"><i class="bi bi-credit-card me-1"></i>Tarjeta de crédito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+    <span class="badge rounded-pill bg-success" style="font-size:.78rem"><i class="ti ti-credit-card me-1"></i>Tarjeta de crédito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
   {% elif tipo == 'debit_card' %}
-    <span class="badge rounded-pill bg-info text-dark" style="font-size:.78rem"><i class="bi bi-credit-card-2-back me-1"></i>Tarjeta de débito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+    <span class="badge rounded-pill bg-info text-dark" style="font-size:.78rem"><i class="ti ti-credit-card me-1"></i>Tarjeta de débito{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
   {% elif tipo == 'ticket' %}
-    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.78rem"><i class="bi bi-cash me-1"></i>Efectivo{% if metodo and metodo not in ('pagofacil','rapipago') == False %} ({{ label_metodo(metodo) }}){% endif %}</span>
+    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.78rem"><i class="ti ti-cash me-1"></i>Efectivo{% if metodo and metodo not in ('pagofacil','rapipago') == False %} ({{ label_metodo(metodo) }}){% endif %}</span>
   {% elif tipo == 'bank_transfer' %}
-    <span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="bi bi-bank me-1"></i>Transf. bancaria{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
+    <span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="ti ti-building-bank me-1"></i>Transf. bancaria{% if metodo and metodo != 'mercadopago' %} ({{ label_metodo(metodo) }}){% endif %}</span>
   {% elif tipo %}
     <span class="badge rounded-pill bg-light text-dark border" style="font-size:.78rem">{{ label_tipo(tipo) }}</span>
   {% else %}
@@ -65,21 +65,21 @@
 {% macro col_cliente(p, modal_prefix) %}
   {% if p.cliente %}
     <a href="/clientes/{{ p.cliente.id }}" class="text-decoration-none">
-      <i class="bi bi-person-fill me-1 text-success"></i>{{ p.cliente.name }}
+      <i class="ti ti-user me-1 text-success"></i>{{ p.cliente.name }}
     </a>
     {% if p.cliente.cuit_dni %}<br><small class="text-muted">{{ p.cliente.cuit_dni|cuit }}</small>{% endif %}
     {% if not p.cliente.email %}
-      <br><span class="badge bg-warning text-dark" style="font-size:.72rem" title="El cliente no tiene email cargado"><i class="bi bi-envelope-slash me-1"></i>Sin email</span>
+      <br><span class="badge bg-warning text-dark" style="font-size:.72rem" title="El cliente no tiene email cargado"><i class="ti ti-mail-off me-1"></i>Sin email</span>
     {% endif %}
   {% else %}
-    <span class="text-muted" style="font-size:.85rem"><i class="bi bi-person-dash me-1"></i>Sin registro</span>
+    <span class="text-muted" style="font-size:.85rem"><i class="ti ti-user-minus me-1"></i>Sin registro</span>
     {% if (p.descripcion_mp or '').lower().startswith('hosting mensual') %}
-      <br><span class="badge bg-danger" style="font-size:.72rem" title="Se facturará automáticamente al dar de alta el cliente"><i class="bi bi-house-gear me-1"></i>Hosting Mensual</span>
+      <br><span class="badge bg-danger" style="font-size:.72rem" title="Se facturará automáticamente al dar de alta el cliente"><i class="ti ti-server me-1"></i>Hosting Mensual</span>
     {% endif %}
     <br>
     <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
             data-bs-toggle="modal" data-bs-target="#modal{{ modal_prefix }}{{ p.id }}">
-      <i class="bi bi-person-plus me-1"></i>Dar de alta
+      <i class="ti ti-user-plus me-1"></i>Dar de alta
     </button>
   {% endif %}
 {% endmacro %}
@@ -90,7 +90,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Dar de alta cliente</h5>
+        <h5 class="modal-title"><i class="ti ti-user-plus me-2"></i>Dar de alta cliente</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="{{ action_url }}">
@@ -130,7 +130,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-person-check me-1"></i>Dar de alta</button>
+          <button type="submit" class="btn btn-primary"><i class="ti ti-user-check me-1"></i>Dar de alta</button>
         </div>
       </form>
     </div>
@@ -141,30 +141,30 @@
 {% block content %}
 
 <div class="page-header d-flex align-items-center justify-content-between mb-4">
-  <h1><i class="bi bi-credit-card-2-front me-2" style="color:#009ee3"></i>Pagos MercadoPago</h1>
+  <h1><i class="ti ti-credit-card me-2" style="color:#009ee3"></i>Pagos MercadoPago</h1>
 </div>
 
 {# ── Alertas ── #}
 {% if msg == 'facturado' %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-check-circle-fill"></i>
+  <i class="ti ti-circle-check"></i>
   <div>Factura generada correctamente.{% if factura_id %} <a href="/facturas/{{ factura_id }}" class="fw-semibold ms-1">Ver factura</a>{% endif %}</div>
 </div>
 {% elif msg == 'ignorado' %}
 <div class="alert alert-secondary d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-x-circle"></i><div>Pago marcado como ignorado.</div>
+  <i class="ti ti-circle-x"></i><div>Pago marcado como ignorado.</div>
 </div>
 {% elif msg == 'cliente_creado' %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-person-check-fill"></i><div>Cliente dado de alta correctamente.</div>
+  <i class="ti ti-user-check"></i><div>Cliente dado de alta correctamente.</div>
 </div>
 {% elif msg == 'datos_guardados' %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-check-circle-fill"></i><div>Datos del emisor guardados.</div>
+  <i class="ti ti-circle-check"></i><div>Datos del emisor guardados.</div>
 </div>
 {% elif msg == 'sync_ok' %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-arrow-repeat"></i>
+  <i class="ti ti-refresh"></i>
   <div>Sincronización completada.
     {% if nuevos > 0 %}<strong>{{ nuevos }} transferencia{{ 's' if nuevos != 1 }} nueva{{ 's' if nuevos != 1 }}.</strong>
     {% else %}No se encontraron nuevas transferencias.{% endif %}
@@ -172,46 +172,46 @@
 </div>
 {% elif msg == 'email_reenviado' %}
 <div class="alert alert-success d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-envelope-check-fill"></i><div>Email reenviado correctamente.</div>
+  <i class="ti ti-mail-check"></i><div>Email reenviado correctamente.</div>
 </div>
 {% elif error == 'no_token' %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i>
+  <i class="ti ti-alert-triangle"></i>
   <div>No hay Access Token de MercadoPago configurado. Configuralo en <a href="/config">Configuración</a>.</div>
 </div>
 {% elif error == 'sync_error' %}
 <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i><div>Error al consultar los movimientos de MercadoPago. Revisá los logs.</div>
+  <i class="ti ti-alert-triangle"></i><div>Error al consultar los movimientos de MercadoPago. Revisá los logs.</div>
 </div>
 {% elif error == 'not_found' %}
 <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i><div>El pago no existe o ya fue procesado.</div>
+  <i class="ti ti-alert-triangle"></i><div>El pago no existe o ya fue procesado.</div>
 </div>
 {% elif error == 'nombre_requerido' %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i><div>El nombre es obligatorio para dar de alta el cliente.</div>
+  <i class="ti ti-alert-triangle"></i><div>El nombre es obligatorio para dar de alta el cliente.</div>
 </div>
 {% elif error == 'smtp_no_config' %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i>
+  <i class="ti ti-alert-triangle"></i>
   <div>Email no configurado. Completá host, usuario y contraseña en <a href="/config">Configuración</a>.</div>
 </div>
 {% elif error == 'sin_email' %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-envelope-slash-fill"></i><div>La factura no tiene email de destino.</div>
+  <i class="ti ti-mail-off"></i><div>La factura no tiene email de destino.</div>
 </div>
 {% elif error == 'sin_pdf' %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-file-earmark-x-fill"></i><div>No se encontró el PDF de la factura para reenviar.</div>
+  <i class="ti ti-file-x"></i><div>No se encontró el PDF de la factura para reenviar.</div>
 </div>
 {% elif error == 'email_fallo' %}
 <div class="alert alert-danger d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-exclamation-triangle-fill"></i><div>Error al enviar el email. Verificá la configuración SMTP y revisá los logs.</div>
+  <i class="ti ti-alert-triangle"></i><div>Error al enviar el email. Verificá la configuración SMTP y revisá los logs.</div>
 </div>
 {% endif %}
 {% if email_error %}
 <div class="alert alert-warning d-flex align-items-center gap-2 mb-3">
-  <i class="bi bi-envelope-exclamation-fill"></i>
+  <i class="ti ti-mail-exclamation"></i>
   <div>Factura generada, pero no se pudo enviar el email al cliente. Podés reenviar desde el historial.</div>
 </div>
 {% endif %}
@@ -223,21 +223,21 @@
   <li class="nav-item" role="presentation">
     <button class="nav-link active" id="tab-historial-btn" data-bs-toggle="tab"
             data-bs-target="#tab-historial" type="button" role="tab">
-      <i class="bi bi-clock-history me-1"></i>Historial reciente
+      <i class="ti ti-history me-1"></i>Historial reciente
       <span class="badge bg-light text-dark border ms-1">{{ (historial|length) + (transferencias_hist|length) }}</span>
     </button>
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-cobros-btn" data-bs-toggle="tab"
             data-bs-target="#tab-cobros" type="button" role="tab">
-      <i class="bi bi-arrow-down-circle me-1 text-secondary"></i>Cobros sincronizados
+      <i class="ti ti-circle-arrow-down me-1 text-secondary"></i>Cobros sincronizados
       <span class="badge bg-secondary ms-1">{{ transferencias|length }}</span>
     </button>
   </li>
   <li class="nav-item" role="presentation">
     <button class="nav-link" id="tab-pendientes-btn" data-bs-toggle="tab"
             data-bs-target="#tab-pendientes" type="button" role="tab">
-      <i class="bi bi-hourglass-split me-1 text-warning"></i>Pendientes de factura
+      <i class="ti ti-hourglass me-1 text-warning"></i>Pendientes de factura
       <span class="badge bg-warning text-dark ms-1">{{ pendientes|length }}</span>
     </button>
   </li>
@@ -276,13 +276,13 @@
             </td>
             <td class="text-center" style="white-space:nowrap">
               {% if p.factura_id %}
-                <a href="/facturas/{{ p.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="bi bi-receipt me-1"></i>Ver</a>
+                <a href="/facturas/{{ p.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="ti ti-receipt me-1"></i>Ver</a>
                 {% if p.cliente and p.cliente.email %}
                 <form method="post" action="/integraciones/mp/factura/{{ p.factura_id }}/reenviar" class="d-inline">
-                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="bi bi-envelope-arrow-up"></i></button>
+                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="ti ti-mail-forward"></i></button>
                 </form>
                 {% else %}
-                <span class="badge bg-warning text-dark" style="font-size:.72rem" title="Agregá el email al cliente para poder reenviar la factura"><i class="bi bi-envelope-slash"></i> Sin email</span>
+                <span class="badge bg-warning text-dark" style="font-size:.72rem" title="Agregá el email al cliente para poder reenviar la factura"><i class="ti ti-mail-off"></i> Sin email</span>
                 {% endif %}
               {% else %}—{% endif %}
             </td>
@@ -291,7 +291,7 @@
           {% for t in transferencias_hist %}
           <tr>
             <td class="text-muted">{{ (t.fecha or t.created_at)|fecha }}</td>
-            <td><span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="bi bi-bank me-1"></i>{{ label_tipo(t.tipo) }}{% if t.origen_banco %} · {{ label_metodo(t.origen_banco) }}{% endif %}</span></td>
+            <td><span class="badge rounded-pill bg-secondary" style="font-size:.78rem"><i class="ti ti-building-bank me-1"></i>{{ label_tipo(t.tipo) }}{% if t.origen_banco %} · {{ label_metodo(t.origen_banco) }}{% endif %}</span></td>
             <td>
               {{ t.origen_nombre or t.payer_name or '—' }}
               {% if t.origen_banco %}<br><small class="text-muted">{{ label_metodo(t.origen_banco) }}</small>{% endif %}
@@ -305,9 +305,9 @@
             </td>
             <td class="text-center" style="white-space:nowrap">
               {% if t.factura_id %}
-                <a href="/facturas/{{ t.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="bi bi-receipt me-1"></i>Ver</a>
+                <a href="/facturas/{{ t.factura_id }}" class="btn btn-sm btn-outline-primary py-0 me-1"><i class="ti ti-receipt me-1"></i>Ver</a>
                 <form method="post" action="/integraciones/mp/factura/{{ t.factura_id }}/reenviar" class="d-inline">
-                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="bi bi-envelope-arrow-up"></i></button>
+                  <button type="submit" class="btn btn-sm btn-outline-secondary py-0" title="Reenviar email"><i class="ti ti-mail-forward"></i></button>
                 </form>
               {% else %}—{% endif %}
             </td>
@@ -318,7 +318,7 @@
     </div>
     {% else %}
     <div class="text-center text-muted py-4">
-      <i class="bi bi-clock-history fs-2 mb-1 d-block"></i>Todavía no hay movimientos en el historial.
+      <i class="ti ti-history fs-2 mb-1 d-block"></i>Todavía no hay movimientos en el historial.
     </div>
     {% endif %}
   </div>{# /tab-historial #}
@@ -326,7 +326,7 @@
   {# ── Pestaña 2: Cobros sincronizados (transferencias / billeteras) ── #}
   <div class="tab-pane fade" id="tab-cobros" role="tabpanel" aria-labelledby="tab-cobros-btn">
     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-3 border-bottom">
-      <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Pagos aprobados no capturados por webhook.</small>
+      <small class="text-muted"><i class="ti ti-info-circle me-1"></i>Pagos aprobados no capturados por webhook.</small>
       <form method="post" action="/integraciones/mp/sincronizar" class="d-flex align-items-center gap-2">
         <select name="dias" class="form-select form-select-sm" style="width:auto">
           <option value="7" selected>Últimos 7 días</option>
@@ -335,7 +335,7 @@
           <option value="60">Últimos 60 días</option>
         </select>
         <button type="submit" class="btn btn-sm btn-outline-secondary">
-          <i class="bi bi-arrow-repeat me-1"></i>Sincronizar
+          <i class="ti ti-refresh me-1"></i>Sincronizar
         </button>
       </form>
     </div>
@@ -379,27 +379,27 @@
             <td>
               {% if t.cliente %}
                 <a href="/clientes/{{ t.cliente.id }}" class="text-decoration-none">
-                  <i class="bi bi-person-fill me-1 text-success"></i>{{ t.cliente.name }}
+                  <i class="ti ti-user me-1 text-success"></i>{{ t.cliente.name }}
                 </a>
                 {% if t.payer_email %}<br><small class="text-muted">{{ t.payer_email }}</small>{% endif %}
               {% else %}
                 {# Mostrar email si ya fue cargado #}
                 {% if t.payer_email %}
-                  <small><i class="bi bi-envelope me-1"></i>{{ t.payer_email }}</small><br>
+                  <small><i class="ti ti-mail me-1"></i>{{ t.payer_email }}</small><br>
                   <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
                           data-bs-toggle="modal" data-bs-target="#modalAltaMov{{ t.id }}">
-                    <i class="bi bi-person-plus me-1"></i>Dar de alta
+                    <i class="ti ti-user-plus me-1"></i>Dar de alta
                   </button>
                 {% else %}
-                  <span class="text-muted" style="font-size:.85rem"><i class="bi bi-envelope-slash me-1"></i>Sin email</span><br>
+                  <span class="text-muted" style="font-size:.85rem"><i class="ti ti-mail-off me-1"></i>Sin email</span><br>
                   <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
                           data-bs-toggle="modal" data-bs-target="#modalEmailMov{{ t.id }}">
-                    <i class="bi bi-pencil me-1"></i>Cargar email
+                    <i class="ti ti-pencil me-1"></i>Cargar email
                   </button>
                   {% if t.origen_nombre %}
                   · <button type="button" class="btn btn-link btn-sm p-0 text-primary" style="font-size:.8rem"
                           data-bs-toggle="modal" data-bs-target="#modalAltaMov{{ t.id }}">
-                    <i class="bi bi-person-plus me-1"></i>Dar de alta
+                    <i class="ti ti-user-plus me-1"></i>Dar de alta
                   </button>
                   {% endif %}
                 {% endif %}
@@ -409,11 +409,11 @@
             <td class="text-center" style="white-space:nowrap">
               <button type="button" class="btn btn-sm btn-primary me-1"
                       onclick="abrirFacturar('/integraciones/mp/movimiento/{{ t.id }}/facturar', '${{ t.monto|moneda }}')">
-                <i class="bi bi-receipt me-1"></i>Factura
+                <i class="ti ti-receipt me-1"></i>Factura
               </button>
               <form method="post" action="/integraciones/mp/movimiento/{{ t.id }}/ignorar" class="d-inline"
                     onsubmit="return confirm('¿Ignorar esta transferencia?')">
-                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="ti ti-x"></i></button>
               </form>
             </td>
           </tr>
@@ -423,7 +423,7 @@
     </div>
     {% else %}
     <div class="text-center text-muted py-4">
-      <i class="bi bi-arrow-repeat fs-2 mb-1 d-block"></i>
+      <i class="ti ti-refresh fs-2 mb-1 d-block"></i>
       Usá el botón <strong>Sincronizar</strong> para traer las transferencias recibidas.
     </div>
     {% endif %}
@@ -459,11 +459,11 @@
             <td class="text-center" style="white-space:nowrap">
               <button type="button" class="btn btn-sm btn-primary me-1"
                       onclick="abrirFacturar('/integraciones/mp/pago/{{ p.id }}/facturar', '${{ p.monto|moneda }}')">
-                <i class="bi bi-receipt me-1"></i>Factura
+                <i class="ti ti-receipt me-1"></i>Factura
               </button>
               <form method="post" action="/integraciones/mp/pago/{{ p.id }}/ignorar" class="d-inline"
                     onsubmit="return confirm('¿Ignorar este pago?')">
-                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></button>
+                <button type="submit" class="btn btn-sm btn-outline-secondary"><i class="ti ti-x"></i></button>
               </form>
             </td>
           </tr>
@@ -473,7 +473,7 @@
     </div>
     {% else %}
     <div class="text-center text-muted py-4">
-      <i class="bi bi-check2-all fs-2 mb-1 d-block text-success"></i>Sin pagos pendientes.
+      <i class="ti ti-checks fs-2 mb-1 d-block text-success"></i>Sin pagos pendientes.
     </div>
     {% endif %}
   </div>{# /tab-pendientes #}
@@ -500,7 +500,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-envelope me-2"></i>Datos del emisor</h5>
+        <h5 class="modal-title"><i class="ti ti-mail me-2"></i>Datos del emisor</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form method="post" action="/integraciones/mp/movimiento/{{ t.id }}/guardar-datos">
@@ -510,7 +510,7 @@
           </p>
           {% if t.origen_nombre %}
           <div class="alert alert-light py-2 mb-3" style="font-size:.88rem">
-            <i class="bi bi-info-circle me-1"></i>
+            <i class="ti ti-info-circle me-1"></i>
             Banco informa: <strong>{{ t.origen_nombre }}</strong>{% if t.origen_banco %} desde <strong>{{ label_metodo(t.origen_banco) }}</strong>{% endif %}
           </div>
           {% endif %}
@@ -535,7 +535,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-floppy me-1"></i>Guardar</button>
+          <button type="submit" class="btn btn-primary"><i class="ti ti-device-floppy me-1"></i>Guardar</button>
         </div>
       </form>
     </div>
@@ -558,7 +558,7 @@
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-receipt me-2"></i>Generar Factura</h5>
+        <h5 class="modal-title"><i class="ti ti-receipt me-2"></i>Generar Factura</h5>
         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="formFacturar" method="post" action="">
@@ -573,7 +573,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-          <button type="submit" class="btn btn-primary"><i class="bi bi-receipt me-1"></i>Generar factura</button>
+          <button type="submit" class="btn btn-primary"><i class="ti ti-receipt me-1"></i>Generar factura</button>
         </div>
       </form>
     </div>

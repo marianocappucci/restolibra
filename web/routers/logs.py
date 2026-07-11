@@ -18,13 +18,13 @@ Auth = Annotated[dict, Depends(require_admin)]
 PAGE_SIZE = 100
 
 TIPO_META = {
-    "venta":        {"label": "Venta",        "icon": "bi-cart3",              "color": "#0d6efd", "bg": "#cfe2ff"},
-    "caja":         {"label": "Caja",          "icon": "bi-cash-stack",         "color": "#198754", "bg": "#d1e7dd"},
-    "stock":        {"label": "Stock",         "icon": "bi-archive",            "color": "#6f42c1", "bg": "#e8d5ff"},
-    "factura":      {"label": "Factura",       "icon": "bi-receipt",            "color": "#0dcaf0", "bg": "#cff4fc"},
-    "turno":        {"label": "Turno",         "icon": "bi-person-badge",       "color": "#fd7e14", "bg": "#ffe5d0"},
-    "remito":       {"label": "Remito",        "icon": "bi-file-earmark-text",  "color": "#6c757d", "bg": "#e2e3e5"},
-    "presupuesto":  {"label": "Presupuesto",   "icon": "bi-calculator",         "color": "#20c997", "bg": "#d2f4ea"},
+    "venta":        {"label": "Venta",        "icon": "ti-shopping-cart",              "color": "#0d6efd", "bg": "#cfe2ff"},
+    "caja":         {"label": "Caja",          "icon": "ti-cash",         "color": "#198754", "bg": "#d1e7dd"},
+    "stock":        {"label": "Stock",         "icon": "ti-archive",            "color": "#6f42c1", "bg": "#e8d5ff"},
+    "factura":      {"label": "Factura",       "icon": "ti-receipt",            "color": "#0dcaf0", "bg": "#cff4fc"},
+    "turno":        {"label": "Turno",         "icon": "ti-id-badge-2",       "color": "#fd7e14", "bg": "#ffe5d0"},
+    "remito":       {"label": "Remito",        "icon": "ti-file-text",  "color": "#6c757d", "bg": "#e2e3e5"},
+    "presupuesto":  {"label": "Presupuesto",   "icon": "ti-calculator",         "color": "#20c997", "bg": "#d2f4ea"},
 }
 
 

@@ -4,7 +4,7 @@
 {% block content %}
 <div class="page-header">
   <h1>
-    <i class="bi bi-person-badge me-2 text-primary"></i>
+    <i class="ti ti-id-badge-2 me-2 text-primary"></i>
     Turno #{{ turno.id }}
     {% if turno.estado == 'abierto' %}
     <span class="badge bg-success ms-2" style="font-size:.55em;vertical-align:middle">Abierto</span>
@@ -13,10 +13,10 @@
     {% endif %}
   </h1>
   <div class="d-flex gap-2">
-    <a href="/turnos" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+    <a href="/turnos" class="btn btn-outline-secondary"><i class="ti ti-arrow-left me-1"></i>Volver</a>
     {% if turno.estado == 'abierto' %}
     <a href="/turnos/{{ turno.id }}/cerrar" class="btn btn-danger">
-      <i class="bi bi-stop-circle me-1"></i>Cerrar turno
+      <i class="ti ti-player-stop me-1"></i>Cerrar turno
     </a>
     {% endif %}
   </div>
