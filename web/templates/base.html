@@ -147,12 +147,20 @@
     }
     .main-content { flex: 1; min-width: 0; padding: 2rem; margin-left: 220px; }
     .page-header {
+      position: relative;
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-bottom: 1.5rem;
     }
     .page-header h1 { font-size: 1.5rem; font-weight: 700; margin: 0; }
+    .header-clock {
+      position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+      text-align: center; line-height: 1.15; pointer-events: none;
+    }
+    .header-clock-time { font-size: 1.35rem; font-weight: 700; }
+    .header-clock-fecha { font-size: .72rem; color: #8a7a6c; text-transform: capitalize; }
+    @media (max-width: 768px) { .header-clock { display: none; } }
     .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.07); border-radius: 12px; }
     .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
     .table th { font-size: 0.82rem; text-transform: uppercase; letter-spacing: .04em; color: #666; }

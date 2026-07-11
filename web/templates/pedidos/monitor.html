@@ -18,6 +18,10 @@
     .card { border: none; box-shadow: 0 1px 6px rgba(0,0,0,.07); border-radius: 12px; }
     #btn-fullscreen { position: fixed; top: 10px; right: 10px; z-index: 1000; opacity: .55; }
     #btn-fullscreen:hover { opacity: 1; }
+    .page-header { position: relative; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .header-clock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; line-height: 1.15; pointer-events: none; }
+    .header-clock-time { font-size: 1.35rem; font-weight: 700; }
+    .header-clock-fecha { font-size: .72rem; color: #8a7a6c; text-transform: capitalize; }
   </style>
 </head>
 <body>
@@ -26,7 +30,11 @@
     <i class="ti ti-arrows-maximize"></i>
   </button>
 
-  <h1 class="mb-3"><i class="ti ti-clipboard-list me-2 text-primary"></i>Pedidos (mostrador y delivery)</h1>
+  <div class="page-header">
+    <h1 class="mb-0"><i class="ti ti-clipboard-list me-2 text-primary"></i>Pedidos (mostrador y delivery)</h1>
+    {% include "_reloj.html" %}
+    <span></span>
+  </div>
 
   {% set canal_icon = {'barra': 'ti-glass-cocktail', 'takeaway': 'ti-shopping-bag', 'delivery': 'ti-scooter'} %}
   {% set canal_color = {'barra': 'info', 'takeaway': 'secondary', 'delivery': 'primary'} %}

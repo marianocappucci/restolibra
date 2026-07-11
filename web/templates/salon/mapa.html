@@ -5,6 +5,7 @@
 {% set es_mozo = request.state.current_user and request.state.current_user.role == 'mozo' %}
 <div class="page-header">
   <h1><i class="ti ti-layout-grid me-2 text-primary"></i>Salón</h1>
+  {% include "_reloj.html" %}
   {% if not es_mozo %}
   <a href="/salon/config" class="btn btn-outline-secondary btn-sm">
     <i class="ti ti-settings me-1"></i>Configurar salones y mesas
@@ -60,6 +61,11 @@
           <div class="small text-muted">{{ m.capacidad }} cub.</div>
           {% if m.pedido_id %}
           <div class="badge bg-{{ color }} mt-1">${{ m.pedido_total|moneda }}</div>
+          {% if m.pedido_creado_at %}
+          <div class="small text-muted mt-1 js-tiempo-ocupada" data-creado="{{ m.pedido_creado_at.replace(' ', 'T') }}-03:00">
+            <i class="ti ti-clock"></i> {{ m.mins_ocupada }} min
+          </div>
+          {% endif %}
           {% else %}
           <div class="badge bg-light text-success mt-1">Libre</div>
           {% endif %}
@@ -80,4 +86,24 @@
   </a>
 </div>
 {% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function formatoTiempo(mins) {
+  if (mins < 60) return mins + ' min';
+  var h = Math.floor(mins / 60), m = mins % 60;
+  return h + 'h ' + m + 'min';
+}
+function actualizarTiemposOcupada() {
+  document.querySelectorAll('.js-tiempo-ocupada').forEach(function (el) {
+    var creado = new Date(el.dataset.creado);
+    if (isNaN(creado.getTime())) return;
+    var mins = Math.max(0, Math.floor((Date.now() - creado.getTime()) / 60000));
+    el.innerHTML = '<i class="ti ti-clock"></i> ' + formatoTiempo(mins);
+  });
+}
+actualizarTiemposOcupada();
+setInterval(actualizarTiemposOcupada, 30000);
+</script>
 {% endblock %}

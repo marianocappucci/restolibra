@@ -3878,7 +3878,7 @@ def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[di
     with get_connection() as conn:
         sql = """
             SELECT m.*, s.nombre AS salon_nombre,
-                   p.id AS pedido_id, p.numero AS pedido_numero
+                   p.id AS pedido_id, p.numero AS pedido_numero, p.created_at AS pedido_creado_at
             FROM mesas m
             JOIN salones s ON s.id = m.salon_id
             LEFT JOIN pedidos p ON p.mesa_id = m.id AND p.estado = 'abierto'
@@ -3894,6 +3894,7 @@ def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[di
         rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
     for r in rows:
         r["pedido_total"] = pedido_total(r["pedido_id"]) if r.get("pedido_id") else 0.0
+        r["mins_ocupada"] = minutos_desde(r["pedido_creado_at"]) if r.get("pedido_creado_at") else 0
     return rows
 
 
@@ -4044,11 +4045,11 @@ def crear_pedido(canal: str = "salon", mesa_id: int | None = None, comensales: i
             """INSERT INTO pedidos
                (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
                 cliente_nombre, observaciones, telefono, direccion, repartidor,
-                costo_envio, hora_retiro)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                costo_envio, hora_retiro, created_at, updated_at)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
              cliente_nombre, observaciones, telefono, direccion, repartidor,
-             float(costo_envio or 0), hora_retiro),
+             float(costo_envio or 0), hora_retiro, _ar_now(), _ar_now()),
         )
         pid = cur.lastrowid
         if mesa_id:

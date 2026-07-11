@@ -19,6 +19,10 @@
     .card-header { background: transparent; border-bottom: 1px solid #f0f0f0; font-weight: 600; }
     #btn-fullscreen { position: fixed; top: 10px; right: 10px; z-index: 1000; opacity: .55; }
     #btn-fullscreen:hover { opacity: 1; }
+    .page-header { position: relative; display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; }
+    .header-clock { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); text-align: center; line-height: 1.15; pointer-events: none; }
+    .header-clock-time { font-size: 1.35rem; font-weight: 700; }
+    .header-clock-fecha { font-size: .72rem; color: #8a7a6c; text-transform: capitalize; }
   </style>
 </head>
 <body>
@@ -27,10 +31,14 @@
     <i class="ti ti-arrows-maximize"></i>
   </button>
 
-  <h1 class="mb-3">
-    <i class="ti {% if estacion == 'cocina' %}ti-flame text-danger{% else %}ti-glass-cocktail text-info{% endif %} me-2"></i>
-    KDS {{ estacion|capitalize }}
-  </h1>
+  <div class="page-header">
+    <h1 class="mb-0">
+      <i class="ti {% if estacion == 'cocina' %}ti-flame text-danger{% else %}ti-glass-cocktail text-info{% endif %} me-2"></i>
+      KDS {{ estacion|capitalize }}
+    </h1>
+    {% include "_reloj.html" %}
+    <span></span>
+  </div>
 
   <div class="row g-3">
     <div class="col-md-4">

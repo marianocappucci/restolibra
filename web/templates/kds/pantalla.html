@@ -7,6 +7,7 @@
     <i class="ti {% if estacion == 'cocina' %}ti-flame text-danger{% else %}ti-glass-cocktail text-info{% endif %} me-2"></i>
     KDS {{ estacion|capitalize }}
   </h1>
+  {% include "_reloj.html" %}
   <div class="d-flex gap-2">
     <div class="btn-group btn-group-sm">
       {% for e in estaciones %}
