@@ -117,3 +117,25 @@ def mi_cuenta_form(request: Request, _=Depends(require_admin)):
     return templates.TemplateResponse(request, "usuarios/form.html",
                                       _ctx(request, {"usuario": usuario,
                                                       "solo_password": True, "error": None}))
+
+
+@router.post("/mi-cuenta")
+def mi_cuenta_post(request: Request, _=Depends(require_admin), new_password: str = Form("")):
+    """Cambio de la propia contraseña. Ruta dedicada porque el formulario de
+    /mi-cuenta (solo_password=True) no manda nombre/email/rol — antes posteaba
+    al mismo endpoint que /usuarios/{id}/editar, que los exige como
+    obligatorios, y tiraba 422 'nombre field required' siempre."""
+    me = get_current_user(request)
+    usuario = db.get_usuario_by_username(me)
+    if not usuario:
+        return RedirectResponse("/login", status_code=303)
+    try:
+        if len(new_password) < 6:
+            raise ValueError("La contraseña debe tener al menos 6 caracteres.")
+        db.update_usuario_password(usuario["id"], new_password)
+        return RedirectResponse("/dashboard", status_code=303)
+    except Exception as e:
+        return templates.TemplateResponse(request, "usuarios/form.html",
+                                          _ctx(request, {"usuario": usuario,
+                                                          "solo_password": True, "error": str(e)}),
+                                          status_code=422)
