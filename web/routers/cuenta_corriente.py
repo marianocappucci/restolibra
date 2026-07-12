@@ -7,13 +7,14 @@ from fastapi.responses import RedirectResponse
 from typing import Annotated, Optional
 
 import database as db
-from web.auth import require_auth
+from web.auth import require_auth, require_role
 from web.templates_config import templates
 
 from fastapi import Depends
 
 router = APIRouter()
 Auth = Annotated[str, Depends(require_auth)]
+RoleAdmin = Annotated[dict, Depends(require_role("admin"))]
 
 _MEDIOS_LABEL = {
     "efectivo":      "Efectivo",
@@ -98,6 +99,7 @@ async def cc_eliminar_pago(
     pago_id:    int,
     request:    Request,
     user:       Auth,
+    _role:      RoleAdmin,
     cliente_id: int = Form(...),
 ):
     db.delete_cc_pago(pago_id)

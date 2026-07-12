@@ -235,11 +235,22 @@ async def salon_cobrar_post(request: Request, pid: int, user: Auth):
     except ValueError:
         descuento = 0.0
 
-    venta_id = db.cobrar_pedido(
-        pid, pagos=pagos, descuento=descuento,
-        cliente_nombre=str(form.get("cliente_nombre", "")).strip(),
-        usuario_id=_usuario_id(user),
-    )
+    try:
+        venta_id = db.cobrar_pedido(
+            pid, pagos=pagos, descuento=descuento,
+            cliente_nombre=str(form.get("cliente_nombre", "")).strip(),
+            usuario_id=_usuario_id(user),
+        )
+    except ValueError:
+        # Perdió la carrera contra otro cobro simultáneo del mismo pedido (doble
+        # click, dos mozos) — no es un 500, el pedido ya fue cobrado por el otro.
+        pedido_actual = db.get_pedido(pid)
+        if pedido_actual and pedido_actual["estado"] == "cobrado" and pedido_actual.get("venta_id"):
+            return RedirectResponse(f"/ventas/{pedido_actual['venta_id']}", status_code=303)
+        return templates.TemplateResponse(request, "salon/cobrar.html", {
+            "active": "salon", "pedido": pedido, "medios_pago": MEDIOS_PAGO,
+            "error": "Este pedido ya fue cobrado o modificado. Volvé al salón y verificá.",
+        }, status_code=409)
     return RedirectResponse(f"/ventas/{venta_id}", status_code=303)
 
 

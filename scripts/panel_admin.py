@@ -10,11 +10,14 @@ Uso: python3 scripts/panel_admin.py [comando] [slug]
 import os
 import sys
 import json
+import sqlite3
 import subprocess
 import tarfile
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+
+BACKUP_RETENTION_DIAS = 14
 
 sys.path.insert(0, str(Path(__file__).parent))
 try:
@@ -178,8 +181,24 @@ def _backups_dir(c: dict) -> Path:
     return d
 
 
-def cmd_backup(slug: str):
-    """Backup completo del directorio data (tar.gz) + copia rápida de la DB."""
+def _purge_backups_viejos(bdir: Path, patron: str, dias: int = BACKUP_RETENTION_DIAS):
+    corte = datetime.now() - timedelta(days=dias)
+    for f in bdir.glob(patron):
+        if datetime.fromtimestamp(f.stat().st_mtime) < corte:
+            f.unlink()
+
+
+def cmd_backup(slug: str, quiet: bool = False):
+    """Backup completo del directorio data (tar.gz) + copia WAL-safe de la DB
+    (vía la API de backup online de sqlite3, no un copy2 crudo del archivo —
+    en modo WAL un copy2 puede capturar el .db sin los cambios que todavía
+    están en .db-wal si hay escrituras activas al mismo tiempo). Purga
+    backups de más de BACKUP_RETENTION_DIAS días. Pensado para correr desde
+    cron (ver `backup-all`) además de manual."""
+    def _p(*a):
+        if not quiet:
+            print(*a)
+
     c = find_client(slug)
     if not c:
         print(f"[ERROR] Cliente '{slug}' no encontrado.")
@@ -190,19 +209,44 @@ def cmd_backup(slug: str):
         return
     ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_file = CLIENTES_DIR / f"{slug}_backup_{ts}.tar.gz"
-    print(f"[*] Creando backup completo de {slug} ...")
+    _p(f"[*] Creando backup completo de {slug} ...")
     with tarfile.open(out_file, "w:gz") as tar:
         tar.add(data_dir, arcname=f"{slug}/data")
     size_mb = out_file.stat().st_size / 1_048_576
-    print(f"[OK] Backup tar.gz: {out_file}  ({size_mb:.1f} MB)")
+    _p(f"[OK] Backup tar.gz: {out_file}  ({size_mb:.1f} MB)")
+    _purge_backups_viejos(CLIENTES_DIR, f"{slug}_backup_*.tar.gz")
 
-    # También copia rápida solo de la DB
+    # Copia WAL-safe de la DB, vía sqlite3.Connection.backup() (Online Backup
+    # API de SQLite) en vez de shutil.copy2 crudo del archivo.
     db_src = data_dir / "restolibra.db"
     if db_src.exists():
         bdir   = _backups_dir(c)
         db_dst = bdir / f"restolibra_{ts}.db"
-        shutil.copy2(db_src, db_dst)
-        print(f"[OK] Copia DB:       {db_dst}  ({db_dst.stat().st_size/1_048_576:.1f} MB)")
+        src_conn = sqlite3.connect(str(db_src))
+        dst_conn = sqlite3.connect(str(db_dst))
+        try:
+            with dst_conn:
+                src_conn.backup(dst_conn)
+        finally:
+            src_conn.close()
+            dst_conn.close()
+        _p(f"[OK] Copia DB (WAL-safe): {db_dst}  ({db_dst.stat().st_size/1_048_576:.1f} MB)")
+        _purge_backups_viejos(bdir, "restolibra_*.db")
+
+
+def cmd_backup_all():
+    """Backup de todos los clientes activos — pensado para cron diario."""
+    clientes = load_clients()
+    if not clientes:
+        print("[*] Sin clientes para respaldar.")
+        return
+    for c in clientes:
+        print(f"[*] Backup de '{c['slug']}' ...")
+        try:
+            cmd_backup(c["slug"], quiet=True)
+            print(f"[OK] '{c['slug']}' respaldado.")
+        except Exception as e:
+            print(f"[ERROR] Falló el backup de '{c['slug']}': {e}")
 
 
 def cmd_list_backups(slug: str):
@@ -656,6 +700,7 @@ def cli():
         "restart":    lambda: cmd_restart(slug) if slug else print("Uso: panel_admin.py restart <slug>"),
         "logs":       lambda: cmd_logs(slug) if slug else print("Uso: panel_admin.py logs <slug>"),
         "backup":       lambda: cmd_backup(slug) if slug else print("Uso: panel_admin.py backup <slug>"),
+        "backup-all":   lambda: cmd_backup_all(),
         "list-backups": lambda: cmd_list_backups(slug) if slug else print("Uso: panel_admin.py list-backups <slug>"),
         "restore-db":   lambda: cmd_restore_db(slug, args[2] if len(args) > 2 else None) if slug else print("Uso: panel_admin.py restore-db <slug> [archivo.db]"),
         "actualizar":  lambda: cmd_actualizar([slug] if slug else None),

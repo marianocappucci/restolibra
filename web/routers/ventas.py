@@ -6,7 +6,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 from typing import Annotated
 from datetime import date
 from fastapi import APIRouter, Request, Depends, HTTPException
-from fastapi.responses import RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response, JSONResponse
 
 import database as db
 import config_manager

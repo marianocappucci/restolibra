@@ -3,6 +3,10 @@ import json
 import os
 import hashlib
 import secrets
+import contextlib
+import logging
+
+_log = logging.getLogger(__name__)
 from datetime import datetime as _datetime, timezone as _timezone, timedelta as _timedelta
 
 _AR_TZ   = _timezone(_timedelta(hours=-3))   # America/Argentina/Buenos_Aires (sin DST)
@@ -17,11 +21,12 @@ DB_PATH   = os.path.join(_DATA_DIR, "restolibra.db")
 
 
 def get_connection():
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=15)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA synchronous=NORMAL")
     conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA busy_timeout = 15000")
     return conn
 
 
@@ -413,6 +418,34 @@ def init_db():
                 estado         TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | cumplida | cancelada
                 created_at     TEXT DEFAULT (datetime('now'))
             );
+        """)
+        # Índices — agregados en la auditoría 2026-07-12 (wiki/analyses/restolibra-auditoria-produccion).
+        # Antes de crear el índice único de "una mesa, un pedido abierto", limpiamos
+        # cualquier duplicado que ya exista (ej. de la condición de carrera que este
+        # mismo índice viene a prevenir) para no romper el arranque de la app.
+        dups = conn.execute("""
+            SELECT mesa_id FROM pedidos WHERE estado='abierto' AND mesa_id IS NOT NULL
+            GROUP BY mesa_id HAVING COUNT(*) > 1
+        """).fetchall()
+        for d in dups:
+            rows = conn.execute(
+                "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' ORDER BY id DESC",
+                (d["mesa_id"],),
+            ).fetchall()
+            for old in rows[1:]:
+                conn.execute(
+                    "UPDATE pedidos SET estado='abierto_duplicado', updated_at=? WHERE id=?",
+                    (_ar_now(), old["id"]),
+                )
+        conn.executescript("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_pedido_mesa_abierta
+                ON pedidos(mesa_id) WHERE estado='abierto';
+            CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado);
+            CREATE INDEX IF NOT EXISTS idx_comandas_estacion_estado ON comandas(estacion, estado);
+            CREATE INDEX IF NOT EXISTS idx_pedido_items_pedido ON pedido_items(pedido_id);
+            CREATE INDEX IF NOT EXISTS idx_pedido_items_comanda ON pedido_items(comanda_id);
+            CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
+            CREATE INDEX IF NOT EXISTS idx_caja_movimientos_fecha ON caja_movimientos(fecha);
         """)
         # Migración: columnas faltantes
         cols = [r[1] for r in conn.execute("PRAGMA table_info(clients)").fetchall()]
@@ -1416,17 +1449,19 @@ def delete_caja_config(cid: int):
 # ── Caja ───────────────────────────────────────────────────────────────────────
 
 def create_caja_movimiento(fecha, tipo, concepto, monto, referencia="", factura_id=None,
-                           usuario_id=None, caja_id=None, medio_pago=""):
-    with get_connection() as conn:
+                           usuario_id=None, caja_id=None, medio_pago="",
+                           conn: sqlite3.Connection | None = None):
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
         # Idempotencia: si ya existe un movimiento con la misma referencia, no duplicar
         if referencia:
-            exists = conn.execute(
+            exists = c.execute(
                 "SELECT id FROM caja_movimientos WHERE referencia=? LIMIT 1", (referencia,)
             ).fetchone()
             if exists:
                 return exists[0]
         _caja_id = caja_id or get_default_caja_id()
-        cur = conn.execute(
+        cur = c.execute(
             """INSERT INTO caja_movimientos
                (fecha, tipo, concepto, monto, referencia, factura_id, usuario_id, caja_id, medio_pago)
                VALUES (?,?,?,?,?,?,?,?,?)""",
@@ -2301,9 +2336,10 @@ def create_turno(usuario_id: int, monto_inicial: float, notas: str = "") -> int:
         return cur.lastrowid
 
 
-def get_turno_activo(usuario_id: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
+def get_turno_activo(usuario_id: int, conn: sqlite3.Connection | None = None) -> dict | None:
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        row = c.execute(
             """SELECT t.*, u.nombre AS usuario_nombre
                FROM turnos_caja t JOIN usuarios u ON u.id = t.usuario_id
                WHERE t.usuario_id=? AND t.estado='abierto'
@@ -2395,9 +2431,10 @@ def cerrar_turno(tid: int, monto_declarado: float, notas: str = ""):
         )
 
 
-def vincular_venta_turno(venta_id: int, turno_id: int):
-    with get_connection() as conn:
-        conn.execute("UPDATE ventas SET turno_id=? WHERE id=?", (turno_id, venta_id))
+def vincular_venta_turno(venta_id: int, turno_id: int, conn: sqlite3.Connection | None = None):
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        c.execute("UPDATE ventas SET turno_id=? WHERE id=?", (turno_id, venta_id))
 
 
 # ── Stock ─────────────────────────────────────────────────────────────────────
@@ -2406,13 +2443,15 @@ def add_movimiento_stock(producto_id: int, tipo: str, cantidad: float,
                          referencia: str = "", fecha: str = "",
                          venta_id: int | None = None,
                          usuario_id: int | None = None,
-                         deposito_id: int | None = None):
+                         deposito_id: int | None = None,
+                         conn: sqlite3.Connection | None = None):
     """Agrega un movimiento de stock. cantidad positiva=entrada, negativa=salida."""
     from datetime import date as _date
     _fecha = fecha or _date.today().isoformat()
     _deposito = deposito_id or get_default_deposito_id()
-    with get_connection() as conn:
-        conn.execute(
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        c.execute(
             """INSERT INTO movimientos_stock
                (producto_id, tipo, cantidad, referencia, venta_id, usuario_id, fecha, deposito_id)
                VALUES (?,?,?,?,?,?,?,?)""",
@@ -2481,7 +2520,8 @@ def ajustar_stock(producto_id: int, stock_nuevo: float, referencia: str,
 
 
 def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
-                           usuario_id: int | None = None):
+                           usuario_id: int | None = None,
+                           conn: sqlite3.Connection | None = None):
     """Descuenta stock por cada ítem de la venta que tenga producto_id.
 
     Si el producto tiene una receta activa, descuenta cada insumo de la
@@ -2493,6 +2533,9 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
     Si el ítem trae `modificadores` (JSON de `add_pedido_item`, Fase 3), se
     ajusta la cantidad de cada insumo: "quitar" -> no se descuenta, "doble"
     -> se descuenta el doble. Sin modificadores, receta normal.
+
+    Si se pasa `conn`, corre dentro de esa transacción (ej. `cobrar_pedido`):
+    un error acá debe abortar el cobro completo, no perderse en silencio.
     """
     for item in items:
         pid = item.get("producto_id")
@@ -2512,12 +2555,14 @@ def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
                     cantidad=-(ri["cantidad"] * qty * multiplicador),
                     referencia=f"Venta ID {venta_id} (receta)",
                     venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
+                    conn=conn,
                 )
         else:
             add_movimiento_stock(
                 producto_id=pid, tipo="venta",
                 cantidad=-qty,
                 referencia=f"Venta ID {venta_id}",
+                conn=conn,
                 venta_id=venta_id, usuario_id=usuario_id, fecha=fecha,
             )
 
@@ -2550,9 +2595,13 @@ def _resumen_modificadores(modificadores) -> str:
 
 # ── Ventas ────────────────────────────────────────────────────────────────────
 
-def get_next_venta_numero() -> str:
-    with get_connection() as conn:
-        row = conn.execute(
+def get_next_venta_numero(conn: sqlite3.Connection | None = None) -> str:
+    """Si se pasa `conn`, calcula el número dentro de esa transacción (ya con el
+    write-lock tomado por el caller) para no chocar con otro cobro concurrente —
+    ver `cobrar_pedido`. Sin `conn`, sigue siendo best-effort (uso legacy)."""
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        row = c.execute(
             "SELECT numero FROM ventas ORDER BY id DESC LIMIT 1"
         ).fetchone()
     if row:
@@ -2568,9 +2617,11 @@ def get_next_venta_numero() -> str:
 def create_venta(numero: str, fecha: str, items: list, subtotal: float,
                  descuento: float, total: float, cliente_id: int | None,
                  cliente_nombre: str, usuario_id: int | None,
-                 observaciones: str = "", estado: str = "cobrada") -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
+                 observaciones: str = "", estado: str = "cobrada",
+                 conn: sqlite3.Connection | None = None) -> int:
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        cur = c.execute(
             """INSERT INTO ventas
                (numero, fecha, items, subtotal, descuento, total,
                 cliente_id, cliente_nombre, usuario_id, observaciones, estado)
@@ -2582,9 +2633,11 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
         return cur.lastrowid
 
 
-def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = ""):
-    with get_connection() as conn:
-        conn.execute(
+def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = "",
+                   conn: sqlite3.Connection | None = None):
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        c.execute(
             "INSERT INTO ventas_pagos (venta_id, medio, monto, referencia) VALUES (?,?,?,?)",
             (venta_id, medio, monto, referencia),
         )
@@ -4058,21 +4111,38 @@ def crear_pedido(canal: str = "salon", mesa_id: int | None = None, comensales: i
                  cliente_nombre: str = "", observaciones: str = "",
                  telefono: str = "", direccion: str = "", repartidor: str = "",
                  costo_envio: float = 0.0, hora_retiro: str = "") -> int:
+    """Si `mesa_id` ya tiene un pedido 'abierto' (dos mozos abriendo la misma mesa
+    casi a la vez), el índice único `idx_pedido_mesa_abierta` rechaza el INSERT
+    con IntegrityError en vez de dejar dos pedidos abiertos en la misma mesa —
+    en ese caso devolvemos el id del pedido que ganó la carrera."""
     numero = get_next_pedido_numero()
     with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO pedidos
-               (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-                cliente_nombre, observaciones, telefono, direccion, repartidor,
-                costo_envio, hora_retiro, created_at, updated_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-            (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-             cliente_nombre, observaciones, telefono, direccion, repartidor,
-             float(costo_envio or 0), hora_retiro, _ar_now(), _ar_now()),
-        )
-        pid = cur.lastrowid
-        if mesa_id:
-            conn.execute("UPDATE mesas SET estado='ocupada' WHERE id=?", (mesa_id,))
+        try:
+            cur = conn.execute(
+                """INSERT INTO pedidos
+                   (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
+                    cliente_nombre, observaciones, telefono, direccion, repartidor,
+                    costo_envio, hora_retiro, created_at, updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
+                 cliente_nombre, observaciones, telefono, direccion, repartidor,
+                 float(costo_envio or 0), hora_retiro, _ar_now(), _ar_now()),
+            )
+            pid = cur.lastrowid
+            if mesa_id:
+                conn.execute("UPDATE mesas SET estado='ocupada' WHERE id=?", (mesa_id,))
+            conn.commit()
+        except sqlite3.IntegrityError:
+            conn.rollback()
+            if not mesa_id:
+                raise
+            existente = conn.execute(
+                "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' ORDER BY id DESC LIMIT 1",
+                (mesa_id,),
+            ).fetchone()
+            if not existente:
+                raise
+            pid = existente["id"]
     return pid
 
 
@@ -4204,13 +4274,24 @@ def set_pedido_item_nota(item_id: int, nota: str) -> bool:
 def enviar_a_estaciones(pedido_id: int) -> list[int]:
     """Toma los ítems 'nuevo' del pedido, crea una comanda por estación (cocina/barra)
     con los ítems de esa estación, y marca todos los ítems como 'enviado'. Devuelve los
-    ids de comanda creados (para imprimir). Ítems sin estación se marcan enviado sin comanda."""
+    ids de comanda creados (para imprimir). Ítems sin estación se marcan enviado sin comanda.
+
+    El "tomado" de ítems es un UPDATE atómico (`WHERE estado='nuevo'`) antes de leerlos:
+    si dos envíos casi simultáneos del mismo pedido compiten (doble click, dos mozos
+    en la misma mesa), el segundo encuentra 0 filas para tomar y no duplica la comanda,
+    en vez del check-then-act anterior donde ambos podían leer los mismos ítems 'nuevo'
+    antes de que cualquiera los marcara."""
     with get_connection() as conn:
-        items = [dict(r) for r in conn.execute(
-            "SELECT * FROM pedido_items WHERE pedido_id=? AND estado='nuevo'", (pedido_id,)
-        ).fetchall()]
-        if not items:
+        cur = conn.execute(
+            "UPDATE pedido_items SET estado='tomando' WHERE pedido_id=? AND estado='nuevo'",
+            (pedido_id,),
+        )
+        if cur.rowcount == 0:
+            conn.commit()
             return []
+        items = [dict(r) for r in conn.execute(
+            "SELECT * FROM pedido_items WHERE pedido_id=? AND estado='tomando'", (pedido_id,)
+        ).fetchall()]
         row = conn.execute(
             "SELECT COALESCE(MAX(numero),0) AS n FROM comandas WHERE pedido_id=?", (pedido_id,)
         ).fetchone()
@@ -4221,12 +4302,12 @@ def enviar_a_estaciones(pedido_id: int) -> list[int]:
             if not grupo:
                 continue
             _now = _ar_now()
-            cur = conn.execute(
+            cur2 = conn.execute(
                 "INSERT INTO comandas (pedido_id, estacion, numero, estado, created_at, updated_at) "
                 "VALUES (?,?,?,'pendiente',?,?)",
                 (pedido_id, estacion, ronda, _now, _now),
             )
-            cid = cur.lastrowid
+            cid = cur2.lastrowid
             for it in grupo:
                 conn.execute(
                     "UPDATE pedido_items SET comanda_id=?, estado='enviado' WHERE id=?",
@@ -4234,10 +4315,11 @@ def enviar_a_estaciones(pedido_id: int) -> list[int]:
                 )
             creadas.append(cid)
         conn.execute(
-            "UPDATE pedido_items SET estado='enviado' WHERE pedido_id=? AND estado='nuevo' "
+            "UPDATE pedido_items SET estado='enviado' WHERE pedido_id=? AND estado='tomando' "
             "AND (estacion IS NULL OR estacion='')", (pedido_id,)
         )
         conn.execute("UPDATE pedidos SET updated_at=? WHERE id=?", (_ar_now(), pedido_id))
+        conn.commit()
     return creadas
 
 
@@ -4343,7 +4425,15 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
                   cliente_id: int | None = None, cliente_nombre: str = "",
                   observaciones: str = "", usuario_id: int | None = None) -> int:
     """Cierra el pedido generando una venta con sus ítems y pagos, moviendo caja,
-    descontando stock y vinculando al turno. Devuelve el venta_id."""
+    descontando stock y vinculando al turno. Devuelve el venta_id.
+
+    Todo corre en una única transacción sobre una sola conexión: el primer paso
+    es un UPDATE condicional (`WHERE estado='abierto'`) que "reclama" el pedido
+    — si dos cobros llegan casi simultáneos (doble click, dos mozos), el segundo
+    pierde la carrera ahí mismo y lanza ValueError antes de tocar venta/caja/
+    stock, en vez de duplicar todo. Si cualquier paso posterior falla (incluido
+    el descuento de stock, que antes se silenciaba), se hace rollback completo y
+    el pedido queda intacto en 'abierto'."""
     pedido = get_pedido(pedido_id)
     if not pedido:
         raise ValueError("Pedido inexistente")
@@ -4366,6 +4456,7 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
 
     subtotal = round(sum(i["subtotal"] for i in items), 2)
     descuento = round(float(descuento or 0), 2)
+    descuento = min(max(0.0, descuento), subtotal)
     total = round(subtotal - descuento, 2)
 
     total_pagado = round(sum(float(p["monto"]) for p in pagos), 2)
@@ -4383,41 +4474,57 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
 
     fecha = _ar_now().split(" ")[0]
     obs = observaciones or f"Pedido {pedido['numero']}"
-
-    numero = get_next_venta_numero()
-    venta_id = create_venta(
-        numero=numero, fecha=fecha, items=items,
-        subtotal=subtotal, descuento=descuento, total=total,
-        cliente_id=cliente_id, cliente_nombre=cliente_nombre,
-        usuario_id=usuario_id, observaciones=obs, estado=estado,
-    )
-    for p in pagos:
-        add_venta_pago(venta_id, p["medio"], float(p["monto"]), p.get("referencia", ""))
-        create_caja_movimiento(
-            fecha=fecha, tipo="ingreso",
-            concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
-            monto=float(p["monto"]), referencia=p.get("referencia", ""),
-            medio_pago=p["medio"],
-        )
-
-    try:
-        if get_modulos().get("stock"):
-            descontar_stock_venta(venta_id, items, fecha=fecha, usuario_id=usuario_id)
-    except Exception:
-        pass
-
-    if usuario_id:
-        turno = get_turno_activo(usuario_id)
-        if turno:
-            vincular_venta_turno(venta_id, turno["id"])
+    stock_habilitado = bool(get_modulos().get("stock"))
 
     with get_connection() as conn:
-        conn.execute(
-            "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
-            (venta_id, _ar_now(), pedido_id),
-        )
-        if pedido.get("mesa_id"):
-            conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
+        try:
+            cur = conn.execute(
+                "UPDATE pedidos SET estado='cobrando', updated_at=? WHERE id=? AND estado='abierto'",
+                (_ar_now(), pedido_id),
+            )
+            if cur.rowcount == 0:
+                raise ValueError(
+                    "El pedido ya fue cobrado o modificado por otra operación"
+                )
+
+            numero = get_next_venta_numero(conn=conn)
+            venta_id = create_venta(
+                numero=numero, fecha=fecha, items=items,
+                subtotal=subtotal, descuento=descuento, total=total,
+                cliente_id=cliente_id, cliente_nombre=cliente_nombre,
+                usuario_id=usuario_id, observaciones=obs, estado=estado,
+                conn=conn,
+            )
+            for i, p in enumerate(pagos):
+                monto = float(p["monto"])
+                referencia = p.get("referencia") or f"pedido:{pedido_id}:venta:{venta_id}:pago:{i}"
+                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn)
+                create_caja_movimiento(
+                    fecha=fecha, tipo="ingreso",
+                    concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
+                    monto=monto, referencia=referencia,
+                    medio_pago=p["medio"], usuario_id=usuario_id,
+                    conn=conn,
+                )
+
+            if stock_habilitado:
+                descontar_stock_venta(venta_id, items, fecha=fecha, usuario_id=usuario_id, conn=conn)
+
+            if usuario_id:
+                turno = get_turno_activo(usuario_id, conn=conn)
+                if turno:
+                    vincular_venta_turno(venta_id, turno["id"], conn=conn)
+
+            conn.execute(
+                "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
+                (venta_id, _ar_now(), pedido_id),
+            )
+            if pedido.get("mesa_id"):
+                conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
     return venta_id
 
 

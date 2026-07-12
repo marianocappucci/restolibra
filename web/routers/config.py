@@ -12,10 +12,14 @@ from typing import Annotated
 
 import config_manager
 import database as db
-from web.auth import require_auth
+from web.auth import require_auth, require_role
 from web.templates_config import templates
 
-router = APIRouter()
+# Configuración del sistema (credenciales MercadoPago/ARCA, backup/restore de la
+# DB completa) — solo admin. Antes solo exigía estar logueado: cualquier
+# cajero/operador podía descargar la base entera o cambiar esas credenciales
+# (ver wiki/analyses/restolibra-auditoria-produccion).
+router = APIRouter(dependencies=[Depends(require_role("admin"))])
 
 Auth = Annotated[str, Depends(require_auth)]
 

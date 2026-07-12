@@ -46,7 +46,7 @@ app = FastAPI(title="Restolibra")
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
-_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js"}
+_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
 
 # El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery) y
 # reservas (para cargar/sentar reservas telefónicas) — no ve dashboard, caja, facturación
@@ -54,12 +54,21 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/
 # en salon/pedido.html) sin habilitar las pantallas de KDS (/kds/cocina, /kds/barra), que
 # son para cocina/barra, no para el mozo.
 _MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas"}
-_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/", "/kds/comanda/",
+_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/",
                           "/salon/reservas/")
 
 
 def _mozo_puede_ver(path: str) -> bool:
-    return path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES)
+    if path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES):
+        return True
+    # Reimprimir el ticket de una comanda ya enviada es parte del flujo normal
+    # del mozo (botón en salon/pedido.html). Avanzar/cambiar estado de la
+    # comanda (/kds/comanda/{id}/avanzar, /estado) es exclusivo de cocina/
+    # barra — el prefijo completo "/kds/comanda/" los dejaba pasar también
+    # (ver wiki/analyses/restolibra-auditoria-produccion).
+    if path.startswith("/kds/comanda/") and path.endswith("/ticket"):
+        return True
+    return False
 
 
 class CurrentUserMiddleware(BaseHTTPMiddleware):
@@ -113,6 +122,15 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/health", include_in_schema=False)
+def health():
+    """Sin auth, sin lógica de negocio — para Docker HEALTHCHECK y monitoreo
+    externo (uptime-kuma). Ver wiki/analyses/restolibra-auditoria-produccion:
+    no había ningún endpoint determinístico para chequear que la instancia
+    de un cliente esté viva."""
+    return {"status": "ok"}
 
 
 @app.get("/sw.js", include_in_schema=False)

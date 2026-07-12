@@ -14,7 +14,7 @@ import arca_wsaa
 import arca_wsfe
 import config_manager
 import email_sender
-from web.auth import require_auth
+from web.auth import require_auth, require_role
 from web.templates_config import templates
 from web.helpers.auth_helper import get_current_user_id
 from web.helpers.form_helper import extract_client_from_form, extract_items_from_form, calculate_totals
@@ -24,6 +24,10 @@ from web.helpers.email_helper import send_comprobante, smtp_configurado
 router = APIRouter()
 
 Auth = Annotated[str, Depends(require_auth)]
+# Solo para las acciones sensibles (borrar, notas de crédito/débito) — el resto
+# del router (emitir, cobrar, imprimir) sigue abierto a cajero/operador, es
+# parte de la operación diaria de venta.
+RoleAdmin = Annotated[dict, Depends(require_role("admin"))]
 
 _TIPOS_POR_CONDICION = {
     "Responsable Inscripto": [
@@ -524,7 +528,15 @@ async def factura_enviar_email(request: Request, factura_id: int, user: Auth):
 
 
 @router.post("/facturas/{factura_id}/eliminar")
-def factura_eliminar(factura_id: int, user: Auth):
+def factura_eliminar(factura_id: int, user: Auth, _role: RoleAdmin):
+    factura = db.get_factura(factura_id)
+    if factura and factura.get("cae"):
+        # No se borra un comprobante ya autorizado por ARCA — quedaría "vivo"
+        # allá pero huérfano acá, imposible de reconciliar. Corresponde nota
+        # de crédito/débito, no un DELETE.
+        raise HTTPException(
+            400, "No se puede eliminar una factura con CAE ya autorizado. Emití una nota de crédito/débito."
+        )
     db.delete_factura(factura_id)
     return RedirectResponse("/facturas", status_code=303)
 
@@ -567,7 +579,7 @@ async def _crear_nota(orig: dict, nuevo_tipo: int, obs_prefijo: str, usuario_id=
 
 
 @router.get("/facturas/{factura_id}/nota-credito")
-def nc_confirm_get(request: Request, factura_id: int, user: Auth):
+def nc_confirm_get(request: Request, factura_id: int, user: Auth, _role: RoleAdmin):
     factura = db.get_factura(factura_id)
     if not factura:
         raise HTTPException(404)
@@ -584,19 +596,36 @@ def nc_confirm_get(request: Request, factura_id: int, user: Auth):
 
 
 @router.post("/facturas/{factura_id}/nota-credito")
-async def nc_crear(factura_id: int, user: Auth):
+async def nc_crear(factura_id: int, user: Auth, _role: RoleAdmin):
     orig = db.get_factura(factura_id)
     if not orig:
         raise HTTPException(404)
     nc_tipo = _TIPO_NC.get(orig["tipo"])
     if not nc_tipo:
         raise HTTPException(400, "Tipo de comprobante no admite nota de crédito")
-    nota_id = await _crear_nota(orig, nc_tipo, "Anula", usuario_id=get_current_user_id(user))
+    uid = get_current_user_id(user)
+    nota_id = await _crear_nota(orig, nc_tipo, "Anula", usuario_id=uid)
+    if orig.get("condicion_venta") == "Cuenta Corriente":
+        # La NC anula fiscalmente la factura, pero sin esto la deuda en cuenta
+        # corriente del cliente quedaba intacta (mismo gap que existía al
+        # revés, ya corregido, para el cobro CC — ver commit bd48d44). Mismo
+        # mecanismo que un pago manual a cuenta (cc_pagar): un cc_pagos que
+        # resta del saldo en get_cc_saldo/get_clientes_con_saldo_cc.
+        cliente = db.get_client_by_cuit(orig.get("cliente_cuit", ""))
+        if cliente:
+            db.create_cc_pago(
+                cliente_id=cliente["id"], monto=orig["total"],
+                fecha=datetime.date.today().isoformat(),
+                concepto=f"NC {str(orig['punto_venta']).zfill(4)}-{str(orig['numero']).zfill(8)} "
+                         f"(anula {_TIPO_LABEL.get(orig['tipo'], 'comprobante')} "
+                         f"{str(orig['punto_venta']).zfill(4)}-{str(orig['numero']).zfill(8)})",
+                referencia="", medio_pago="Cuenta Corriente", caja_id=None, usuario_id=uid,
+            )
     return RedirectResponse(f"/facturas/{nota_id}", status_code=303)
 
 
 @router.get("/facturas/{factura_id}/nota-debito")
-def nd_confirm_get(request: Request, factura_id: int, user: Auth):
+def nd_confirm_get(request: Request, factura_id: int, user: Auth, _role: RoleAdmin):
     factura = db.get_factura(factura_id)
     if not factura:
         raise HTTPException(404)
@@ -613,7 +642,7 @@ def nd_confirm_get(request: Request, factura_id: int, user: Auth):
 
 
 @router.post("/facturas/{factura_id}/nota-debito")
-async def nd_crear(factura_id: int, user: Auth):
+async def nd_crear(factura_id: int, user: Auth, _role: RoleAdmin):
     orig = db.get_factura(factura_id)
     if not orig:
         raise HTTPException(404)

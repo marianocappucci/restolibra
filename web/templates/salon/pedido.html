@@ -93,7 +93,8 @@
         </table>
       </div>
       <div class="card-footer d-flex gap-2 flex-wrap">
-        <form method="post" action="/salon/pedido/{{ pedido.id }}/enviar">
+        <form method="post" action="/salon/pedido/{{ pedido.id }}/enviar"
+              onsubmit="this.querySelector('button').disabled=true;">
           <button class="btn btn-warning btn-sm" {% if not hay_nuevos %}disabled{% endif %}>
             <span class="material-symbols-outlined me-1">send</span>Enviar a cocina/barra
           </button>

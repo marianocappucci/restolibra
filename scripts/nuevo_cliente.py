@@ -191,6 +191,15 @@ services:
     image: {IMAGE_NAME}
     container_name: restolibra-{slug}
     restart: unless-stopped
+    mem_limit: 768m
+    mem_reservation: 256m
+    cpus: 1.0
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     ports:
       - "{port}:8000"
     volumes:
