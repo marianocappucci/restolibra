@@ -2,6 +2,7 @@ import sqlite3
 import json
 import os
 import hashlib
+import hmac
 import secrets
 import contextlib
 import logging
@@ -1834,9 +1835,16 @@ def _verify_password(stored: str, provided: str) -> bool:
     try:
         _, algo, salt, stored_hash = stored.split(":")
         dk = hashlib.pbkdf2_hmac(algo, provided.encode(), salt.encode(), 260_000)
-        return dk.hex() == stored_hash
+        return hmac.compare_digest(dk.hex(), stored_hash)
     except Exception:
         return False
+
+
+# Hash señuelo, mismo costo (260k iteraciones PBKDF2) que uno real — se verifica
+# contra este cuando el username no existe, para que `check_usuario_credentials`
+# tarde lo mismo con usuario inexistente que con password incorrecta. Generado
+# una sola vez al importar el módulo (no en cada request).
+_DUMMY_PASSWORD_HASH = _hash_password(secrets.token_hex(16))
 
 
 def create_usuario(username: str, nombre: str, email: str,
@@ -1893,15 +1901,22 @@ def delete_usuario(uid: int):
 
 
 def check_usuario_credentials(username: str, password: str) -> dict | None:
-    """Devuelve el usuario si las credenciales son válidas, None si no."""
+    """Devuelve el usuario si las credenciales son válidas, None si no.
+
+    Siempre corre `_verify_password` (contra un hash señuelo del mismo costo
+    si el username no existe), para que el tiempo de respuesta no delate si
+    un username existe — antes, un username inexistente retornaba de
+    inmediato sin correr las 260k iteraciones de PBKDF2 que sí corren para
+    uno real: timing attack de enumeración de usuarios (ver
+    wiki/analyses/restolibra-auditoria-produccion)."""
     with get_connection() as conn:
         row = conn.execute(
             "SELECT * FROM usuarios WHERE username=? AND activo=1", (username,)
         ).fetchone()
-    if not row:
-        return None
-    user = dict(row)
-    return user if _verify_password(user["password_hash"], password) else None
+    user = dict(row) if row else None
+    stored_hash = user["password_hash"] if user else _DUMMY_PASSWORD_HASH
+    password_ok = _verify_password(stored_hash, password)
+    return user if (user and password_ok) else None
 
 
 def ensure_admin_user():
