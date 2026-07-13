@@ -355,7 +355,7 @@ def salon_config_mesa_eliminar(mid: int, user: Auth):
 # ── Reservas ─────────────────────────────────────────────────────────────────
 
 @router.get("/salon/reservas")
-def salon_reservas(request: Request, user: Auth, fecha: str = "", mesa_id: str = ""):
+def salon_reservas(request: Request, user: Auth, fecha: str = "", mesa_id: str = "", error: str = ""):
     f = fecha or date.today().isoformat()
     reservas = db.get_reservas(f)
     mesas = db.get_mesas(solo_activas=True)
@@ -366,6 +366,7 @@ def salon_reservas(request: Request, user: Auth, fecha: str = "", mesa_id: str =
     return templates.TemplateResponse(request, "salon/reservas.html", {
         "active": "salon_reservas", "reservas": reservas, "fecha": f,
         "hoy": date.today().isoformat(), "mesas": mesas, "mesa_sel": mesa_sel,
+        "error": error,
     })
 
 
@@ -381,11 +382,15 @@ async def salon_reservas_crear(request: Request, user: Auth):
             comensales = max(1, int(form.get("comensales") or 1))
         except ValueError:
             comensales = 1
-        db.crear_reserva(
-            int(mesa_id), fecha, hora, cliente_nombre, comensales=comensales,
-            telefono=str(form.get("telefono", "")).strip(),
-            notas=str(form.get("notas", "")).strip(),
-        )
+        try:
+            db.crear_reserva(
+                int(mesa_id), fecha, hora, cliente_nombre, comensales=comensales,
+                telefono=str(form.get("telefono", "")).strip(),
+                notas=str(form.get("notas", "")).strip(),
+            )
+        except ValueError as e:
+            from urllib.parse import quote
+            return RedirectResponse(f"/salon/reservas?fecha={fecha}&error={quote(str(e))}", status_code=303)
     return RedirectResponse(f"/salon/reservas?fecha={fecha}", status_code=303)
 
 
