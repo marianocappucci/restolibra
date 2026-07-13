@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
@@ -20,7 +19,6 @@ from security_headers import SecurityHeadersMiddleware
 from web.auth import (
     require_auth, check_credentials, get_current_user,
     create_session_cookie, clear_session_cookie,
-    SECRET_KEY,
 )
 from web.routers import clientes, remitos, presupuestos, facturas, config as config_router, caja, webhooks, dashboard
 from web.routers import mp_bandeja as mp_bandeja_router
@@ -44,7 +42,6 @@ from web.routers import kds as kds_router
 from web.routers import pedidos as pedidos_router
 
 app = FastAPI(title="Restolibra")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
