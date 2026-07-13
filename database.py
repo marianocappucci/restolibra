@@ -2712,9 +2712,57 @@ def _parse_pagos_raw(raw: str) -> list[dict]:
     return pagos
 
 
-def anular_venta(vid: int):
+def anular_venta(vid: int, usuario_id: int | None = None) -> None:
+    """Anula una venta: repone el stock que se había descontado, revierte con
+    un egreso cada movimiento de caja generado por sus pagos y, si tenía un
+    pago a cuenta corriente, acredita la deuda del cliente (mismo mecanismo
+    que un pago manual a cuenta — ver `nc_crear` en facturas.py). Todo en una
+    única transacción; no-op si la venta ya estaba anulada, para no revertir
+    dos veces si se reintenta la acción."""
     with get_connection() as conn:
-        conn.execute("UPDATE ventas SET estado='anulada' WHERE id=?", (vid,))
+        try:
+            venta = conn.execute("SELECT * FROM ventas WHERE id=?", (vid,)).fetchone()
+            if not venta:
+                raise ValueError("Venta inexistente")
+            if venta["estado"] == "anulada":
+                return
+
+            fecha = _ar_now().split(" ")[0]
+
+            for m in conn.execute(
+                "SELECT producto_id, cantidad, deposito_id FROM movimientos_stock "
+                "WHERE venta_id=? AND tipo='venta'", (vid,)
+            ).fetchall():
+                add_movimiento_stock(
+                    producto_id=m["producto_id"], tipo="anulacion",
+                    cantidad=-m["cantidad"], referencia=f"Anulación venta ID {vid}",
+                    venta_id=vid, usuario_id=usuario_id, fecha=fecha,
+                    deposito_id=m["deposito_id"], conn=conn,
+                )
+
+            for p in conn.execute(
+                "SELECT id, medio, monto FROM ventas_pagos WHERE venta_id=?", (vid,)
+            ).fetchall():
+                label = MEDIOS_PAGO_LABELS.get(p["medio"], p["medio"])
+                create_caja_movimiento(
+                    fecha=fecha, tipo="egreso",
+                    concepto=f"Anulación venta {venta['numero']} — {label}",
+                    monto=p["monto"], referencia=f"anulacion:venta:{vid}:pago:{p['id']}",
+                    medio_pago=p["medio"], usuario_id=usuario_id, conn=conn,
+                )
+                if p["medio"] == "cuenta_corriente" and venta["cliente_id"]:
+                    create_cc_pago(
+                        cliente_id=venta["cliente_id"], monto=p["monto"], fecha=fecha,
+                        concepto=f"Anulación venta {venta['numero']}",
+                        referencia="", medio_pago="cuenta_corriente",
+                        caja_id=None, usuario_id=usuario_id, conn=conn,
+                    )
+
+            conn.execute("UPDATE ventas SET estado='anulada' WHERE id=?", (vid,))
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def vincular_venta_factura(vid: int, factura_id: int):
@@ -3654,9 +3702,11 @@ def get_clientes_con_saldo_cc() -> list[dict]:
 
 
 def create_cc_pago(cliente_id: int, monto: float, fecha: str, concepto: str,
-                   referencia: str, medio_pago: str, caja_id, usuario_id) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
+                   referencia: str, medio_pago: str, caja_id, usuario_id,
+                   conn: sqlite3.Connection | None = None) -> int:
+    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
+    with cm as c:
+        cur = c.execute(
             """INSERT INTO cc_pagos
                (cliente_id, monto, fecha, concepto, referencia, medio_pago, caja_id, usuario_id)
                VALUES (?,?,?,?,?,?,?,?)""",

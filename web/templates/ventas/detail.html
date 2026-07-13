@@ -149,7 +149,7 @@
         </a>
         {% endif %}
         <form method="post" action="/ventas/{{ venta.id }}/anular"
-              onsubmit="return confirm('¿Anular esta venta? Los movimientos de caja asociados quedarán registrados.')">
+              onsubmit="return confirm('¿Anular esta venta? Se repondrá el stock, se revertirán los movimientos de caja y, si tenía pago a cuenta corriente, se acreditará la deuda del cliente.')">
           <button type="submit" class="btn btn-outline-danger btn-sm w-100">
             <span class="material-symbols-outlined me-1">cancel</span>Anular venta
           </button>

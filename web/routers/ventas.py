@@ -11,11 +11,14 @@ from fastapi.responses import RedirectResponse, Response, JSONResponse
 import database as db
 import config_manager
 import mp_api
-from web.auth import require_auth
+from web.auth import require_auth, require_role
 from web.templates_config import templates
 
 router = APIRouter()
 Auth = Annotated[str, Depends(require_auth)]
+# Anular revierte stock/caja/cuenta corriente — misma severidad que borrar una
+# factura o emitir NC/ND en facturas.py, mismo criterio: solo admin.
+RoleAdmin = Annotated[dict, Depends(require_role("admin"))]
 
 MEDIOS_PAGO = [
     {"id": "efectivo",         "label": "Efectivo",         "icon": "payments"},
@@ -187,11 +190,13 @@ def venta_detail(request: Request, vid: int, user: Auth):
 
 
 @router.post("/ventas/{vid}/anular")
-def venta_anular(request: Request, vid: int, user: Auth):
+def venta_anular(request: Request, vid: int, user: Auth, _role: RoleAdmin):
     venta = db.get_venta(vid)
     if not venta:
         raise HTTPException(404)
-    db.anular_venta(vid)
+    usuario = db.get_usuario_by_username(user)
+    usuario_id = usuario["id"] if usuario else None
+    db.anular_venta(vid, usuario_id=usuario_id)
     return RedirectResponse(f"/ventas/{vid}", status_code=303)
 
 
