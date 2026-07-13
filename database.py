@@ -2643,6 +2643,66 @@ def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = ""
         )
 
 
+def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: float,
+                        total: float, cliente_id: int | None, cliente_nombre: str,
+                        usuario_id: int | None, observaciones: str, estado: str,
+                        pagos: list[dict], stock_habilitado: bool) -> int:
+    """Crea una venta directa del módulo Ventas (mostrador, sin pedido/mesa de
+    por medio) con sus pagos, un movimiento de caja por cada medio, descuento
+    de stock y vinculación al turno activo — todo en una única transacción,
+    mismo patrón que `cobrar_pedido`. Antes, cada paso abría su propia
+    conexión: si algo fallaba a mitad de camino quedaba una venta huérfana
+    sin pagos/caja/stock, y dos submits casi simultáneos (doble click) podían
+    duplicar todo.
+
+    El número de venta se calcula recién al entrar a la transacción; si dos
+    ventas concurrentes chocan en el mismo número (`UNIQUE` en `ventas.numero`),
+    se reintenta una vez con un número fresco — mismo mecanismo que ya usa
+    `crear_pedido` para mesas duplicadas."""
+    for intento in range(2):
+        with get_connection() as conn:
+            try:
+                numero = get_next_venta_numero(conn=conn)
+                venta_id = create_venta(
+                    numero=numero, fecha=fecha, items=items,
+                    subtotal=subtotal, descuento=descuento, total=total,
+                    cliente_id=cliente_id, cliente_nombre=cliente_nombre,
+                    usuario_id=usuario_id, observaciones=observaciones, estado=estado,
+                    conn=conn,
+                )
+                for p in pagos:
+                    add_venta_pago(venta_id, p["medio"], p["monto"],
+                                   p.get("referencia", ""), conn=conn)
+                    label = MEDIOS_PAGO_LABELS.get(p["medio"], p["medio"])
+                    create_caja_movimiento(
+                        fecha=fecha, tipo="ingreso",
+                        concepto=f"Venta {numero} — {label}",
+                        monto=p["monto"], referencia=p.get("referencia", ""),
+                        medio_pago=p["medio"], usuario_id=usuario_id, conn=conn,
+                    )
+
+                if stock_habilitado:
+                    descontar_stock_venta(venta_id, items, fecha=fecha,
+                                          usuario_id=usuario_id, conn=conn)
+
+                if usuario_id:
+                    turno = get_turno_activo(usuario_id, conn=conn)
+                    if turno:
+                        vincular_venta_turno(venta_id, turno["id"], conn=conn)
+
+                conn.commit()
+                return venta_id
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                if intento == 0:
+                    continue
+                raise
+            except Exception:
+                conn.rollback()
+                raise
+    raise RuntimeError("No se pudo generar un número de venta único")
+
+
 def get_all_ventas(desde: str = "", hasta: str = "", q: str = "",
                    tab: str = "todas", limit: int = 100, offset: int = 0) -> list[dict]:
     with get_connection() as conn:
