@@ -2,6 +2,7 @@ import sqlite3
 import json
 import os
 import hashlib
+import hmac
 import secrets
 import contextlib
 import logging
@@ -1489,14 +1490,21 @@ def get_caja_movimientos(desde=None, hasta=None, limit=500, caja_id=None):
 
 
 def get_caja_resumen(desde=None, hasta=None, caja_id=None):
-    """Devuelve {ingresos, egresos, saldo_periodo, saldo_total}."""
+    """Devuelve {ingresos, egresos, saldo_periodo, saldo_total}.
+
+    Excluye movimientos con medio_pago='cuenta_corriente' — no es efectivo
+    real, es una venta/factura a cuenta (o su reversión, ver `anular_venta`),
+    así que no debe inflar (ni, en la reversión, desinflar) el resumen de
+    caja. Mismo criterio que ya usa `get_facturas_filtradas` para saber si
+    una factura está "cobrada" (ver `_cc_excl` ahí)."""
+    _cc_excl = "LOWER(medio_pago) NOT IN ('cuenta corriente','cuenta_corriente')"
     with get_connection() as conn:
-        where, params = [], []
+        where, params = [_cc_excl], []
         if desde and hasta:
             where.append("fecha BETWEEN ? AND ?"); params += [desde, hasta]
         if caja_id:
             where.append("caja_id = ?"); params.append(caja_id)
-        w = ("WHERE " + " AND ".join(where)) if where else ""
+        w = "WHERE " + " AND ".join(where)
         row = conn.execute(
             f"""SELECT
                   COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE 0 END), 0) AS ingresos,
@@ -1508,8 +1516,8 @@ def get_caja_resumen(desde=None, hasta=None, caja_id=None):
         egresos  = row["egresos"]
 
         total = conn.execute(
-            """SELECT COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0)
-               FROM caja_movimientos"""
+            f"""SELECT COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0)
+               FROM caja_movimientos WHERE {_cc_excl}"""
         ).fetchone()[0]
 
         return {
@@ -1827,9 +1835,16 @@ def _verify_password(stored: str, provided: str) -> bool:
     try:
         _, algo, salt, stored_hash = stored.split(":")
         dk = hashlib.pbkdf2_hmac(algo, provided.encode(), salt.encode(), 260_000)
-        return dk.hex() == stored_hash
+        return hmac.compare_digest(dk.hex(), stored_hash)
     except Exception:
         return False
+
+
+# Hash señuelo, mismo costo (260k iteraciones PBKDF2) que uno real — se verifica
+# contra este cuando el username no existe, para que `check_usuario_credentials`
+# tarde lo mismo con usuario inexistente que con password incorrecta. Generado
+# una sola vez al importar el módulo (no en cada request).
+_DUMMY_PASSWORD_HASH = _hash_password(secrets.token_hex(16))
 
 
 def create_usuario(username: str, nombre: str, email: str,
@@ -1886,15 +1901,22 @@ def delete_usuario(uid: int):
 
 
 def check_usuario_credentials(username: str, password: str) -> dict | None:
-    """Devuelve el usuario si las credenciales son válidas, None si no."""
+    """Devuelve el usuario si las credenciales son válidas, None si no.
+
+    Siempre corre `_verify_password` (contra un hash señuelo del mismo costo
+    si el username no existe), para que el tiempo de respuesta no delate si
+    un username existe — antes, un username inexistente retornaba de
+    inmediato sin correr las 260k iteraciones de PBKDF2 que sí corren para
+    uno real: timing attack de enumeración de usuarios (ver
+    wiki/analyses/restolibra-auditoria-produccion)."""
     with get_connection() as conn:
         row = conn.execute(
             "SELECT * FROM usuarios WHERE username=? AND activo=1", (username,)
         ).fetchone()
-    if not row:
-        return None
-    user = dict(row)
-    return user if _verify_password(user["password_hash"], password) else None
+    user = dict(row) if row else None
+    stored_hash = user["password_hash"] if user else _DUMMY_PASSWORD_HASH
+    password_ok = _verify_password(stored_hash, password)
+    return user if (user and password_ok) else None
 
 
 def ensure_admin_user():
@@ -2643,6 +2665,70 @@ def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = ""
         )
 
 
+def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: float,
+                        total: float, cliente_id: int | None, cliente_nombre: str,
+                        usuario_id: int | None, observaciones: str, estado: str,
+                        pagos: list[dict], stock_habilitado: bool) -> int:
+    """Crea una venta directa del módulo Ventas (mostrador, sin pedido/mesa de
+    por medio) con sus pagos, un movimiento de caja por cada medio, descuento
+    de stock y vinculación al turno activo — todo en una única transacción,
+    mismo patrón que `cobrar_pedido`. Antes, cada paso abría su propia
+    conexión: si algo fallaba a mitad de camino quedaba una venta huérfana
+    sin pagos/caja/stock, y dos submits casi simultáneos (doble click) podían
+    duplicar todo.
+
+    El número de venta se calcula recién al entrar a la transacción; si dos o
+    más ventas concurrentes chocan en el mismo número (`UNIQUE` en
+    `ventas.numero`), se reintenta con un número fresco — mismo mecanismo que
+    ya usa `crear_pedido` para mesas duplicadas. Cada intento fallido reduce
+    la contención en al menos uno (el que ganó ese round ya commiteó), así
+    que el número de reintentos necesarios está acotado por la cantidad de
+    submits realmente simultáneos — en la práctica 1 (doble click)."""
+    MAX_INTENTOS = 10
+    for intento in range(MAX_INTENTOS):
+        with get_connection() as conn:
+            try:
+                numero = get_next_venta_numero(conn=conn)
+                venta_id = create_venta(
+                    numero=numero, fecha=fecha, items=items,
+                    subtotal=subtotal, descuento=descuento, total=total,
+                    cliente_id=cliente_id, cliente_nombre=cliente_nombre,
+                    usuario_id=usuario_id, observaciones=observaciones, estado=estado,
+                    conn=conn,
+                )
+                for p in pagos:
+                    add_venta_pago(venta_id, p["medio"], p["monto"],
+                                   p.get("referencia", ""), conn=conn)
+                    label = MEDIOS_PAGO_LABELS.get(p["medio"], p["medio"])
+                    create_caja_movimiento(
+                        fecha=fecha, tipo="ingreso",
+                        concepto=f"Venta {numero} — {label}",
+                        monto=p["monto"], referencia=p.get("referencia", ""),
+                        medio_pago=p["medio"], usuario_id=usuario_id, conn=conn,
+                    )
+
+                if stock_habilitado:
+                    descontar_stock_venta(venta_id, items, fecha=fecha,
+                                          usuario_id=usuario_id, conn=conn)
+
+                if usuario_id:
+                    turno = get_turno_activo(usuario_id, conn=conn)
+                    if turno:
+                        vincular_venta_turno(venta_id, turno["id"], conn=conn)
+
+                conn.commit()
+                return venta_id
+            except sqlite3.IntegrityError:
+                conn.rollback()
+                if intento < MAX_INTENTOS - 1:
+                    continue
+                raise
+            except Exception:
+                conn.rollback()
+                raise
+    raise RuntimeError("No se pudo generar un número de venta único")
+
+
 def get_all_ventas(desde: str = "", hasta: str = "", q: str = "",
                    tab: str = "todas", limit: int = 100, offset: int = 0) -> list[dict]:
     with get_connection() as conn:
@@ -2993,6 +3079,24 @@ def get_auth_log(limit: int = 200, offset: int = 0) -> list[dict]:
             (limit, offset),
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def contar_login_fallidos_recientes(ip: str, minutos: int = 15) -> int:
+    """Cuenta intentos de login fallidos desde esta IP en los últimos
+    `minutos` — base del rate limiting de `/login` (ver
+    wiki/analyses/restolibra-auditoria-produccion, hallazgo Medio: sin rate
+    limiting en ningún login). Ventana deslizante sobre `auth_log`, sin
+    tabla ni estado nuevo."""
+    if not ip:
+        return 0
+    with get_connection() as conn:
+        row = conn.execute(
+            """SELECT COUNT(*) FROM auth_log
+               WHERE evento='login_fallido' AND ip=?
+                 AND ts >= datetime('now', 'localtime', ?)""",
+            (ip, f"-{int(minutos)} minutes"),
+        ).fetchone()
+    return int(row[0])
 
 
 # ── Módulos ────────────────────────────────────────────────────────────────────
@@ -4120,9 +4224,32 @@ def get_proximas_reservas_por_mesa(fecha: str) -> dict[int, dict]:
     return out
 
 
+RESERVA_BUFFER_MINUTOS = 90  # turnover mínimo esperado de una mesa entre dos reservas
+
+
 def crear_reserva(mesa_id: int, fecha: str, hora: str, cliente_nombre: str,
                    comensales: int = 1, telefono: str = "", notas: str = "") -> int:
+    """Crea una reserva. Rechaza (ValueError) si la misma mesa ya tiene otra
+    reserva pendiente en `fecha` a menos de `RESERVA_BUFFER_MINUTOS` de
+    `hora` — antes se podía reservar la misma mesa dos veces en el mismo
+    horario sin aviso (ver wiki/analyses/restolibra-auditoria-produccion,
+    hallazgo Medio). No hay campo de duración de reserva en el esquema, así
+    que se usa un buffer fijo de turnover en vez de detectar solapamiento
+    de rangos reales."""
     with get_connection() as conn:
+        choque = conn.execute(
+            """SELECT id, hora, cliente_nombre FROM reservas
+               WHERE mesa_id=? AND fecha=? AND estado='pendiente'
+                 AND ABS((strftime('%s', ? || ' ' || hora || ':00')
+                          - strftime('%s', ? || ' ' || ? || ':00'))) < ?""",
+            (mesa_id, fecha, fecha, fecha, hora, RESERVA_BUFFER_MINUTOS * 60),
+        ).fetchone()
+        if choque:
+            raise ValueError(
+                f"Esa mesa ya tiene una reserva a las {choque['hora']} "
+                f"({choque['cliente_nombre']}) — dejá al menos "
+                f"{RESERVA_BUFFER_MINUTOS} minutos entre reservas de la misma mesa."
+            )
         cur = conn.execute(
             """INSERT INTO reservas (mesa_id, fecha, hora, cliente_nombre, telefono, comensales, notas)
                VALUES (?,?,?,?,?,?,?)""",

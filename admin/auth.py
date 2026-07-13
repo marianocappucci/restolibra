@@ -5,6 +5,8 @@ mismo patrón que la app de cliente pero con su propio SECRET_KEY.
 """
 import hmac
 import os
+import threading
+import time
 
 from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 from fastapi import Request, HTTPException
@@ -34,6 +36,38 @@ def check_credentials(username: str, password: str) -> bool:
         return False
     return (hmac.compare_digest(username or "", PANEL_USER)
             and hmac.compare_digest(password or "", PANEL_PASS))
+
+
+# ── Rate limiting de /login ──────────────────────────────────────────────────
+# Este panel gobierna todos los contenedores de todos los clientes y no tiene
+# tabla de eventos propia (a diferencia de `web/auth.py`, que usa `auth_log`
+# en la DB del cliente) — limitador en memoria del propio proceso, alcanza
+# porque el backoffice corre como un único proceso systemd (ver
+# wiki/analyses/restolibra-auditoria-produccion, hallazgo Medio: sin rate
+# limiting en ningún login). Se resetea si el proceso reinicia — aceptable
+# para este panel de bajo tráfico.
+LOGIN_MAX_INTENTOS = 5
+LOGIN_VENTANA_SEGUNDOS = 15 * 60
+
+_intentos_fallidos: dict[str, list[float]] = {}
+_intentos_lock = threading.Lock()
+
+
+def rate_limit_excedido(ip: str) -> bool:
+    if not ip:
+        return False
+    ahora = time.time()
+    with _intentos_lock:
+        vigentes = [t for t in _intentos_fallidos.get(ip, []) if ahora - t < LOGIN_VENTANA_SEGUNDOS]
+        _intentos_fallidos[ip] = vigentes
+        return len(vigentes) >= LOGIN_MAX_INTENTOS
+
+
+def registrar_intento_fallido(ip: str):
+    if not ip:
+        return
+    with _intentos_lock:
+        _intentos_fallidos.setdefault(ip, []).append(time.time())
 
 
 def create_session_cookie(response, username: str):

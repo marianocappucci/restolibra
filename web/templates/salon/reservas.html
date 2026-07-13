@@ -15,6 +15,9 @@
     <div class="card mb-3">
       <div class="card-header"><span class="material-symbols-outlined me-1">add_circle</span>Nueva reserva</div>
       <div class="card-body">
+        {% if error %}
+        <div class="alert alert-danger py-2 small">{{ error }}</div>
+        {% endif %}
         <form method="post" action="/salon/reservas">
           <label class="form-label small mb-0">Mesa</label>
           <select name="mesa_id" class="form-select mb-2" required>

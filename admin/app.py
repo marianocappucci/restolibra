@@ -14,8 +14,10 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from admin import auth, services
 from admin.templates_config import templates
 from admin.routers import clientes as clientes_router
+from security_headers import SecurityHeadersMiddleware
 
 app = FastAPI(title="Restolibra Backoffice", docs_url=None, redoc_url=None)
+app.add_middleware(SecurityHeadersMiddleware)
 
 DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
 
@@ -29,7 +31,11 @@ def login_form(request: Request, error: str = ""):
 
 @app.post("/login")
 def login_submit(request: Request, username: str = Form(""), password: str = Form("")):
+    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+    if auth.rate_limit_excedido(ip):
+        return RedirectResponse("/login?error=2", status_code=303)
     if not auth.check_credentials(username, password):
+        auth.registrar_intento_fallido(ip)
         return RedirectResponse("/login?error=1", status_code=303)
     resp = RedirectResponse("/", status_code=303)
     auth.create_session_cookie(resp, username)

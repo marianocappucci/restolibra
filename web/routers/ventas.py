@@ -1,6 +1,7 @@
 import sys
 import os
 import json
+import sqlite3
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from typing import Annotated
@@ -76,6 +77,9 @@ async def venta_nueva_post(request: Request, user: Auth):
             precio = float(precio_s.replace(",", "."))
         except ValueError:
             continue
+        if qty <= 0:
+            continue
+        precio = max(0.0, precio)
         items.append({
             "nombre":      nombre,
             "qty":         qty,
@@ -93,7 +97,11 @@ async def venta_nueva_post(request: Request, user: Auth):
         }, status_code=422)
 
     subtotal  = round(sum(i["subtotal"] for i in items), 2)
-    descuento = round(float(form.get("descuento") or 0), 2)
+    try:
+        descuento = round(float(form.get("descuento") or 0), 2)
+    except ValueError:
+        descuento = 0.0
+    descuento = min(max(0.0, descuento), subtotal)
     total     = round(subtotal - descuento, 2)
 
     # — pagos —
@@ -134,7 +142,6 @@ async def venta_nueva_post(request: Request, user: Auth):
     usuario = db.get_usuario_by_username(user)
     usuario_id = usuario["id"] if usuario else None
 
-    numero = db.get_next_venta_numero()
     if total_pagado >= total:
         estado = "cobrada"
     elif total_pagado > 0:
@@ -142,38 +149,22 @@ async def venta_nueva_post(request: Request, user: Auth):
     else:
         estado = "pendiente"
 
-    # — guardar —
-    venta_id = db.create_venta(
-        numero=numero, fecha=fecha, items=items,
-        subtotal=subtotal, descuento=descuento, total=total,
-        cliente_id=cliente_id, cliente_nombre=cliente_nombre,
-        usuario_id=usuario_id, observaciones=obs, estado=estado,
-    )
-    for p in pagos:
-        db.add_venta_pago(venta_id, p["medio"], p["monto"], p.get("referencia", ""))
-
-    # — movimiento de caja por cada medio —
-    medio_map = {m["id"]: m["label"] for m in MEDIOS_PAGO}
-    for p in pagos:
-        label = medio_map.get(p["medio"], p["medio"].title())
-        db.create_caja_movimiento(
-            fecha=fecha,
-            tipo="ingreso",
-            concepto=f"Venta {numero} — {label}",
-            monto=p["monto"],
-            referencia=p.get("referencia", ""),
-        )
-
-    # — descuento de stock (si el módulo está activo) —
+    # — guardar: venta + pagos + caja + stock + turno en una sola transacción —
     mods = db.get_modulos()
-    if mods.get("stock"):
-        db.descontar_stock_venta(venta_id, items, fecha=fecha, usuario_id=usuario_id)
-
-    # — vincular al turno activo del usuario —
-    if usuario_id:
-        turno = db.get_turno_activo(usuario_id)
-        if turno:
-            db.vincular_venta_turno(venta_id, turno["id"])
+    try:
+        venta_id = db.crear_venta_directa(
+            fecha=fecha, items=items, subtotal=subtotal, descuento=descuento,
+            total=total, cliente_id=cliente_id, cliente_nombre=cliente_nombre,
+            usuario_id=usuario_id, observaciones=obs, estado=estado,
+            pagos=pagos, stock_habilitado=bool(mods.get("stock")),
+        )
+    except (sqlite3.IntegrityError, RuntimeError):
+        clientes = db.get_all_clients()
+        return templates.TemplateResponse(request, "ventas/nueva.html", {
+            "clientes": clientes, "medios_pago": MEDIOS_PAGO,
+            "hoy": date.today().isoformat(), "active": "ventas",
+            "error": "No se pudo registrar la venta (conflicto con otra venta simultánea). Reintentá.",
+        }, status_code=409)
 
     return RedirectResponse(f"/ventas/{venta_id}", status_code=303)
 

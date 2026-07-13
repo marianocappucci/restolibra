@@ -11,7 +11,8 @@
 <div class="alert alert-danger">{{ error }}</div>
 {% endif %}
 
-<form method="post" action="/ventas/nueva" id="form-venta">
+<form method="post" action="/ventas/nueva" id="form-venta"
+      onsubmit="this.querySelector('#btn-confirmar').disabled=true;">
 <div class="row g-4">
 
   <!-- COLUMNA IZQUIERDA: items -->

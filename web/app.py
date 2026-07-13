@@ -8,7 +8,6 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
@@ -16,10 +15,10 @@ import database as db
 import config_manager
 import arca_wsaa
 import arca_wspadron
+from security_headers import SecurityHeadersMiddleware
 from web.auth import (
     require_auth, check_credentials, get_current_user,
     create_session_cookie, clear_session_cookie,
-    SECRET_KEY,
 )
 from web.routers import clientes, remitos, presupuestos, facturas, config as config_router, caja, webhooks, dashboard
 from web.routers import mp_bandeja as mp_bandeja_router
@@ -43,7 +42,6 @@ from web.routers import kds as kds_router
 from web.routers import pedidos as pedidos_router
 
 app = FastAPI(title="Restolibra")
-app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
@@ -116,6 +114,7 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(CurrentUserMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -197,12 +196,25 @@ def login_get(request: Request):
     return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
+LOGIN_MAX_INTENTOS = 5
+LOGIN_VENTANA_MINUTOS = 15
+
+
 @app.post("/login", include_in_schema=False)
 async def login_post(request: Request):
     form = await request.form()
     username = str(form.get("username", ""))
     password = str(form.get("password", ""))
     ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+
+    if db.contar_login_fallidos_recientes(ip, LOGIN_VENTANA_MINUTOS) >= LOGIN_MAX_INTENTOS:
+        db.registrar_auth_event("login_bloqueado", username, ip)
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": f"Demasiados intentos fallidos. Esperá {LOGIN_VENTANA_MINUTOS} minutos e intentá de nuevo."},
+            status_code=429,
+        )
+
     if check_credentials(username, password):
         db.registrar_auth_event("login", username, ip)
         user = db.get_usuario_by_username(username)
