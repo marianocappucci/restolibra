@@ -2655,11 +2655,15 @@ def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: flo
     sin pagos/caja/stock, y dos submits casi simultáneos (doble click) podían
     duplicar todo.
 
-    El número de venta se calcula recién al entrar a la transacción; si dos
-    ventas concurrentes chocan en el mismo número (`UNIQUE` en `ventas.numero`),
-    se reintenta una vez con un número fresco — mismo mecanismo que ya usa
-    `crear_pedido` para mesas duplicadas."""
-    for intento in range(2):
+    El número de venta se calcula recién al entrar a la transacción; si dos o
+    más ventas concurrentes chocan en el mismo número (`UNIQUE` en
+    `ventas.numero`), se reintenta con un número fresco — mismo mecanismo que
+    ya usa `crear_pedido` para mesas duplicadas. Cada intento fallido reduce
+    la contención en al menos uno (el que ganó ese round ya commiteó), así
+    que el número de reintentos necesarios está acotado por la cantidad de
+    submits realmente simultáneos — en la práctica 1 (doble click)."""
+    MAX_INTENTOS = 10
+    for intento in range(MAX_INTENTOS):
         with get_connection() as conn:
             try:
                 numero = get_next_venta_numero(conn=conn)
@@ -2694,7 +2698,7 @@ def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: flo
                 return venta_id
             except sqlite3.IntegrityError:
                 conn.rollback()
-                if intento == 0:
+                if intento < MAX_INTENTOS - 1:
                     continue
                 raise
             except Exception:
