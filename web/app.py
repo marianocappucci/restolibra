@@ -16,6 +16,7 @@ import database as db
 import config_manager
 import arca_wsaa
 import arca_wspadron
+from security_headers import SecurityHeadersMiddleware
 from web.auth import (
     require_auth, check_credentials, get_current_user,
     create_session_cookie, clear_session_cookie,
@@ -116,6 +117,7 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(CurrentUserMiddleware)
+app.add_middleware(SecurityHeadersMiddleware)
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)

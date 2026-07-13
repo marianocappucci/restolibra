@@ -14,8 +14,10 @@ from fastapi.responses import RedirectResponse, JSONResponse
 from admin import auth, services
 from admin.templates_config import templates
 from admin.routers import clientes as clientes_router
+from security_headers import SecurityHeadersMiddleware
 
 app = FastAPI(title="Restolibra Backoffice", docs_url=None, redoc_url=None)
+app.add_middleware(SecurityHeadersMiddleware)
 
 DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
 
