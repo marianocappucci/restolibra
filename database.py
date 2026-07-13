@@ -1489,14 +1489,21 @@ def get_caja_movimientos(desde=None, hasta=None, limit=500, caja_id=None):
 
 
 def get_caja_resumen(desde=None, hasta=None, caja_id=None):
-    """Devuelve {ingresos, egresos, saldo_periodo, saldo_total}."""
+    """Devuelve {ingresos, egresos, saldo_periodo, saldo_total}.
+
+    Excluye movimientos con medio_pago='cuenta_corriente' — no es efectivo
+    real, es una venta/factura a cuenta (o su reversión, ver `anular_venta`),
+    así que no debe inflar (ni, en la reversión, desinflar) el resumen de
+    caja. Mismo criterio que ya usa `get_facturas_filtradas` para saber si
+    una factura está "cobrada" (ver `_cc_excl` ahí)."""
+    _cc_excl = "LOWER(medio_pago) NOT IN ('cuenta corriente','cuenta_corriente')"
     with get_connection() as conn:
-        where, params = [], []
+        where, params = [_cc_excl], []
         if desde and hasta:
             where.append("fecha BETWEEN ? AND ?"); params += [desde, hasta]
         if caja_id:
             where.append("caja_id = ?"); params.append(caja_id)
-        w = ("WHERE " + " AND ".join(where)) if where else ""
+        w = "WHERE " + " AND ".join(where)
         row = conn.execute(
             f"""SELECT
                   COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE 0 END), 0) AS ingresos,
@@ -1508,8 +1515,8 @@ def get_caja_resumen(desde=None, hasta=None, caja_id=None):
         egresos  = row["egresos"]
 
         total = conn.execute(
-            """SELECT COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0)
-               FROM caja_movimientos"""
+            f"""SELECT COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0)
+               FROM caja_movimientos WHERE {_cc_excl}"""
         ).fetchone()[0]
 
         return {
