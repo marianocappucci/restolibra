@@ -150,6 +150,7 @@ async def salon_pedido_add_item(request: Request, pid: int, user: Auth):
                 precio = float(str(form.get("precio") or 0).replace(",", "."))
             except ValueError:
                 precio = 0.0
+            precio = max(0.0, precio)  # ítem libre: precio negativo no tiene sentido de negocio
             db.add_pedido_item(
                 pid, nombre=nombre, qty=qty, precio=precio,
                 estacion=str(form.get("estacion", "")).strip(), nota=nota,

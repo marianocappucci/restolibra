@@ -77,6 +77,9 @@ async def venta_nueva_post(request: Request, user: Auth):
             precio = float(precio_s.replace(",", "."))
         except ValueError:
             continue
+        if qty <= 0:
+            continue
+        precio = max(0.0, precio)
         items.append({
             "nombre":      nombre,
             "qty":         qty,
@@ -94,7 +97,11 @@ async def venta_nueva_post(request: Request, user: Auth):
         }, status_code=422)
 
     subtotal  = round(sum(i["subtotal"] for i in items), 2)
-    descuento = round(float(form.get("descuento") or 0), 2)
+    try:
+        descuento = round(float(form.get("descuento") or 0), 2)
+    except ValueError:
+        descuento = 0.0
+    descuento = min(max(0.0, descuento), subtotal)
     total     = round(subtotal - descuento, 2)
 
     # — pagos —
