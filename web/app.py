@@ -197,12 +197,25 @@ def login_get(request: Request):
     return templates.TemplateResponse(request, "login.html", {"error": None})
 
 
+LOGIN_MAX_INTENTOS = 5
+LOGIN_VENTANA_MINUTOS = 15
+
+
 @app.post("/login", include_in_schema=False)
 async def login_post(request: Request):
     form = await request.form()
     username = str(form.get("username", ""))
     password = str(form.get("password", ""))
     ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
+
+    if db.contar_login_fallidos_recientes(ip, LOGIN_VENTANA_MINUTOS) >= LOGIN_MAX_INTENTOS:
+        db.registrar_auth_event("login_bloqueado", username, ip)
+        return templates.TemplateResponse(
+            request, "login.html",
+            {"error": f"Demasiados intentos fallidos. Esperá {LOGIN_VENTANA_MINUTOS} minutos e intentá de nuevo."},
+            status_code=429,
+        )
+
     if check_credentials(username, password):
         db.registrar_auth_event("login", username, ip)
         user = db.get_usuario_by_username(username)

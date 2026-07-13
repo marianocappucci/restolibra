@@ -3059,6 +3059,24 @@ def get_auth_log(limit: int = 200, offset: int = 0) -> list[dict]:
         return [dict(r) for r in rows]
 
 
+def contar_login_fallidos_recientes(ip: str, minutos: int = 15) -> int:
+    """Cuenta intentos de login fallidos desde esta IP en los últimos
+    `minutos` — base del rate limiting de `/login` (ver
+    wiki/analyses/restolibra-auditoria-produccion, hallazgo Medio: sin rate
+    limiting en ningún login). Ventana deslizante sobre `auth_log`, sin
+    tabla ni estado nuevo."""
+    if not ip:
+        return 0
+    with get_connection() as conn:
+        row = conn.execute(
+            """SELECT COUNT(*) FROM auth_log
+               WHERE evento='login_fallido' AND ip=?
+                 AND ts >= datetime('now', 'localtime', ?)""",
+            (ip, f"-{int(minutos)} minutes"),
+        ).fetchone()
+    return int(row[0])
+
+
 # ── Módulos ────────────────────────────────────────────────────────────────────
 
 def get_modulos() -> dict[str, bool]:
