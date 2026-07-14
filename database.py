@@ -253,6 +253,12 @@ from db_ventas import (  # noqa: F401
     get_venta_by_mp_order,
     add_venta_pago_referencia_mp,
 )
+from db_salones import (  # noqa: F401
+    get_salones,
+    get_salon,
+    create_salon,
+    update_salon,
+)
 
 
 def init_db():
@@ -943,39 +949,6 @@ def init_db():
 ESTACIONES = ["cocina", "barra"]
 COMANDA_ESTADOS = ["pendiente", "preparacion", "listo", "entregado"]
 _COMANDA_NEXT = {"pendiente": "preparacion", "preparacion": "listo", "listo": "entregado"}
-
-
-# ── Salones ─────────────────────────────────────────────────────────────────
-
-def get_salones(solo_activos: bool = True) -> list[dict]:
-    with get_connection() as conn:
-        sql = "SELECT * FROM salones"
-        if solo_activos:
-            sql += " WHERE activo=1"
-        sql += " ORDER BY orden, id"
-        return [dict(r) for r in conn.execute(sql).fetchall()]
-
-
-def get_salon(sid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute("SELECT * FROM salones WHERE id=?", (sid,)).fetchone()
-        return dict(row) if row else None
-
-
-def create_salon(nombre: str, orden: int = 0) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            "INSERT INTO salones (nombre, orden) VALUES (?,?)", (nombre.strip(), orden)
-        )
-        return cur.lastrowid
-
-
-def update_salon(sid: int, nombre: str, orden: int = 0, activo: int = 1):
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE salones SET nombre=?, orden=?, activo=? WHERE id=?",
-            (nombre.strip(), orden, 1 if activo else 0, sid),
-        )
 
 
 # ── Mesas ───────────────────────────────────────────────────────────────────
