@@ -102,6 +102,30 @@ from db_logs import (  # noqa: F401
     get_auth_log,
     contar_login_fallidos_recientes,
 )
+from db_arca_config import (  # noqa: F401
+    crear_arca_config,
+    obtener_arca_config,
+    obtener_todas_arca_configs,
+    actualizar_arca_config,
+    eliminar_arca_config,
+)
+from db_cuenta_corriente import (  # noqa: F401
+    get_cc_saldo,
+    get_cc_movimientos,
+    get_clientes_con_saldo_cc,
+    create_cc_pago,
+    delete_cc_pago,
+)
+from db_libros_iva import get_facturas_para_iva, get_egresos_para_iva  # noqa: F401
+from db_reportes import (  # noqa: F401
+    get_reporte_ventas,
+    get_reporte_medios_pago,
+    get_reporte_productos_top,
+    get_reporte_caja,
+    get_reporte_caja_medios,
+    get_reporte_stock_bajo,
+    get_reporte_resumen,
+)
 
 
 def init_db():
@@ -1166,75 +1190,6 @@ def update_presupuesto(presupuesto_id, date, valid_until, status, client_id, cli
                 client_cuit, client_email, client_phone, json.dumps(items, ensure_ascii=False),
                 subtotal, tax_rate, tax_amount, total, observations, presupuesto_id,
             ),
-        )
-
-
-# ── Configuración ARCA ──────────────────────────────────────────────────────────
-
-def crear_arca_config(empresa, cuit, punto_venta, clave_path, certificado_path,
-                      ambiente="homologacion", alias=""):
-    """Crea configuración ARCA para una empresa."""
-    with get_connection() as conn:
-        try:
-            cur = conn.execute(
-                """INSERT INTO arca_config
-                   (empresa, cuit, punto_venta, clave_path, certificado_path, ambiente, alias)
-                   VALUES (?,?,?,?,?,?,?)""",
-                (empresa, cuit, punto_venta, clave_path, certificado_path, ambiente, alias),
-            )
-            return cur.lastrowid
-        except Exception as e:
-            raise ValueError(f"Error creando configuración ARCA: {str(e)}")
-
-
-def obtener_arca_config(empresa):
-    """Obtiene configuración ARCA por nombre de empresa."""
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM arca_config WHERE empresa=? AND activo=1", (empresa,)
-        ).fetchone()
-        return dict(row) if row else None
-
-
-def obtener_todas_arca_configs():
-    """Obtiene todas las configuraciones ARCA activas."""
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM arca_config WHERE activo=1 ORDER BY empresa"
-        ).fetchall()
-        return [dict(r) for r in rows]
-
-
-def actualizar_arca_config(empresa, cuit=None, punto_venta=None, clave_path=None,
-                          certificado_path=None, ambiente=None, alias=None):
-    """Actualiza configuración ARCA."""
-    with get_connection() as conn:
-        config = obtener_arca_config(empresa)
-        if not config:
-            raise ValueError(f"Configuración ARCA no encontrada para: {empresa}")
-
-        conn.execute(
-            """UPDATE arca_config
-               SET cuit=?, punto_venta=?, clave_path=?, certificado_path=?,
-                   ambiente=?, alias=?, updated_at=datetime('now')
-               WHERE empresa=?""",
-            (
-                cuit if cuit is not None else config["cuit"],
-                punto_venta if punto_venta is not None else config["punto_venta"],
-                clave_path if clave_path is not None else config["clave_path"],
-                certificado_path if certificado_path is not None else config["certificado_path"],
-                ambiente if ambiente is not None else config["ambiente"],
-                alias if alias is not None else config["alias"],
-                empresa,
-            ),
-        )
-
-
-def eliminar_arca_config(empresa):
-    """Marca como inactivo la configuración ARCA."""
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE arca_config SET activo=0 WHERE empresa=?", (empresa,)
         )
 
 
@@ -2453,149 +2408,6 @@ def vincular_venta_remito(vid: int, remito_id: int):
         conn.execute("UPDATE ventas SET remito_id=? WHERE id=?", (remito_id, vid))
 
 
-# ── Reportes ───────────────────────────────────────────────────────────────────
-
-def get_reporte_ventas(desde: str = "", hasta: str = "", agrupacion: str = "dia") -> list[dict]:
-    """Ventas agrupadas por día, semana o mes."""
-    fmt = {"dia": "%Y-%m-%d", "semana": "%Y-W%W", "mes": "%Y-%m"}.get(agrupacion, "%Y-%m-%d")
-    where, params = [], []
-    if desde:
-        where.append("fecha >= ?"); params.append(desde)
-    if hasta:
-        where.append("fecha <= ?"); params.append(hasta)
-    w = ("WHERE " + " AND ".join(where)) if where else ""
-    sql = f"""
-        SELECT strftime('{fmt}', fecha) AS periodo,
-               COUNT(*) AS cantidad,
-               ROUND(SUM(total), 2) AS total
-        FROM ventas {w}
-        GROUP BY periodo ORDER BY periodo
-    """
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_reporte_medios_pago(desde: str = "", hasta: str = "") -> list[dict]:
-    """Totales por medio de pago en el período."""
-    where, params = [], []
-    if desde:
-        where.append("v.fecha >= ?"); params.append(desde)
-    if hasta:
-        where.append("v.fecha <= ?"); params.append(hasta)
-    w = ("WHERE " + " AND ".join(where)) if where else ""
-    sql = f"""
-        SELECT vp.medio, COUNT(DISTINCT vp.venta_id) AS operaciones,
-               ROUND(SUM(vp.monto), 2) AS total
-        FROM ventas_pagos vp
-        JOIN ventas v ON v.id = vp.venta_id {w}
-        GROUP BY vp.medio ORDER BY total DESC
-    """
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_reporte_productos_top(desde: str = "", hasta: str = "", limit: int = 20) -> list[dict]:
-    """Productos más vendidos (por cantidad y por monto) en el período."""
-    where, params = [], []
-    if desde:
-        where.append("v.fecha >= ?"); params.append(desde)
-    if hasta:
-        where.append("v.fecha <= ?"); params.append(hasta)
-    w = ("WHERE " + " AND ".join(where)) if where else ""
-    sql = f"""
-        SELECT ji.value->>'$.nombre' AS nombre,
-               ROUND(SUM(CAST(ji.value->>'$.qty' AS REAL)), 2) AS cantidad,
-               ROUND(SUM(CAST(ji.value->>'$.qty' AS REAL) *
-                         CAST(ji.value->>'$.precio' AS REAL)), 2) AS total
-        FROM ventas v, json_each(v.items) ji {w}
-        GROUP BY nombre ORDER BY cantidad DESC LIMIT ?
-    """
-    params.append(limit)
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_reporte_caja(desde: str = "", hasta: str = "") -> list[dict]:
-    """Movimientos de caja por tipo en el período."""
-    where, params = [], []
-    if desde:
-        where.append("fecha >= ?"); params.append(desde)
-    if hasta:
-        where.append("fecha <= ?"); params.append(hasta)
-    w = ("WHERE " + " AND ".join(where)) if where else ""
-    sql = f"""
-        SELECT tipo, COUNT(*) AS cantidad, ROUND(SUM(monto), 2) AS total
-        FROM caja_movimientos {w}
-        GROUP BY tipo ORDER BY total DESC
-    """
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_reporte_caja_medios(desde: str = "", hasta: str = "", caja_id: int = 0) -> list[dict]:
-    """Movimientos de caja agrupados por caja y medio de pago."""
-    where, params = ["cm.fecha BETWEEN ? AND ?"], [desde or "1900-01-01", hasta or "2999-12-31"]
-    if caja_id:
-        where.append("cm.caja_id = ?"); params.append(caja_id)
-    sql = f"""
-        SELECT
-            COALESCE(c.nombre, 'Sin caja')  AS caja_nombre,
-            COALESCE(cm.caja_id, 0)         AS caja_id,
-            LOWER(COALESCE(NULLIF(cm.medio_pago,''), 'sin_especificar')) AS medio,
-            cm.tipo,
-            COUNT(*)                         AS operaciones,
-            ROUND(SUM(cm.monto), 2)          AS total
-        FROM caja_movimientos cm
-        LEFT JOIN cajas c ON c.id = cm.caja_id
-        WHERE {" AND ".join(where)}
-        GROUP BY cm.caja_id, c.nombre, LOWER(COALESCE(NULLIF(cm.medio_pago,''), 'sin_especificar')), cm.tipo
-        ORDER BY caja_nombre, cm.tipo DESC, medio
-    """
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_reporte_stock_bajo() -> list[dict]:
-    """Productos con stock actual por debajo del mínimo."""
-    sql = """
-        SELECT p.id, p.nombre, p.codigo, p.stock_minimo,
-               ROUND(COALESCE(SUM(ms.cantidad), 0), 3) AS stock_actual
-        FROM productos p
-        LEFT JOIN movimientos_stock ms ON ms.producto_id = p.id
-        GROUP BY p.id
-        HAVING stock_actual < p.stock_minimo
-        ORDER BY (p.stock_minimo - stock_actual) DESC
-    """
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(sql).fetchall()]
-
-
-def get_reporte_resumen(desde: str = "", hasta: str = "") -> dict:
-    """KPIs rápidos para el período."""
-    where, params = [], []
-    if desde:
-        where.append("fecha >= ?"); params.append(desde)
-    if hasta:
-        where.append("fecha <= ?"); params.append(hasta)
-    w = ("WHERE " + " AND ".join(where)) if where else ""
-    with get_connection() as conn:
-        v = conn.execute(
-            f"SELECT COUNT(*) cnt, ROUND(SUM(total),2) total FROM ventas {w}", params
-        ).fetchone()
-        f_row = conn.execute(
-            f"SELECT COUNT(*) cnt FROM facturas {w}", params
-        ).fetchone()
-        caja = conn.execute(
-            f"SELECT ROUND(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END),2) saldo FROM caja_movimientos {w}", params
-        ).fetchone()
-    return {
-        "ventas_cantidad": v["cnt"] or 0,
-        "ventas_total":    v["total"] or 0.0,
-        "facturas_cantidad": f_row["cnt"] or 0,
-        "caja_saldo":      caja["saldo"] or 0.0,
-    }
-
-
 def set_venta_mp_order(venta_id: int, mp_order_id: str) -> None:
     with get_connection() as conn:
         conn.execute(
@@ -2633,188 +2445,6 @@ def add_venta_pago_referencia_mp(venta_id: int, payment_id: str) -> None:
             (f"MP#{payment_id}", venta_id),
         )
         conn.commit()
-
-
-# ── Cuenta corriente por cliente ───────────────────────────────────────────────
-
-def get_cc_saldo(cliente_id: int) -> float:
-    with get_connection() as conn:
-        _row = conn.execute("SELECT cuit_dni FROM clients WHERE id=?", (cliente_id,)).fetchone()
-        cuit = (_row["cuit_dni"] if _row else "") or ""
-        debitos_venta = conn.execute("""
-            SELECT COALESCE(SUM(vp.monto), 0)
-            FROM ventas_pagos vp
-            JOIN ventas v ON vp.venta_id = v.id
-            WHERE v.cliente_id = ? AND vp.medio = 'cuenta_corriente'
-        """, (cliente_id,)).fetchone()[0]
-        debitos_factura = 0.0
-        if cuit:
-            debitos_factura = conn.execute("""
-                SELECT COALESCE(SUM(cm.monto), 0)
-                FROM caja_movimientos cm
-                JOIN facturas f ON cm.factura_id = f.id
-                WHERE f.cliente_cuit = ? AND cm.tipo = 'ingreso'
-                  AND LOWER(cm.medio_pago) IN ('cuenta corriente','cuenta_corriente')
-            """, (cuit,)).fetchone()[0]
-        abonos = conn.execute(
-            "SELECT COALESCE(SUM(monto), 0) FROM cc_pagos WHERE cliente_id = ?",
-            (cliente_id,),
-        ).fetchone()[0]
-    return float(debitos_venta) + float(debitos_factura) - float(abonos)
-
-
-def get_cc_movimientos(cliente_id: int) -> list[dict]:
-    with get_connection() as conn:
-        _row = conn.execute("SELECT cuit_dni FROM clients WHERE id=?", (cliente_id,)).fetchone()
-        cuit = (_row["cuit_dni"] if _row else "") or ""
-        movs = []
-
-        rows = conn.execute("""
-            SELECT v.fecha, v.numero, vp.monto, v.id AS venta_id
-            FROM ventas_pagos vp
-            JOIN ventas v ON vp.venta_id = v.id
-            WHERE v.cliente_id = ? AND vp.medio = 'cuenta_corriente'
-        """, (cliente_id,)).fetchall()
-        for r in rows:
-            movs.append({
-                "fecha": (r["fecha"] or "")[:10], "tipo": "debito",
-                "concepto": f"Venta #{r['numero']}",
-                "monto": r["monto"], "referencia": "", "medio": "",
-                "venta_id": r["venta_id"], "factura_id": None, "cc_pago_id": None,
-                "usuario_nombre": None,
-            })
-
-        if cuit:
-            rows = conn.execute("""
-                SELECT cm.fecha, f.tipo AS ftipo, f.punto_venta, f.numero,
-                       cm.monto, f.id AS factura_id, cm.referencia, u.nombre AS usuario_nombre
-                FROM caja_movimientos cm
-                JOIN facturas f ON cm.factura_id = f.id
-                LEFT JOIN usuarios u ON u.id = cm.usuario_id
-                WHERE f.cliente_cuit = ? AND cm.tipo = 'ingreso'
-                  AND LOWER(cm.medio_pago) IN ('cuenta corriente','cuenta_corriente')
-            """, (cuit,)).fetchall()
-            _TIPO_LABEL = {
-                1:"FACTURA A", 6:"FACTURA B", 11:"FACTURA C",
-                2:"ND A", 3:"NC A", 7:"ND B", 8:"NC B", 12:"ND C", 13:"NC C",
-            }
-            for r in rows:
-                lbl = _TIPO_LABEL.get(r["ftipo"], "COMP")
-                pv  = str(r["punto_venta"]).zfill(4)
-                num = str(r["numero"]).zfill(8)
-                movs.append({
-                    "fecha": (r["fecha"] or "")[:10], "tipo": "debito",
-                    "concepto": f"{lbl} {pv}-{num}",
-                    "monto": r["monto"], "referencia": r["referencia"] or "",
-                    "medio": "", "venta_id": None,
-                    "factura_id": r["factura_id"], "cc_pago_id": None,
-                    "usuario_nombre": r["usuario_nombre"],
-                })
-
-        rows = conn.execute("""
-            SELECT cc_pagos.id, fecha, concepto, monto, referencia, medio_pago, u.nombre AS usuario_nombre
-            FROM cc_pagos
-            LEFT JOIN usuarios u ON u.id = cc_pagos.usuario_id
-            WHERE cc_pagos.cliente_id = ? ORDER BY fecha, cc_pagos.id
-        """, (cliente_id,)).fetchall()
-        for r in rows:
-            movs.append({
-                "fecha": (r["fecha"] or "")[:10], "tipo": "credito",
-                "concepto": r["concepto"] or "Pago a cuenta",
-                "monto": r["monto"], "referencia": r["referencia"] or "",
-                "medio": r["medio_pago"] or "",
-                "venta_id": None, "factura_id": None, "cc_pago_id": r["id"],
-                "usuario_nombre": r["usuario_nombre"],
-            })
-
-    return sorted(movs, key=lambda x: x["fecha"])
-
-
-def get_clientes_con_saldo_cc() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute("""
-            WITH dv AS (
-                SELECT v.cliente_id AS cid, SUM(vp.monto) AS total
-                FROM ventas_pagos vp JOIN ventas v ON vp.venta_id = v.id
-                WHERE vp.medio = 'cuenta_corriente' AND v.cliente_id IS NOT NULL
-                GROUP BY v.cliente_id
-            ),
-            df AS (
-                SELECT c.id AS cid, SUM(cm.monto) AS total
-                FROM caja_movimientos cm
-                JOIN facturas f ON cm.factura_id = f.id
-                JOIN clients c ON c.cuit_dni = f.cliente_cuit
-                WHERE cm.tipo = 'ingreso'
-                  AND LOWER(cm.medio_pago) IN ('cuenta corriente','cuenta_corriente')
-                GROUP BY c.id
-            ),
-            cr AS (
-                SELECT cliente_id AS cid, SUM(monto) AS total
-                FROM cc_pagos GROUP BY cliente_id
-            )
-            SELECT c.id, c.name, c.cuit_dni,
-                   COALESCE(dv.total,0) + COALESCE(df.total,0) - COALESCE(cr.total,0) AS saldo
-            FROM clients c
-            LEFT JOIN dv ON dv.cid = c.id
-            LEFT JOIN df ON df.cid = c.id
-            LEFT JOIN cr ON cr.cid = c.id
-            WHERE dv.cid IS NOT NULL OR df.cid IS NOT NULL OR cr.cid IS NOT NULL
-            ORDER BY saldo DESC, c.name
-        """).fetchall()
-    return [dict(r) for r in rows]
-
-
-def create_cc_pago(cliente_id: int, monto: float, fecha: str, concepto: str,
-                   referencia: str, medio_pago: str, caja_id, usuario_id,
-                   conn: sqlite3.Connection | None = None) -> int:
-    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
-    with cm as c:
-        cur = c.execute(
-            """INSERT INTO cc_pagos
-               (cliente_id, monto, fecha, concepto, referencia, medio_pago, caja_id, usuario_id)
-               VALUES (?,?,?,?,?,?,?,?)""",
-            (cliente_id, float(monto), fecha, concepto, referencia, medio_pago, caja_id, usuario_id),
-        )
-        return cur.lastrowid
-
-
-def delete_cc_pago(pago_id: int):
-    with get_connection() as conn:
-        conn.execute("DELETE FROM cc_pagos WHERE id=?", (pago_id,))
-
-
-# ── Libros IVA ────────────────────────────────────────────────────────────────
-
-def get_facturas_para_iva(desde: str, hasta: str) -> list[dict]:
-    """Todas las facturas del período para Libro IVA Ventas."""
-    with get_connection() as conn:
-        rows = conn.execute(
-            """SELECT * FROM facturas
-               WHERE fecha >= ? AND fecha <= ?
-               ORDER BY fecha, punto_venta, numero""",
-            (desde, hasta),
-        ).fetchall()
-        result = []
-        for r in rows:
-            d = dict(r)
-            d["items"] = json.loads(d.get("items") or "[]")
-            result.append(d)
-        return result
-
-
-def get_egresos_para_iva(desde: str, hasta: str) -> list[dict]:
-    """Egresos tipo factura del período para Libro IVA Compras, con CUIT proveedor."""
-    with get_connection() as conn:
-        rows = conn.execute(
-            """SELECT e.*, p.cuit_dni AS proveedor_cuit, p.iva_condition AS proveedor_iva_cond
-               FROM egresos e
-               LEFT JOIN proveedores p ON e.proveedor_id = p.id
-               WHERE e.fecha >= ? AND e.fecha <= ?
-               AND e.tipo_comprobante = 'factura'
-               ORDER BY e.fecha, e.id""",
-            (desde, hasta),
-        ).fetchall()
-        return [dict(r) for r in rows]
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
