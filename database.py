@@ -24,6 +24,52 @@ from db_usuarios import (  # noqa: F401
     check_usuario_credentials,
     ensure_admin_user,
 )
+from db_tesoreria import (  # noqa: F401
+    get_all_cuentas_tesoreria,
+    get_cuenta_tesoreria,
+    create_cuenta_tesoreria,
+    update_cuenta_tesoreria,
+    delete_cuenta_tesoreria,
+    get_movimientos_tesoreria,
+    create_movimiento_tesoreria,
+    create_transferencia_tesoreria,
+    delete_movimiento_tesoreria,
+    get_resumen_tesoreria,
+)
+from db_caja import (  # noqa: F401
+    MEDIOS_PAGO_LABELS,
+    get_all_cajas,
+    get_caja_config,
+    get_default_caja_id,
+    create_caja_config,
+    update_caja_config,
+    set_default_caja,
+    delete_caja_config,
+    create_caja_movimiento,
+    get_caja_movimientos,
+    get_caja_resumen,
+    get_cobro_factura,
+    get_cobros_factura,
+    delete_caja_movimiento,
+)
+from db_egresos import (  # noqa: F401
+    get_categorias_egreso,
+    create_categoria_egreso,
+    delete_categoria_egreso,
+    get_all_proveedores,
+    get_proveedor,
+    search_proveedores,
+    create_proveedor,
+    update_proveedor,
+    delete_proveedor,
+    create_egreso,
+    get_egreso,
+    get_all_egresos,
+    get_resumen_egresos,
+    delete_egreso,
+    get_pagos_egreso,
+    create_pago_egreso,
+)
 
 
 def init_db():
@@ -1362,194 +1408,6 @@ def delete_factura(factura_id):
     """Elimina una factura."""
     with get_connection() as conn:
         conn.execute("DELETE FROM facturas WHERE id=?", (factura_id,))
-
-
-# ── Cajas (configuración de cajas) ────────────────────────────────────────────
-
-MEDIOS_PAGO_LABELS = {
-    "efectivo":         "Efectivo",
-    "transferencia":    "Transferencia",
-    "mercadopago":      "Mercado Pago",
-    "cuenta_dni":       "Cuenta DNI",
-    "billetera":        "Otras billeteras",
-    "cuenta_corriente": "Cuenta corriente",
-}
-
-
-def get_all_cajas() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM cajas ORDER BY es_default DESC, nombre"
-        ).fetchall()
-    result = []
-    for r in rows:
-        d = dict(r)
-        d["medios_pago"] = json.loads(d["medios_pago"] or "[]")
-        result.append(d)
-    return result
-
-
-def get_caja_config(cid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute("SELECT * FROM cajas WHERE id=?", (cid,)).fetchone()
-    if not row:
-        return None
-    d = dict(row)
-    d["medios_pago"] = json.loads(d["medios_pago"] or "[]")
-    return d
-
-
-def get_default_caja_id() -> int | None:
-    with get_connection() as conn:
-        row = conn.execute("SELECT id FROM cajas WHERE es_default=1 LIMIT 1").fetchone()
-        if not row:
-            row = conn.execute("SELECT id FROM cajas ORDER BY id LIMIT 1").fetchone()
-    return row[0] if row else None
-
-
-def create_caja_config(nombre: str, descripcion: str, medios_pago: list) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            "INSERT INTO cajas (nombre, descripcion, medios_pago) VALUES (?,?,?)",
-            (nombre, descripcion, json.dumps(medios_pago)),
-        )
-        return cur.lastrowid
-
-
-def update_caja_config(cid: int, nombre: str, descripcion: str, medios_pago: list, activo: int):
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE cajas SET nombre=?, descripcion=?, medios_pago=?, activo=? WHERE id=?",
-            (nombre, descripcion, json.dumps(medios_pago), activo, cid),
-        )
-
-
-def set_default_caja(cid: int):
-    with get_connection() as conn:
-        conn.execute("UPDATE cajas SET es_default=0")
-        conn.execute("UPDATE cajas SET es_default=1 WHERE id=?", (cid,))
-
-
-def delete_caja_config(cid: int):
-    with get_connection() as conn:
-        tiene = conn.execute(
-            "SELECT COUNT(*) FROM caja_movimientos WHERE caja_id=?", (cid,)
-        ).fetchone()[0]
-        if tiene:
-            raise ValueError("No se puede eliminar una caja con movimientos registrados.")
-        if conn.execute("SELECT es_default FROM cajas WHERE id=?", (cid,)).fetchone()[0]:
-            raise ValueError("No se puede eliminar la caja por defecto.")
-        conn.execute("DELETE FROM cajas WHERE id=?", (cid,))
-
-
-# ── Caja ───────────────────────────────────────────────────────────────────────
-
-def create_caja_movimiento(fecha, tipo, concepto, monto, referencia="", factura_id=None,
-                           usuario_id=None, caja_id=None, medio_pago="",
-                           conn: sqlite3.Connection | None = None):
-    cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
-    with cm as c:
-        # Idempotencia: si ya existe un movimiento con la misma referencia, no duplicar
-        if referencia:
-            exists = c.execute(
-                "SELECT id FROM caja_movimientos WHERE referencia=? LIMIT 1", (referencia,)
-            ).fetchone()
-            if exists:
-                return exists[0]
-        _caja_id = caja_id or get_default_caja_id()
-        cur = c.execute(
-            """INSERT INTO caja_movimientos
-               (fecha, tipo, concepto, monto, referencia, factura_id, usuario_id, caja_id, medio_pago)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (fecha, tipo, concepto, float(monto), referencia, factura_id, usuario_id, _caja_id, medio_pago),
-        )
-        return cur.lastrowid
-
-
-def get_caja_movimientos(desde=None, hasta=None, limit=500, caja_id=None):
-    with get_connection() as conn:
-        where, params = [], []
-        if desde and hasta:
-            where.append("cm.fecha BETWEEN ? AND ?"); params += [desde, hasta]
-        if caja_id:
-            where.append("cm.caja_id = ?"); params.append(caja_id)
-        sql = """SELECT cm.*, c.nombre AS caja_nombre, u.nombre AS usuario_nombre
-                 FROM caja_movimientos cm
-                 LEFT JOIN cajas c ON c.id = cm.caja_id
-                 LEFT JOIN usuarios u ON u.id = cm.usuario_id"""
-        if where:
-            sql += " WHERE " + " AND ".join(where)
-        sql += " ORDER BY cm.fecha DESC, cm.id DESC LIMIT ?"
-        params.append(limit)
-        return [dict(r) for r in conn.execute(sql, params).fetchall()]
-
-
-def get_caja_resumen(desde=None, hasta=None, caja_id=None):
-    """Devuelve {ingresos, egresos, saldo_periodo, saldo_total}.
-
-    Excluye movimientos con medio_pago='cuenta_corriente' — no es efectivo
-    real, es una venta/factura a cuenta (o su reversión, ver `anular_venta`),
-    así que no debe inflar (ni, en la reversión, desinflar) el resumen de
-    caja. Mismo criterio que ya usa `get_facturas_filtradas` para saber si
-    una factura está "cobrada" (ver `_cc_excl` ahí)."""
-    _cc_excl = "LOWER(medio_pago) NOT IN ('cuenta corriente','cuenta_corriente')"
-    with get_connection() as conn:
-        where, params = [_cc_excl], []
-        if desde and hasta:
-            where.append("fecha BETWEEN ? AND ?"); params += [desde, hasta]
-        if caja_id:
-            where.append("caja_id = ?"); params.append(caja_id)
-        w = "WHERE " + " AND ".join(where)
-        row = conn.execute(
-            f"""SELECT
-                  COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE 0 END), 0) AS ingresos,
-                  COALESCE(SUM(CASE WHEN tipo='egreso'  THEN monto ELSE 0 END), 0) AS egresos
-                FROM caja_movimientos {w}""",
-            params,
-        ).fetchone()
-        ingresos = row["ingresos"]
-        egresos  = row["egresos"]
-
-        total = conn.execute(
-            f"""SELECT COALESCE(SUM(CASE WHEN tipo='ingreso' THEN monto ELSE -monto END), 0)
-               FROM caja_movimientos WHERE {_cc_excl}"""
-        ).fetchone()[0]
-
-        return {
-            "ingresos":     ingresos,
-            "egresos":      egresos,
-            "saldo_periodo": ingresos - egresos,
-            "saldo_total":  total,
-        }
-
-
-def get_cobro_factura(factura_id):
-    """Devuelve el último movimiento de cobro de una factura, o None."""
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT * FROM caja_movimientos WHERE factura_id=? AND tipo='ingreso'"
-            " AND LOWER(medio_pago) NOT IN ('cuenta corriente','cuenta_corriente')"
-            " ORDER BY id DESC LIMIT 1",
-            (factura_id,),
-        ).fetchone()
-        return dict(row) if row else None
-
-
-def get_cobros_factura(factura_id) -> list[dict]:
-    """Devuelve todos los movimientos de cobro de una factura."""
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM caja_movimientos WHERE factura_id=? AND tipo='ingreso'"
-            " AND LOWER(medio_pago) NOT IN ('cuenta corriente','cuenta_corriente')"
-            " ORDER BY id",
-            (factura_id,),
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def delete_caja_movimiento(mov_id):
-    with get_connection() as conn:
-        conn.execute("DELETE FROM caja_movimientos WHERE id=?", (mov_id,))
 
 
 # ── MercadoPago pagos ──────────────────────────────────────────────────────────
@@ -3190,375 +3048,6 @@ def add_venta_pago_referencia_mp(venta_id: int, payment_id: str) -> None:
             (f"MP#{payment_id}", venta_id),
         )
         conn.commit()
-
-
-# ── Categorías de egreso ───────────────────────────────────────────────────────
-
-def get_categorias_egreso() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute("SELECT * FROM categorias_egreso ORDER BY nombre").fetchall()
-    return [dict(r) for r in rows]
-
-
-def create_categoria_egreso(nombre: str) -> int:
-    with get_connection() as conn:
-        cur = conn.execute("INSERT INTO categorias_egreso (nombre) VALUES (?)", (nombre.strip(),))
-        return cur.lastrowid
-
-
-def delete_categoria_egreso(cid: int):
-    with get_connection() as conn:
-        conn.execute("DELETE FROM categorias_egreso WHERE id=?", (cid,))
-
-
-# ── Proveedores ────────────────────────────────────────────────────────────────
-
-def get_all_proveedores(limit: int = 500) -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM proveedores ORDER BY nombre LIMIT ?", (limit,)
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def get_proveedor(pid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute("SELECT * FROM proveedores WHERE id=?", (pid,)).fetchone()
-    return dict(row) if row else None
-
-
-def search_proveedores(q: str) -> list[dict]:
-    pat = f"%{q}%"
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM proveedores WHERE nombre LIKE ? OR cuit_dni LIKE ? ORDER BY nombre LIMIT 50",
-            (pat, pat),
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def create_proveedor(nombre: str, cuit_dni: str = "", email: str = "",
-                     phone: str = "", address: str = "", iva_condition: str = "") -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            "INSERT INTO proveedores (nombre, cuit_dni, email, phone, address, iva_condition) VALUES (?,?,?,?,?,?)",
-            (nombre, cuit_dni, email, phone, address, iva_condition),
-        )
-        return cur.lastrowid
-
-
-def update_proveedor(pid: int, nombre: str, cuit_dni: str = "", email: str = "",
-                     phone: str = "", address: str = "", iva_condition: str = ""):
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE proveedores SET nombre=?, cuit_dni=?, email=?, phone=?, address=?, iva_condition=? WHERE id=?",
-            (nombre, cuit_dni, email, phone, address, iva_condition, pid),
-        )
-
-
-def delete_proveedor(pid: int):
-    with get_connection() as conn:
-        tiene = conn.execute("SELECT COUNT(*) FROM egresos WHERE proveedor_id=?", (pid,)).fetchone()[0]
-        if tiene:
-            raise ValueError("No se puede eliminar un proveedor con egresos asociados.")
-        conn.execute("DELETE FROM proveedores WHERE id=?", (pid,))
-
-
-# ── Egresos ────────────────────────────────────────────────────────────────────
-
-def create_egreso(fecha: str, concepto: str, total: float, proveedor_id=None,
-                  proveedor_nombre: str = "", tipo_comprobante: str = "otro",
-                  numero: str = "", categoria: str = "", monto_neto: float = 0,
-                  iva_pct: float = 0, iva_monto: float = 0,
-                  observaciones: str = "", usuario_id=None) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO egresos
-               (fecha, proveedor_id, proveedor_nombre, tipo_comprobante, numero,
-                categoria, concepto, monto_neto, iva_pct, iva_monto, total,
-                estado, observaciones, usuario_id)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,'pendiente',?,?)""",
-            (fecha, proveedor_id, proveedor_nombre, tipo_comprobante, numero,
-             categoria, concepto, monto_neto, iva_pct, iva_monto, total,
-             observaciones, usuario_id),
-        )
-        return cur.lastrowid
-
-
-def get_egreso(eid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute("SELECT * FROM egresos WHERE id=?", (eid,)).fetchone()
-    return dict(row) if row else None
-
-
-def get_all_egresos(desde: str = "", hasta: str = "", categoria: str = "",
-                    estado: str = "", proveedor_id: int = 0, limit: int = 200) -> list[dict]:
-    conds = []
-    params: list = []
-    if desde:
-        conds.append("e.fecha >= ?"); params.append(desde)
-    if hasta:
-        conds.append("e.fecha <= ?"); params.append(hasta)
-    if categoria:
-        conds.append("e.categoria = ?"); params.append(categoria)
-    if estado:
-        conds.append("e.estado = ?"); params.append(estado)
-    if proveedor_id:
-        conds.append("e.proveedor_id = ?"); params.append(proveedor_id)
-    where = ("WHERE " + " AND ".join(conds)) if conds else ""
-    params.append(limit)
-    with get_connection() as conn:
-        rows = conn.execute(
-            f"""SELECT e.*, p.nombre AS prov_nombre_lookup
-                FROM egresos e
-                LEFT JOIN proveedores p ON p.id = e.proveedor_id
-                {where} ORDER BY e.fecha DESC, e.id DESC LIMIT ?""",
-            params,
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def get_resumen_egresos(desde: str = "", hasta: str = "") -> dict:
-    conds = []
-    params: list = []
-    if desde:
-        conds.append("fecha >= ?"); params.append(desde)
-    if hasta:
-        conds.append("fecha <= ?"); params.append(hasta)
-    where = ("WHERE " + " AND ".join(conds)) if conds else ""
-    with get_connection() as conn:
-        row = conn.execute(
-            f"""SELECT
-                COALESCE(SUM(total), 0)                              AS total_periodo,
-                COALESCE(SUM(CASE WHEN estado='pagado'   THEN total ELSE 0 END), 0) AS pagado,
-                COALESCE(SUM(CASE WHEN estado!='pagado'  THEN total ELSE 0 END), 0) AS pendiente
-                FROM egresos {where}""",
-            params,
-        ).fetchone()
-    return dict(row)
-
-
-def delete_egreso(eid: int):
-    with get_connection() as conn:
-        conn.execute("DELETE FROM egresos WHERE id=?", (eid,))
-
-
-# ── Pagos de egresos ───────────────────────────────────────────────────────────
-
-def get_pagos_egreso(eid: int) -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute(
-            "SELECT * FROM egresos_pagos WHERE egreso_id=? ORDER BY id",
-            (eid,),
-        ).fetchall()
-    return [dict(r) for r in rows]
-
-
-def create_pago_egreso(egreso_id: int, fecha: str, monto: float,
-                       caja_id=None, medio_pago: str = "",
-                       referencia: str = "", usuario_id=None) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO egresos_pagos (egreso_id, fecha, monto, caja_id, medio_pago, referencia, usuario_id)
-               VALUES (?,?,?,?,?,?,?)""",
-            (egreso_id, fecha, monto, caja_id or get_default_caja_id(),
-             medio_pago, referencia, usuario_id),
-        )
-        pago_id = cur.lastrowid
-
-        # Recalcular estado del egreso
-        total = conn.execute("SELECT total FROM egresos WHERE id=?", (egreso_id,)).fetchone()[0]
-        pagado = conn.execute(
-            "SELECT COALESCE(SUM(monto),0) FROM egresos_pagos WHERE egreso_id=?", (egreso_id,)
-        ).fetchone()[0]
-
-        if pagado >= total:
-            nuevo_estado = "pagado"
-        elif pagado > 0:
-            nuevo_estado = "parcial"
-        else:
-            nuevo_estado = "pendiente"
-
-        conn.execute("UPDATE egresos SET estado=? WHERE id=?", (nuevo_estado, egreso_id))
-        return pago_id
-
-
-# ── Tesorería ──────────────────────────────────────────────────────────────────
-
-_TIPOS_CUENTA = {
-    "efectivo": "Efectivo",
-    "banco":    "Banco",
-    "digital":  "Billetera digital",
-    "otro":     "Otro",
-}
-
-def get_all_cuentas_tesoreria() -> list[dict]:
-    with get_connection() as conn:
-        rows = conn.execute("""
-            SELECT c.*,
-                c.saldo_inicial
-                + COALESCE(SUM(CASE WHEN m.tipo IN ('ingreso','transferencia_entrada') THEN m.monto ELSE 0 END),0)
-                - COALESCE(SUM(CASE WHEN m.tipo IN ('egreso', 'transferencia_salida')  THEN m.monto ELSE 0 END),0)
-                AS saldo
-            FROM cuentas_tesoreria c
-            LEFT JOIN movimientos_tesoreria m ON m.cuenta_id = c.id
-            WHERE c.activa = 1
-            GROUP BY c.id
-            ORDER BY c.orden, c.nombre
-        """).fetchall()
-    return [dict(r) for r in rows]
-
-
-def get_cuenta_tesoreria(cid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute("""
-            SELECT c.*,
-                c.saldo_inicial
-                + COALESCE(SUM(CASE WHEN m.tipo IN ('ingreso','transferencia_entrada') THEN m.monto ELSE 0 END),0)
-                - COALESCE(SUM(CASE WHEN m.tipo IN ('egreso', 'transferencia_salida')  THEN m.monto ELSE 0 END),0)
-                AS saldo
-            FROM cuentas_tesoreria c
-            LEFT JOIN movimientos_tesoreria m ON m.cuenta_id = c.id
-            WHERE c.id = ?
-            GROUP BY c.id
-        """, (cid,)).fetchone()
-    return dict(row) if row else None
-
-
-def create_cuenta_tesoreria(nombre, tipo, banco="", numero="", descripcion="", saldo_inicial=0) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO cuentas_tesoreria (nombre, tipo, banco, numero, descripcion, saldo_inicial)
-               VALUES (?,?,?,?,?,?)""",
-            (nombre, tipo, banco, numero, descripcion, float(saldo_inicial)),
-        )
-        return cur.lastrowid
-
-
-def update_cuenta_tesoreria(cid, nombre, tipo, banco="", numero="", descripcion="", saldo_inicial=0):
-    with get_connection() as conn:
-        conn.execute(
-            """UPDATE cuentas_tesoreria
-               SET nombre=?, tipo=?, banco=?, numero=?, descripcion=?, saldo_inicial=?
-               WHERE id=?""",
-            (nombre, tipo, banco, numero, descripcion, float(saldo_inicial), cid),
-        )
-
-
-def delete_cuenta_tesoreria(cid: int):
-    with get_connection() as conn:
-        conn.execute("UPDATE cuentas_tesoreria SET activa=0 WHERE id=?", (cid,))
-
-
-def get_movimientos_tesoreria(cuenta_id: int | None = None, limit: int = 200,
-                               desde: str = "", hasta: str = "") -> list[dict]:
-    conds, params = [], []
-    if cuenta_id:
-        conds.append("(m.cuenta_id=? OR m.cuenta_destino_id=?)")
-        params += [cuenta_id, cuenta_id]
-    if desde:
-        conds.append("m.fecha >= ?"); params.append(desde)
-    if hasta:
-        conds.append("m.fecha <= ?"); params.append(hasta + " 23:59:59")
-    where = ("WHERE " + " AND ".join(conds)) if conds else ""
-    with get_connection() as conn:
-        rows = conn.execute(f"""
-            SELECT m.*,
-                   co.nombre AS cuenta_nombre,
-                   cd.nombre AS cuenta_destino_nombre,
-                   u.nombre AS usuario_nombre
-            FROM movimientos_tesoreria m
-            JOIN cuentas_tesoreria co ON co.id = m.cuenta_id
-            LEFT JOIN cuentas_tesoreria cd ON cd.id = m.cuenta_destino_id
-            LEFT JOIN usuarios u ON u.id = m.usuario_id
-            {where}
-            ORDER BY m.fecha DESC, m.id DESC
-            LIMIT ?
-        """, params + [limit]).fetchall()
-    return [dict(r) for r in rows]
-
-
-def create_movimiento_tesoreria(fecha, cuenta_id, tipo, monto, concepto="",
-                                 referencia="", cuenta_destino_id=None,
-                                 transferencia_id=None, usuario_id=None) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO movimientos_tesoreria
-               (fecha, cuenta_id, tipo, monto, concepto, referencia,
-                cuenta_destino_id, transferencia_id, usuario_id)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (fecha, cuenta_id, tipo, float(monto), concepto, referencia or "",
-             cuenta_destino_id, transferencia_id, usuario_id),
-        )
-        return cur.lastrowid
-
-
-def create_transferencia_tesoreria(fecha, cuenta_origen_id, cuenta_destino_id,
-                                    monto, concepto="", referencia="", usuario_id=None):
-    """Crea dos movimientos enlazados: salida del origen, entrada al destino."""
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO movimientos_tesoreria
-               (fecha, cuenta_id, tipo, monto, concepto, referencia,
-                cuenta_destino_id, usuario_id)
-               VALUES (?,?,'transferencia_salida',?,?,?,?,?)""",
-            (fecha, cuenta_origen_id, float(monto), concepto, referencia or "",
-             cuenta_destino_id, usuario_id),
-        )
-        salida_id = cur.lastrowid
-        conn.execute(
-            """INSERT INTO movimientos_tesoreria
-               (fecha, cuenta_id, tipo, monto, concepto, referencia,
-                cuenta_destino_id, transferencia_id, usuario_id)
-               VALUES (?,?,'transferencia_entrada',?,?,?,?,?,?)""",
-            (fecha, cuenta_destino_id, float(monto), concepto, referencia or "",
-             cuenta_origen_id, salida_id, usuario_id),
-        )
-        conn.execute(
-            "UPDATE movimientos_tesoreria SET transferencia_id=? WHERE id=?",
-            (salida_id, salida_id),
-        )
-
-
-def delete_movimiento_tesoreria(mid: int):
-    with get_connection() as conn:
-        mov = conn.execute(
-            "SELECT tipo, transferencia_id FROM movimientos_tesoreria WHERE id=?", (mid,)
-        ).fetchone()
-        if not mov:
-            return
-        # Si es parte de una transferencia, eliminar ambos lados
-        if mov["transferencia_id"]:
-            conn.execute(
-                "DELETE FROM movimientos_tesoreria WHERE transferencia_id=?",
-                (mov["transferencia_id"],),
-            )
-        else:
-            conn.execute("DELETE FROM movimientos_tesoreria WHERE id=?", (mid,))
-
-
-def get_resumen_tesoreria() -> dict:
-    with get_connection() as conn:
-        row = conn.execute("""
-            SELECT
-                COALESCE(SUM(c.saldo_inicial
-                    + COALESCE(ing.monto,0) - COALESCE(egr.monto,0)), 0) AS total
-            FROM cuentas_tesoreria c
-            LEFT JOIN (
-                SELECT cuenta_id, SUM(monto) AS monto
-                FROM movimientos_tesoreria
-                WHERE tipo IN ('ingreso','transferencia_entrada')
-                GROUP BY cuenta_id
-            ) ing ON ing.cuenta_id = c.id
-            LEFT JOIN (
-                SELECT cuenta_id, SUM(monto) AS monto
-                FROM movimientos_tesoreria
-                WHERE tipo IN ('egreso','transferencia_salida')
-                GROUP BY cuenta_id
-            ) egr ON egr.cuenta_id = c.id
-            WHERE c.activa = 1
-        """).fetchone()
-    return {"total": row["total"] if row else 0}
 
 
 # ── Cuenta corriente por cliente ───────────────────────────────────────────────
