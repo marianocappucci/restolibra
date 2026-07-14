@@ -30,6 +30,14 @@ REPO_ROOT    = Path(__file__).parent.parent.resolve()
 CLIENTES_DIR = REPO_ROOT / "clientes"
 IMAGE_NAME   = "restolibra:latest"
 
+# requirements.txt depende de libracore (paquete interno privado, ver
+# wiki/entities/libracore.md) via git+ssh — el build necesita BuildKit +
+# --ssh con la deploy key dedicada (solo lectura, aislada de la clave que
+# usa este mismo host para el propio repo de contalibra/restolibra).
+LIBRACORE_SSH_KEY = os.environ.get(
+    "LIBRACORE_SSH_KEY", os.path.expanduser("~/.ssh/id_ed25519_libracore")
+)
+
 
 # ── helpers Docker ────────────────────────────────────────────────────────────
 
@@ -362,7 +370,11 @@ def cmd_restore_db(slug: str, backup_file: str | None = None):
 def cmd_actualizar(slugs: list[str] | None = None):
     """Reconstruye la imagen y reinicia los contenedores indicados (o todos)."""
     print(f"[*] Reconstruyendo imagen {IMAGE_NAME} ...")
-    r = subprocess.run(["docker", "build", "-t", IMAGE_NAME, "."], cwd=str(REPO_ROOT))
+    build_env = {**os.environ, "DOCKER_BUILDKIT": "1"}
+    r = subprocess.run(
+        ["docker", "build", "--ssh", f"default={LIBRACORE_SSH_KEY}", "-t", IMAGE_NAME, "."],
+        cwd=str(REPO_ROOT), env=build_env,
+    )
     if r.returncode != 0:
         print("[ERROR] Falló el build.")
         return

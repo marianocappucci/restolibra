@@ -1,6 +1,11 @@
 services:
   restolibra-dev:
-    build: .
+    build:
+      context: .
+      # requirements.txt depende de libracore (paquete privado) via git+ssh —
+      # ver LIBRACORE_SSH_KEY en scripts/panel_admin.py y wiki/entities/libracore.md.
+      ssh:
+        - default=${LIBRACORE_SSH_KEY:-~/.ssh/id_ed25519_libracore}
     container_name: restolibra-dev
     restart: unless-stopped
     # Límites agregados en la auditoría 2026-07-12 (ver
