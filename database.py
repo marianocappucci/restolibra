@@ -300,6 +300,14 @@ from db_comandas import (  # noqa: F401
 from db_cobro_pedido import cobrar_pedido  # noqa: F401
 from db_reportes_gastronomicos import reporte_gastronomia  # noqa: F401
 
+# descontar_stock_venta (libracore.db.stock) es receta-aware vía hook
+# inyectado, no importa db_recetas directo (evita acoplar el core a un
+# dominio de producto específico — ver wiki/entities/libracore.md, Fase 3
+# Tier 2, stock). Configurado acá porque es el único punto que se ejecuta
+# una vez, después de que get_receta ya está disponible.
+from libracore.db.core import configure_resolver_receta as _configure_resolver_receta
+_configure_resolver_receta(get_receta)
+
 
 def init_db():
     with get_connection() as conn:
