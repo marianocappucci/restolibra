@@ -672,6 +672,20 @@ def init_db():
             CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
             CREATE INDEX IF NOT EXISTS idx_caja_movimientos_fecha ON caja_movimientos(fecha);
         """)
+        # UNIQUE aparte (no en el executescript de arriba): si por algún motivo
+        # ya existieran duplicados de tipo+punto_venta+numero en una instancia
+        # (no debería, pero es defensivo), que falle solo esto sin tumbar el
+        # resto de init_db al arrancar la app. Cierra la race condition de
+        # numeración (auditoría de Restolibra, "race condition en numeración")
+        # junto con el retry en create_factura() — portado desde Contalibra.
+        try:
+            conn.execute(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_facturas_numero_unico "
+                "ON facturas(tipo, punto_venta, numero)"
+            )
+        except sqlite3.Error as e:
+            print(f"[WARN] No se pudo crear idx_facturas_numero_unico (¿hay duplicados "
+                  f"de tipo+punto_venta+numero?): {e}")
         # Migración: columnas faltantes
         cols = [r[1] for r in conn.execute("PRAGMA table_info(clients)").fetchall()]
         if "iva_condition" not in cols:
