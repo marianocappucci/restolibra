@@ -37,3 +37,16 @@ def update_salon(sid: int, nombre: str, orden: int = 0, activo: int = 1):
             "UPDATE salones SET nombre=?, orden=?, activo=? WHERE id=?",
             (nombre.strip(), orden, 1 if activo else 0, sid),
         )
+
+
+def delete_salon(sid: int) -> bool:
+    """Elimina un salón y sus mesas (cascade). Bloquea si alguna mesa tiene pedido abierto."""
+    with get_connection() as conn:
+        c = conn.execute(
+            """SELECT COUNT(*) AS c FROM pedidos p JOIN mesas m ON m.id = p.mesa_id
+               WHERE m.salon_id=? AND p.estado='abierto'""", (sid,)
+        ).fetchone()["c"]
+        if c:
+            return False
+        conn.execute("DELETE FROM salones WHERE id=?", (sid,))
+    return True
