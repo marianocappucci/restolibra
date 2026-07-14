@@ -128,16 +128,20 @@ async def mp_sincronizar(request: Request, _: Auth,
         if ext_ref.startswith("venta-"):
             continue
 
-        # Saltar movimientos que no son cobros a clientes. MP devuelve en
-        # /payments/search todo lo aprobado con nuestra cuenta como collector,
-        # incluyendo la carga de saldo a la propia cuenta (operation_type
-        # 'account_fund', p.ej. fondear MP con tarjeta propia): el pagador es
-        # uno mismo, no un cliente. Solo nos interesan cobros reales.
-        if (pago.get("operation_type") or "").strip() == "account_fund":
-            continue
-        payer_email_raw = ((pago.get("payer") or {}).get("email") or "").strip().lower()
-        if mi_email and payer_email_raw and payer_email_raw == mi_email:
-            continue
+        # Antes se descartaban acá los movimientos con operation_type
+        # 'account_fund' o payer.email == cuenta propia (pensado para no
+        # tratar como "cobro" el auto-fondeo de MP con tarjeta propia, fix
+        # del 2026-07-05). Pero MercadoPago usa ese mismo operation_type y
+        # rellena payer.email con la cuenta propia también en transferencias
+        # bancarias entrantes reales de un cliente (confirmado 2026-07-14 en
+        # Contalibra: una transferencia real de $125.000 quedaba invisible)
+        # — y lo mismo puede pasar si el cliente arma la transferencia con
+        # una tarjeta de crédito como origen de fondos. No hay forma
+        # confiable de distinguir "cliente transfiriéndome" de "yo moviendo
+        # plata entre mis propias cuentas" solo con estos campos — a pedido
+        # explícito del usuario, ya no se filtra automáticamente: todo
+        # entra a la bandeja para que la persona lo identifique a mano
+        # (ignorar si era plata propia, facturar si era de un cliente).
 
         # Saltar si ya fue procesado por webhook
         if db.get_mp_pago(payment_id):
