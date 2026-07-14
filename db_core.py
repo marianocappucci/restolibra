@@ -19,6 +19,18 @@ def _ar_now() -> str:
     return _datetime.now(_AR_TZ).strftime("%Y-%m-%d %H:%M:%S")
 
 
+def minutos_desde(ts: str) -> int:
+    """Minutos transcurridos (en hora AR) desde un timestamp 'YYYY-MM-DD HH:MM:SS'."""
+    if not ts:
+        return 0
+    try:
+        t = _datetime.strptime(str(ts)[:19], "%Y-%m-%d %H:%M:%S")
+        now = _datetime.strptime(_ar_now(), "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return 0
+    return max(0, int((now - t).total_seconds() // 60))
+
+
 _DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
 DB_PATH = os.path.join(_DATA_DIR, "restolibra.db")
 

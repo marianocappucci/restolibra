@@ -9,7 +9,7 @@ import contextlib
 # wiki/entities/libracore.md). Re-exportados acá para que los call sites
 # existentes (`db.get_connection()`, `db.DB_PATH`, `db.create_usuario(...)`,
 # etc.) no cambien una línea.
-from db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, get_connection  # noqa: F401
+from db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, get_connection, minutos_desde  # noqa: F401
 from db_usuarios import (  # noqa: F401
     _hash_password,
     _verify_password,
@@ -268,6 +268,27 @@ from db_reservas import (  # noqa: F401
     crear_reserva,
     cancelar_reserva,
     cumplir_reserva,
+)
+from db_pedidos import (  # noqa: F401
+    get_next_pedido_numero,
+    crear_pedido,
+    get_pedidos_activos,
+    get_pedido_items,
+    pedido_total,
+    get_pedido,
+    get_pedido_abierto_de_mesa,
+    add_pedido_item,
+    delete_pedido_item,
+    set_pedido_item_nota,
+)
+from db_mesas import (  # noqa: F401
+    get_mesas,
+    get_mesa,
+    create_mesa,
+    update_mesa,
+    set_mesa_estado,
+    delete_mesa,
+    resumen_salon_ahora,
 )
 
 
@@ -961,273 +982,6 @@ COMANDA_ESTADOS = ["pendiente", "preparacion", "listo", "entregado"]
 _COMANDA_NEXT = {"pendiente": "preparacion", "preparacion": "listo", "listo": "entregado"}
 
 
-# ── Mesas ───────────────────────────────────────────────────────────────────
-
-def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[dict]:
-    """Mesas con el id y total del pedido abierto (si lo hay)."""
-    with get_connection() as conn:
-        sql = """
-            SELECT m.*, s.nombre AS salon_nombre,
-                   p.id AS pedido_id, p.numero AS pedido_numero, p.created_at AS pedido_creado_at
-            FROM mesas m
-            JOIN salones s ON s.id = m.salon_id
-            LEFT JOIN pedidos p ON p.mesa_id = m.id AND p.estado = 'abierto'
-        """
-        where, params = [], []
-        if salon_id:
-            where.append("m.salon_id=?"); params.append(salon_id)
-        if solo_activas:
-            where.append("m.activo=1")
-        if where:
-            sql += " WHERE " + " AND ".join(where)
-        sql += " ORDER BY s.orden, m.orden, m.id"
-        rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
-    for r in rows:
-        r["pedido_total"] = pedido_total(r["pedido_id"]) if r.get("pedido_id") else 0.0
-        r["mins_ocupada"] = minutos_desde(r["pedido_creado_at"]) if r.get("pedido_creado_at") else 0
-    return rows
-
-
-def get_mesa(mid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            """SELECT m.*, s.nombre AS salon_nombre
-               FROM mesas m JOIN salones s ON s.id=m.salon_id WHERE m.id=?""",
-            (mid,),
-        ).fetchone()
-        return dict(row) if row else None
-
-
-def create_mesa(salon_id: int, nombre: str, capacidad: int = 4, orden: int = 0) -> int:
-    with get_connection() as conn:
-        cur = conn.execute(
-            "INSERT INTO mesas (salon_id, nombre, capacidad, orden) VALUES (?,?,?,?)",
-            (salon_id, nombre.strip(), capacidad, orden),
-        )
-        return cur.lastrowid
-
-
-def update_mesa(mid: int, nombre: str, capacidad: int = 4, orden: int = 0, activo: int = 1):
-    with get_connection() as conn:
-        conn.execute(
-            "UPDATE mesas SET nombre=?, capacidad=?, orden=?, activo=? WHERE id=?",
-            (nombre.strip(), capacidad, orden, 1 if activo else 0, mid),
-        )
-
-
-def set_mesa_estado(mid: int, estado: str):
-    with get_connection() as conn:
-        conn.execute("UPDATE mesas SET estado=? WHERE id=?", (estado, mid))
-
-
-def delete_mesa(mid: int) -> bool:
-    """Elimina una mesa. Bloquea si tiene un pedido abierto (no dejar pedidos huérfanos)."""
-    with get_connection() as conn:
-        c = conn.execute(
-            "SELECT COUNT(*) AS c FROM pedidos WHERE mesa_id=? AND estado='abierto'", (mid,)
-        ).fetchone()["c"]
-        if c:
-            return False
-        conn.execute("DELETE FROM mesas WHERE id=?", (mid,))
-    return True
-
-
-def resumen_salon_ahora() -> dict:
-    """Foto en vivo del salón: cantidad de mesas activas por estado."""
-    with get_connection() as conn:
-        row = conn.execute(
-            """SELECT
-                 COUNT(*) AS total,
-                 SUM(CASE WHEN estado='libre'   THEN 1 ELSE 0 END) AS libres,
-                 SUM(CASE WHEN estado='ocupada' THEN 1 ELSE 0 END) AS ocupadas,
-                 SUM(CASE WHEN estado='cuenta'  THEN 1 ELSE 0 END) AS cuenta
-               FROM mesas WHERE activo=1"""
-        ).fetchone()
-    return {
-        "total": row["total"] or 0,
-        "libres": row["libres"] or 0,
-        "ocupadas": row["ocupadas"] or 0,
-        "cuenta": row["cuenta"] or 0,
-    }
-
-
-# ── Pedidos ─────────────────────────────────────────────────────────────────
-
-def get_next_pedido_numero() -> str:
-    with get_connection() as conn:
-        row = conn.execute("SELECT numero FROM pedidos ORDER BY id DESC LIMIT 1").fetchone()
-    n = 1
-    if row:
-        try:
-            n = int(str(row["numero"]).split("-")[-1]) + 1
-        except (ValueError, IndexError):
-            n = 1
-    return f"P-{n:05d}"
-
-
-def crear_pedido(canal: str = "salon", mesa_id: int | None = None, comensales: int = 1,
-                 usuario_id: int | None = None, cliente_id: int | None = None,
-                 cliente_nombre: str = "", observaciones: str = "",
-                 telefono: str = "", direccion: str = "", repartidor: str = "",
-                 costo_envio: float = 0.0, hora_retiro: str = "") -> int:
-    """Si `mesa_id` ya tiene un pedido 'abierto' (dos mozos abriendo la misma mesa
-    casi a la vez), el índice único `idx_pedido_mesa_abierta` rechaza el INSERT
-    con IntegrityError en vez de dejar dos pedidos abiertos en la misma mesa —
-    en ese caso devolvemos el id del pedido que ganó la carrera."""
-    numero = get_next_pedido_numero()
-    with get_connection() as conn:
-        try:
-            cur = conn.execute(
-                """INSERT INTO pedidos
-                   (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-                    cliente_nombre, observaciones, telefono, direccion, repartidor,
-                    costo_envio, hora_retiro, created_at, updated_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (numero, canal, mesa_id, comensales, usuario_id, cliente_id,
-                 cliente_nombre, observaciones, telefono, direccion, repartidor,
-                 float(costo_envio or 0), hora_retiro, _ar_now(), _ar_now()),
-            )
-            pid = cur.lastrowid
-            if mesa_id:
-                conn.execute("UPDATE mesas SET estado='ocupada' WHERE id=?", (mesa_id,))
-            conn.commit()
-        except sqlite3.IntegrityError:
-            conn.rollback()
-            if not mesa_id:
-                raise
-            existente = conn.execute(
-                "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' ORDER BY id DESC LIMIT 1",
-                (mesa_id,),
-            ).fetchone()
-            if not existente:
-                raise
-            pid = existente["id"]
-    return pid
-
-
-def get_pedidos_activos(canales: list[str] | None = None) -> list[dict]:
-    """Pedidos abiertos (opcionalmente filtrados por canal), con su total.
-    Usado por el board de mostrador/delivery (canales sin mesa)."""
-    with get_connection() as conn:
-        sql = """SELECT p.*, m.nombre AS mesa_nombre, u.username AS mozo
-                 FROM pedidos p
-                 LEFT JOIN mesas m ON m.id = p.mesa_id
-                 LEFT JOIN usuarios u ON u.id = p.usuario_id
-                 WHERE p.estado = 'abierto'"""
-        params: list = []
-        if canales:
-            ph = ",".join("?" for _ in canales)
-            sql += f" AND p.canal IN ({ph})"
-            params += list(canales)
-        sql += " ORDER BY p.created_at DESC"
-        rows = [dict(r) for r in conn.execute(sql, params).fetchall()]
-    for r in rows:
-        r["total"] = pedido_total(r["id"])
-        r["n_items"] = len([1 for _ in get_pedido_items(r["id"])])
-    return rows
-
-
-def get_pedido_items(pedido_id: int) -> list[dict]:
-    with get_connection() as conn:
-        return [dict(r) for r in conn.execute(
-            "SELECT * FROM pedido_items WHERE pedido_id=? AND estado!='anulado' ORDER BY id",
-            (pedido_id,),
-        ).fetchall()]
-
-
-def pedido_total(pedido_id: int) -> float:
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(subtotal),0) AS t FROM pedido_items "
-            "WHERE pedido_id=? AND estado!='anulado'", (pedido_id,)
-        ).fetchone()
-        row2 = conn.execute(
-            "SELECT costo_envio FROM pedidos WHERE id=?", (pedido_id,)
-        ).fetchone()
-    envio = float(row2["costo_envio"]) if row2 else 0.0
-    return round(float(row["t"]) + envio, 2)
-
-
-def get_pedido(pid: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            """SELECT p.*, m.nombre AS mesa_nombre, m.salon_id AS salon_id,
-                      s.nombre AS salon_nombre, u.username AS mozo
-               FROM pedidos p
-               LEFT JOIN mesas m ON m.id = p.mesa_id
-               LEFT JOIN salones s ON s.id = m.salon_id
-               LEFT JOIN usuarios u ON u.id = p.usuario_id
-               WHERE p.id=?""",
-            (pid,),
-        ).fetchone()
-        if not row:
-            return None
-        pedido = dict(row)
-        pedido["items"] = [dict(r) for r in conn.execute(
-            "SELECT * FROM pedido_items WHERE pedido_id=? AND estado!='anulado' ORDER BY id",
-            (pid,),
-        ).fetchall()]
-        for it in pedido["items"]:
-            it["modificadores_resumen"] = _resumen_modificadores(it.get("modificadores"))
-        pedido["comandas"] = [dict(r) for r in conn.execute(
-            "SELECT * FROM comandas WHERE pedido_id=? ORDER BY id", (pid,)
-        ).fetchall()]
-    pedido["total"] = pedido_total(pid)
-    return pedido
-
-
-def get_pedido_abierto_de_mesa(mesa_id: int) -> dict | None:
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' ORDER BY id DESC LIMIT 1",
-            (mesa_id,),
-        ).fetchone()
-    return get_pedido(row["id"]) if row else None
-
-
-def add_pedido_item(pedido_id: int, nombre: str, qty: float, precio: float,
-                    producto_id: int | None = None, estacion: str = "",
-                    nota: str = "", modificadores: str = "") -> int:
-    """`modificadores` es un JSON (string) con la lista de ajustes a la receta
-    del producto para este ítem puntual, ej.: [{"ingrediente_id":5,
-    "ingrediente_nombre":"Cheddar","modo":"quitar"}]. `modo` es "quitar" (no
-    descuenta ese insumo) o "doble" (descuenta el doble). Vacío = receta normal."""
-    subtotal = round(qty * precio, 2)
-    with get_connection() as conn:
-        cur = conn.execute(
-            """INSERT INTO pedido_items
-               (pedido_id, producto_id, nombre, qty, precio, subtotal, estacion, nota, modificadores)
-               VALUES (?,?,?,?,?,?,?,?,?)""",
-            (pedido_id, producto_id, nombre.strip(), qty, precio, subtotal,
-             estacion or "", nota.strip(), modificadores or ""),
-        )
-        conn.execute("UPDATE pedidos SET updated_at=? WHERE id=?", (_ar_now(), pedido_id))
-        return cur.lastrowid
-
-
-def delete_pedido_item(item_id: int) -> bool:
-    """Sólo se puede quitar un ítem que todavía no fue enviado a una estación."""
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT estado FROM pedido_items WHERE id=?", (item_id,)
-        ).fetchone()
-        if not row or row["estado"] != "nuevo":
-            return False
-        conn.execute("DELETE FROM pedido_items WHERE id=?", (item_id,))
-        return True
-
-
-def set_pedido_item_nota(item_id: int, nota: str) -> bool:
-    """Observación del ítem (ej.: 'sin aderezo', 'agregar queso'). Llega a la comanda/KDS.
-    Editable mientras el ítem no esté anulado (el KDS lee la nota en vivo por polling)."""
-    with get_connection() as conn:
-        row = conn.execute("SELECT estado FROM pedido_items WHERE id=?", (item_id,)).fetchone()
-        if not row or row["estado"] == "anulado":
-            return False
-        conn.execute("UPDATE pedido_items SET nota=? WHERE id=?", ((nota or "").strip(), item_id))
-    return True
-
-
 # ── Comandas ────────────────────────────────────────────────────────────────
 
 def enviar_a_estaciones(pedido_id: int) -> list[int]:
@@ -1488,17 +1242,6 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
 
 
 # ── Reportes gastronómicos + tiempos ─────────────────────────────────────────
-
-def minutos_desde(ts: str) -> int:
-    """Minutos transcurridos (en hora AR) desde un timestamp 'YYYY-MM-DD HH:MM:SS'."""
-    if not ts:
-        return 0
-    try:
-        t = _datetime.strptime(str(ts)[:19], "%Y-%m-%d %H:%M:%S")
-        now = _datetime.strptime(_ar_now(), "%Y-%m-%d %H:%M:%S")
-    except ValueError:
-        return 0
-    return max(0, int((now - t).total_seconds() // 60))
 
 
 def reporte_gastronomia(desde: str, hasta: str) -> dict:
