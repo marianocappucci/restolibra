@@ -1,0 +1,23 @@
+"""Shim: la lógica de productos ahora vive en libracore.db.productos."""
+from libracore.db.productos import (  # noqa: F401
+    get_all_depositos,
+    get_deposito,
+    get_default_deposito_id,
+    create_deposito,
+    update_deposito,
+    set_default_deposito,
+    delete_deposito,
+    get_stock_por_deposito,
+    get_stock_producto_todos_depositos,
+    transferir_stock,
+    get_categorias_producto,
+    create_categoria_producto,
+    delete_categoria_producto,
+    create_producto,
+    generar_codigo_producto,
+    get_all_productos,
+    get_producto,
+    get_producto_by_codigo,
+    update_producto,
+    delete_producto,
+)
