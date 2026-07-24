@@ -135,6 +135,23 @@ export type ReporteGastronomicoResumen = {
   canales: ReporteCanal[]
 }
 
+export type TiempoEstacion = {
+  estacion: string
+  n: number
+  espera_min: number | null
+  prep_min: number | null
+  total_min: number | null
+}
+
+export type ReporteSalonData = {
+  desde: string
+  hasta: string
+  canales: ReporteCanal[]
+  total_n: number
+  total_total: number
+  tiempos: TiempoEstacion[]
+}
+
 // --- Salón / Pedidos (Etapa D -- sin equivalente en Contalibra, único
 // dominio de esta migración sin router Jinja2 hermano del que portar UI).
 // Ver web/api/salon.py y web/api/pedidos.py. `PedidoDetalle.tsx` es una

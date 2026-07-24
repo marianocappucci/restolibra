@@ -7,13 +7,28 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ClipboardList, Plus, LayoutGrid, Martini, ShoppingBag, Bike, Clock } from 'lucide-react'
+import { ClipboardList, Plus, LayoutGrid, Martini, ShoppingBag, Bike, Clock, Monitor } from 'lucide-react'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
 const CANAL_ICON: Record<CanalSinMesa, typeof Martini> = { barra: Martini, takeaway: ShoppingBag, delivery: Bike }
+
+// Mismos flags de window.open que KDS (ver Kds.tsx) -- ventana popup sin
+// toolbar/barra de direcciones/menu/barra de estado, para dejarla fija en
+// su propio monitor. Puerto tardío (Etapa E, corte del Jinja2 viejo): esta
+// pantalla nunca se había armado durante la Etapa D pese a que el router
+// viejo ya la describía como "igual que KDS".
+function separarMonitor() {
+  const w = 1280
+  const h = 800
+  window.open(
+    '/pedidos/monitor',
+    'pedidos_monitor',
+    `toolbar=no,location=no,menubar=no,status=no,scrollbars=yes,resizable=yes,width=${w},height=${h}`,
+  )
+}
 
 // Board de pedidos activos sin mesa (barra/takeaway/delivery) -- espejo de
 // web/routers/pedidos.py: /pedidos. Cada tarjeta abre la misma pantalla
@@ -47,7 +62,10 @@ export function PedidosBoard() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><ClipboardList className="size-5 text-primary" />Pedidos (mostrador y delivery)</h2>
-        <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><LayoutGrid />Ir al salón</Button>
+        <div className="flex gap-2">
+          <Button size="sm" variant="outline" onClick={separarMonitor}><Monitor />Separar monitor</Button>
+          <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><LayoutGrid />Ir al salón</Button>
+        </div>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

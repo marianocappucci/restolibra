@@ -16,30 +16,14 @@ import config_manager
 import arca_wsaa
 import arca_wspadron
 from security_headers import SecurityHeadersMiddleware
-from web.auth import (
-    require_auth, check_credentials, get_current_user,
-    create_session_cookie, clear_session_cookie,
-)
-from web.routers import clientes, remitos, presupuestos, facturas, config as config_router, caja, webhooks, dashboard
-from web.routers import mp_bandeja as mp_bandeja_router
-from web.routers import usuarios as usuarios_router
+from web.auth import require_auth, get_current_user
+from web.routers import remitos, presupuestos, facturas, config as config_router, webhooks
 from web.routers import productos as productos_router
 from web.routers import ventas as ventas_router
-from web.routers import stock as stock_router
-from web.routers import turnos as turnos_router
 from web.routers import logs as logs_router
 from web.routers import reportes as reportes_router
-from web.routers import depositos as depositos_router
-from web.routers import cajas as cajas_router
-from web.routers import egresos as egresos_router
-from web.routers import proveedores as proveedores_router
-from web.routers import tesoreria as tesoreria_router
-from web.routers import cuenta_corriente as cc_router
-from web.routers import listas_precio as listas_precio_router
 from web.routers import libros_iva as libros_iva_router
-from web.routers import salon as salon_router
 from web.routers import kds as kds_router
-from web.routers import pedidos as pedidos_router
 from web.api import auth as api_auth_router
 from web.api import dashboard as api_dashboard_router
 from web.api import caja as api_caja_router
@@ -73,45 +57,34 @@ from web.modules_gate import require_module  # noqa: F401
 app = FastAPI(title="Restolibra")
 
 
-_BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
+_BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
 
-# El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery) y
-# reservas (para cargar/sentar reservas telefónicas) — no ve dashboard, caja, facturación
-# ni el resto del admin. Se permite reimprimir el ticket de una comanda ya enviada (botón
-# en salon/pedido.html) sin habilitar las pantallas de KDS (/kds/cocina, /kds/barra), que
-# son para cocina/barra, no para el mozo.
-_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas",
-                       "/mi-cuenta", "/api/usuarios/me/password",
+# El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery),
+# reservas (para cargar/sentar reservas telefónicas) y su propia cuenta — no
+# ve dashboard, caja, facturación ni el resto del admin.
+#
+# Nota (Etapa E, 2026-07-24 -- corte del Jinja2 viejo): tras remover las
+# páginas HTML, esta allowlist quedó reducida a solo paths /api/ -- ver el
+# comentario en CurrentUserMiddleware.dispatch de por qué el chequeo ahora
+# solo aplica a /api/*. Las entradas HTML que tenía esta lista antes del
+# corte (/salon, /pedidos, /salon/reservas, /mi-cuenta, /salon/mesa/,
+# /salon/pedido/, /salon/reservas/) se quitaron: ya no hacen falta, react-
+# router+Layout.tsx deciden qué ve un mozo del lado cliente para cualquier
+# path de página. Tampoco hace falta ya el carve-out de
+# /kds/comanda/{id}/ticket (era HTML, no /api/) -- nunca estuvo bloqueado
+# para ningún otro rol, así que dejar de chequearlo para mozo no cambia su
+# acceso real, solo elimina un caso especial que ya no aplicaba.
+_MOZO_ALLOWED_EXACT = {"/api/usuarios/me/password",
                        "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
-_MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/",
-                          "/salon/reservas/",
-                          "/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
-# Nota (Etapa C, 2026-07-24): "/mi-cuenta" y el endpoint de cambio de
-# contrasena propio se agregaron a la allowlist para que el modulo Usuarios
-# de la SPA (autoservicio de password) funcione tambien para el rol mozo.
-# Nota (Etapa D, 2026-07-24): agregados los equivalentes /api/salon/* y
-# /api/pedidos/* que necesita el rol mozo ahora que Salon/Pedidos tienen
-# backend propio en la SPA -- espejo exacto del split ya usado arriba para
-# las rutas Jinja2 (/salon/config y /salon/reportes quedan deliberadamente
-# FUERA, son admin/gerente). Confirmado que esta lista de paths exactos ya
-# esta quedando larga como se anticipaba -- sigue siendo manejable a mano
-# por ahora (2 modulos, no docenas de endpoints), pero si el patron de
-# habilitar mas modulos SPA para mozo continua, conviene reemplazar este
-# approach por gating a nivel de router (como ya hace require_module) en
-# vez de una allowlist de paths acá.
+_MOZO_ALLOWED_PREFIXES = ("/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
+# /api/salon/config y /api/salon/reportes quedan deliberadamente FUERA
+# (admin/gerente). Si el patrón de habilitar más módulos SPA para mozo
+# sigue creciendo, conviene reemplazar esta allowlist de paths por gating a
+# nivel de router (como ya hace require_module).
 
 
 def _mozo_puede_ver(path: str) -> bool:
-    if path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES):
-        return True
-    # Reimprimir el ticket de una comanda ya enviada es parte del flujo normal
-    # del mozo (botón en salon/pedido.html). Avanzar/cambiar estado de la
-    # comanda (/kds/comanda/{id}/avanzar, /estado) es exclusivo de cocina/
-    # barra — el prefijo completo "/kds/comanda/" los dejaba pasar también
-    # (ver wiki/analyses/restolibra-auditoria-produccion).
-    if path.startswith("/kds/comanda/") and path.endswith("/ticket"):
-        return True
-    return False
+    return path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES)
 
 
 class CurrentUserMiddleware(BaseHTTPMiddleware):
@@ -139,21 +112,43 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
         except Exception:
             request.state.mp_pending_count = 0
 
-        # Corte de servicio: redirigir todo excepto rutas de bypass y archivos estáticos
+        # Corte de servicio: redirigir todo excepto rutas de bypass y archivos
+        # estáticos. Para /api/* se devuelve JSON 503 en vez de un redirect --
+        # un redirect a /suspendido (HTML) rompe cualquier fetch/XHR de la SPA,
+        # que espera JSON (mismo fix ya aplicado en Contalibra en su propio
+        # corte de hoy -- ver wiki/entities/contalibra.md).
         estado = request.state.servicio_estado
         path   = request.url.path
         if (estado == "suspendido"
                 and path not in _BYPASS_PATHS
                 and not path.startswith("/static")):
+            if path.startswith("/api/"):
+                return JSONResponse(
+                    {"error": "servicio_suspendido", "mensaje": request.state.servicio_mensaje},
+                    status_code=503,
+                )
             from fastapi.responses import RedirectResponse as _RR
             return _RR("/suspendido")
 
+        # Permisos del rol mozo (Etapa E, 2026-07-24): tras el corte del
+        # Jinja2 viejo, TODO path que no sea /api/ ni /static sirve el mismo
+        # shell de la SPA (catch-all al final de este archivo) sin importar
+        # el rol -- react-router y Layout.tsx ya deciden que ve un mozo del
+        # lado cliente (ver hideForMozo en Layout.tsx). La proteccion real
+        # que importa es a nivel de datos, o sea /api/*: ahi SI se aplica la
+        # allowlist _MOZO_ALLOWED_*, devolviendo 403 JSON en vez de un
+        # redirect HTML (mismo motivo que arriba -- un redirect rompe el
+        # fetch de React). Dejar pasar los paths de pagina sin chequeo evita
+        # que un mozo quede con el shell semi-cargado por un redirect a mitad
+        # de un asset/chunk; si intenta usar un modulo que no le corresponde,
+        # el fetch a su /api/* le va a devolver 403 y la pantalla lo maneja
+        # como cualquier otro error de carga.
         cu = request.state.current_user
         if (cu and cu.get("role") == "mozo"
+                and path.startswith("/api/")
                 and path not in _BYPASS_PATHS
                 and not _mozo_puede_ver(path)):
-            from fastapi.responses import RedirectResponse as _RR
-            return _RR("/salon")
+            return JSONResponse({"detail": "No tenés acceso a este módulo."}, status_code=403)
 
         return await call_next(request)
 
@@ -196,38 +191,30 @@ def servicio_suspendido(request: Request):
     })
 
 
-app.include_router(dashboard.router)
-app.include_router(clientes.router)
+# Routers HTML/descarga viejos que sobreviven al corte de la migracion a
+# React (Etapas D y E) -- ver wiki/entities/restolibra.md. Cada uno quedo
+# recortado a solo las sub-rutas (PDF/ticket/CSV/backup/autocomplete) que
+# la SPA nueva sigue consumiendo directo; las paginas Jinja2 de
+# list/nuevo/detail se removieron. Los routers de salon y pedidos se
+# borraron por completo (0 rutas sobrevivientes) al cerrarse en la Etapa E
+# los ultimos 3 gaps reales que quedaban de la migracion (reportes de
+# salon, monitor de pedidos, categorias de egreso -- este ultimo en
+# config.py, que si sigue vivo por el logo/backup).
 app.include_router(remitos.router)
 app.include_router(presupuestos.router)
 app.include_router(facturas.router)
 app.include_router(config_router.router)
-app.include_router(caja.router)
 app.include_router(webhooks.router)
-app.include_router(usuarios_router.router)
 app.include_router(productos_router.router)
 app.include_router(ventas_router.router)
-app.include_router(stock_router.router)
-app.include_router(turnos_router.router)
 app.include_router(logs_router.router)
 app.include_router(reportes_router.router)
-app.include_router(mp_bandeja_router.router)
-app.include_router(depositos_router.router)
-app.include_router(cajas_router.router)
-app.include_router(egresos_router.router)
-app.include_router(proveedores_router.router)
-app.include_router(tesoreria_router.router)
-app.include_router(cc_router.router)
-app.include_router(listas_precio_router.router)
 app.include_router(libros_iva_router.router)
-app.include_router(salon_router.router)
 app.include_router(kds_router.router)
-app.include_router(pedidos_router.router)
 
 # --- API JSON para la SPA React (ver wiki/entities/restolibra.md, migracion
-# a React) -- convive con los routers HTML de arriba sobre la misma cookie
-# hasta la etapa de corte. Mas routers /api/<modulo> se agregan por etapa,
-# igual que se hizo en Contalibra. ---
+# a React) -- ahora es la interfaz real, ya no convive con paginas HTML
+# equivalentes (corte hecho). ---
 _auth_json = Depends(get_current_user_json)
 
 app.include_router(api_auth_router.router)
@@ -365,54 +352,6 @@ def startup():
 @app.get("/", include_in_schema=False)
 def root():
     return RedirectResponse("/dashboard")
-
-
-@app.get("/login", include_in_schema=False)
-def login_get(request: Request):
-    return templates.TemplateResponse(request, "login.html", {"error": None})
-
-
-LOGIN_MAX_INTENTOS = 5
-LOGIN_VENTANA_MINUTOS = 15
-
-
-@app.post("/login", include_in_schema=False)
-async def login_post(request: Request):
-    form = await request.form()
-    username = str(form.get("username", ""))
-    password = str(form.get("password", ""))
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
-
-    if db.contar_login_fallidos_recientes(ip, LOGIN_VENTANA_MINUTOS) >= LOGIN_MAX_INTENTOS:
-        db.registrar_auth_event("login_bloqueado", username, ip)
-        return templates.TemplateResponse(
-            request, "login.html",
-            {"error": f"Demasiados intentos fallidos. Esperá {LOGIN_VENTANA_MINUTOS} minutos e intentá de nuevo."},
-            status_code=429,
-        )
-
-    if check_credentials(username, password):
-        db.registrar_auth_event("login", username, ip)
-        user = db.get_usuario_by_username(username)
-        destino = "/salon" if user and user.get("role") == "mozo" else "/dashboard"
-        response = RedirectResponse(destino, status_code=303)
-        create_session_cookie(response, username)
-        return response
-    db.registrar_auth_event("login_fallido", username, ip)
-    return templates.TemplateResponse(
-        request, "login.html", {"error": "Usuario o contraseña incorrectos"}, status_code=401
-    )
-
-
-@app.get("/logout", include_in_schema=False)
-def logout(request: Request):
-    username = get_current_user(request) or ""
-    ip = request.headers.get("x-forwarded-for", request.client.host if request.client else "")
-    if username:
-        db.registrar_auth_event("logout", username, ip)
-    response = RedirectResponse("/login", status_code=303)
-    clear_session_cookie(response)
-    return response
 
 
 DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")

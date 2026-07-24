@@ -10,71 +10,14 @@ import io
 
 import database as db
 from web.auth import require_admin
-from web.templates_config import templates
 
 router = APIRouter()
 Auth = Annotated[dict, Depends(require_admin)]
 
-PAGE_SIZE = 100
-
-TIPO_META = {
-    "venta":        {"label": "Venta",        "icon": "shopping_cart",              "color": "#0d6efd", "bg": "#cfe2ff"},
-    "caja":         {"label": "Caja",          "icon": "payments",         "color": "#198754", "bg": "#d1e7dd"},
-    "stock":        {"label": "Stock",         "icon": "archive",            "color": "#6f42c1", "bg": "#e8d5ff"},
-    "factura":      {"label": "Factura",       "icon": "receipt_long",            "color": "#0dcaf0", "bg": "#cff4fc"},
-    "turno":        {"label": "Turno",         "icon": "badge",       "color": "#fd7e14", "bg": "#ffe5d0"},
-    "remito":       {"label": "Remito",        "icon": "description",  "color": "#6c757d", "bg": "#e2e3e5"},
-    "presupuesto":  {"label": "Presupuesto",   "icon": "calculate",         "color": "#20c997", "bg": "#d2f4ea"},
-}
-
-
-@router.get("/admin/logs")
-def logs_get(request: Request, user: Auth,
-             tipo: str = "", usuario_id: int = 0, turno_id: int = 0,
-             desde: str = "", hasta: str = "", page: int = 1):
-
-    tipos_sel = [t.strip() for t in tipo.split(",") if t.strip()] if tipo else []
-    offset    = (page - 1) * PAGE_SIZE
-
-    actividad = db.get_actividad_log(
-        tipos=tipos_sel or None,
-        usuario_id=usuario_id or None,
-        turno_id=turno_id or None,
-        desde=desde, hasta=hasta,
-        limit=PAGE_SIZE, offset=offset,
-    )
-
-    # Total para paginación (solo si hay filtros acotados o pocos registros)
-    total = db.get_actividad_count(
-        tipos=tipos_sel or None,
-        usuario_id=usuario_id or None,
-        turno_id=turno_id or None,
-        desde=desde, hasta=hasta,
-    )
-    total_pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE)
-
-    usuarios = db.get_all_usuarios()
-    turnos   = db.get_all_turnos(limit=200)
-
-    auth_log = db.get_auth_log(limit=100)
-
-    return templates.TemplateResponse(request, "admin/logs.html", {
-        "actividad":   actividad,
-        "tipo_meta":   TIPO_META,
-        "todos_tipos": list(TIPO_META.keys()),
-        "tipos_sel":   tipos_sel,
-        "usuario_id":  usuario_id,
-        "turno_id":    turno_id,
-        "desde":       desde,
-        "hasta":       hasta,
-        "page":        page,
-        "total_pages": total_pages,
-        "total":       total,
-        "usuarios":    usuarios,
-        "turnos":      turnos,
-        "auth_log":    auth_log,
-        "active":      "logs",
-    })
+# La pagina Jinja2 de este router (list, admin/logs.html) se removio en el
+# corte de la migracion a React -- ver wiki/entities/restolibra.md, Etapa
+# D; ahora vive en web/api/logs.py + frontend/src/pages/Logs.tsx. Solo
+# queda el export CSV, que la SPA linkea directo (no vive bajo /api/).
 
 
 @router.get("/admin/logs/export")

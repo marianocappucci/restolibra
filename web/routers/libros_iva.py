@@ -3,16 +3,22 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 import datetime
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Depends
 from fastapi.responses import Response
 from typing import Annotated
 
 import database as db
-import config_manager
 from web.auth import require_auth, require_role
-from web.templates_config import templates
 
 # Libros IVA / REGINFO (contable-fiscal, no operación diaria) — solo admin.
+#
+# La pagina Jinja2 de este router (list, libros_iva/index.html) se removio
+# en el corte de la migracion a React -- ver wiki/entities/restolibra.md,
+# Etapa D; ahora vive en web/api/libros_iva.py + frontend/src/pages/
+# LibrosIva.tsx. Solo quedan los 4 exports REGINFO (.txt), que la SPA
+# linkea directo (no viven bajo /api/). `_resumen_ventas`/`_resumen_compras`
+# NO se borran pese a no tener ruta HTML propia: web/api/libros_iva.py los
+# importa tal cual (sin duplicarlos) para el endpoint JSON GET /api/libros-iva.
 router = APIRouter(dependencies=[Depends(require_role("admin"))])
 Auth = Annotated[str, Depends(require_auth)]
 
@@ -261,8 +267,6 @@ def _compras_alicuotas(egresos: list) -> str:
     return "\r\n".join(lines)
 
 
-# ── Resumen por alícuota ──────────────────────────────────────────────────────
-
 def _resumen_ventas(facturas: list) -> dict:
     total_cbtes = len(facturas)
     total_neto  = 0.0
@@ -317,33 +321,6 @@ def _resumen_compras(egresos: list) -> dict:
         "iva": total_iva, "total": total_total,
         "por_tasa": dict(sorted(por_tasa.items())),
     }
-
-
-# ── Routes ────────────────────────────────────────────────────────────────────
-
-@router.get("/libros-iva")
-def libros_iva_index(request: Request, user: Auth,
-                     desde: str = "", hasta: str = "", tab: str = "ventas"):
-    if not desde or not hasta:
-        desde, hasta = _default_periodo()
-
-    cfg           = config_manager.load()
-    empresa_cuit  = cfg.get("empresa_cuit", "")
-
-    facturas = db.get_facturas_para_iva(desde, hasta)
-    egresos  = db.get_egresos_para_iva(desde, hasta)
-
-    return templates.TemplateResponse(request, "libros_iva/index.html", {
-        "active":        "libros_iva",
-        "desde":         desde,
-        "hasta":         hasta,
-        "tab":           tab,
-        "empresa_cuit":  empresa_cuit,
-        "facturas":      facturas,
-        "egresos":       egresos,
-        "resumen_v":     _resumen_ventas(facturas),
-        "resumen_c":     _resumen_compras(egresos),
-    })
 
 
 @router.get("/libros-iva/export/ventas-cbte")

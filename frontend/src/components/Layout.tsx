@@ -72,7 +72,10 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Compras',
     hideForMozo: true,
     items: [
-      { to: '/egresos', label: 'Egresos', icon: ShoppingBag, module: 'egresos' },
+      {
+        to: '/egresos', label: 'Egresos', icon: ShoppingBag, module: 'egresos',
+        children: [{ to: '/config/categorias-egreso', label: 'Categorías' }],
+      },
       { to: '/proveedores', label: 'Proveedores', icon: Truck, module: 'proveedores' },
     ],
   },
@@ -136,6 +139,7 @@ const NAV_SECTIONS: NavSection[] = [
 const NESTED_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   '/cuenta-corriente': BookOpen,
   '/config/categorias-producto': Tag,
+  '/config/categorias-egreso': Tag,
   '/listas-precio': Tag,
   '/productos/reportes-costos': TrendingUp,
   '/turnos': Clock,

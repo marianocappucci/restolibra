@@ -49,6 +49,7 @@ import { Productos } from './pages/Productos'
 import { ProductoReceta } from './pages/ProductoReceta'
 import { ReporteCostos } from './pages/ReporteCostos'
 import { CategoriasProducto } from './pages/CategoriasProducto'
+import { CategoriasEgreso } from './pages/CategoriasEgreso'
 import { Kds } from './pages/Kds'
 import { KdsMonitor } from './pages/KdsMonitor'
 import { MapaMesas } from './pages/MapaMesas'
@@ -57,6 +58,8 @@ import { Reservas } from './pages/Reservas'
 import { PedidoDetalle } from './pages/PedidoDetalle'
 import { PedidosBoard } from './pages/PedidosBoard'
 import { PedidoNuevo } from './pages/PedidoNuevo'
+import { PedidosMonitor } from './pages/PedidosMonitor'
+import { ReportesSalon } from './pages/ReportesSalon'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -470,6 +473,14 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/config/categorias-egreso"
+        element={
+          <ProtectedRoute>
+            <CategoriasEgreso />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/kds" element={<Navigate to="/kds/cocina" replace />} />
       <Route
         path="/kds/:estacion"
@@ -511,6 +522,14 @@ export default function App() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/salon/reportes"
+        element={
+          <ProtectedRoute>
+            <ReportesSalon />
+          </ProtectedRoute>
+        }
+      />
       {/* Pantalla de pedido/cobro compartida -- mismo componente, dos
           entradas de URL (mesa vs. canal sin mesa), ver PedidoDetalle.tsx. */}
       <Route
@@ -535,6 +554,14 @@ export default function App() {
           <ProtectedRoute>
             <PedidoNuevo />
           </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pedidos/monitor"
+        element={
+          <StandaloneRoute>
+            <PedidosMonitor />
+          </StandaloneRoute>
         }
       />
       <Route
