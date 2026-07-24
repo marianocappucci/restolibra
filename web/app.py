@@ -40,6 +40,10 @@ from web.routers import libros_iva as libros_iva_router
 from web.routers import salon as salon_router
 from web.routers import kds as kds_router
 from web.routers import pedidos as pedidos_router
+from web.api import auth as api_auth_router
+from web.api import dashboard as api_dashboard_router
+from web.api_auth import get_current_user_json, require_admin_json  # noqa: F401
+from web.modules_gate import require_module  # noqa: F401
 
 app = FastAPI(title="Restolibra")
 
@@ -178,6 +182,13 @@ app.include_router(libros_iva_router.router)
 app.include_router(salon_router.router)
 app.include_router(kds_router.router)
 app.include_router(pedidos_router.router)
+
+# --- API JSON para la SPA React (ver wiki/entities/restolibra.md, migracion
+# a React) -- convive con los routers HTML de arriba sobre la misma cookie
+# hasta la etapa de corte. Mas routers /api/<modulo> se agregan por etapa,
+# igual que se hizo en Contalibra. ---
+app.include_router(api_auth_router.router)
+app.include_router(api_dashboard_router.router)
 
 
 @app.on_event("startup")
@@ -430,3 +441,25 @@ async def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
         return JSONResponse({"error": msg}, status_code=502)
     except Exception as e:
         return JSONResponse({"error": f"Error al consultar ARCA: {e}"}, status_code=500)
+
+
+# Serving de la SPA (React) -- mismo patron que contalibra/web/app.py.
+# Busca primero /opt/frontend-dist (Dockerfile, stage de node) y si no
+# existe cae al build local (`frontend/dist`), para poder levantar la API
+# sola sin haber buildeado nunca el frontend. Registrado al final del
+# modulo a proposito: todos los routers de arriba (HTML y /api/) ya fueron
+# declarados, asi que el catch-all solo atrapa lo que ningun otro endpoint
+# respondio.
+_DOCKER_FRONTEND_DIST = "/opt/frontend-dist"
+_LOCAL_FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+FRONTEND_DIST = _DOCKER_FRONTEND_DIST if os.path.isdir(_DOCKER_FRONTEND_DIST) else _LOCAL_FRONTEND_DIST
+
+if os.path.isdir(FRONTEND_DIST):
+    app.mount(
+        "/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="frontend-assets"
+    )
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def spa_fallback(full_path: str):
+        del full_path  # catch-all: enrutamiento client-side de react-router
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
