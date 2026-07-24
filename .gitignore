@@ -72,3 +72,9 @@ scripts/.npm_config.json
 
 # Scripts de infraestructura local (no van a producción)
 scripts/create_dev_proxy.py
+
+# Frontend (React SPA, ver wiki/entities/restolibra.md): node_modules y el
+# build no se versionan -- el build de produccion lo genera el Dockerfile
+# (stage node:20-slim).
+frontend/node_modules/
+frontend/dist/

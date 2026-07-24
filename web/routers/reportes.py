@@ -11,11 +11,19 @@ from typing import Annotated
 
 import database as db
 from web.auth import require_auth
-from web.templates_config import templates
 
 router = APIRouter()
 
 Auth = Annotated[str, Depends(require_auth)]
+
+# Las paginas Jinja2 de este router (reportes/index.html y
+# reportes/caja_medios.html) se removieron en el corte de la migracion a
+# React -- ver wiki/entities/restolibra.md, Etapa D; ahora viven en
+# web/api/reportes.py + frontend/src/pages/Reportes.tsx y CajaMedios.tsx.
+# Solo quedan los exports CSV, que la SPA linkea directo (no viven bajo
+# /api/). `_MEDIO_LABEL`/`_pivot_caja_medios`/`_totales_por_medio` NO se
+# borran pese a no tener ruta HTML propia: web/api/reportes.py los importa
+# tal cual (sin duplicarlos) para el endpoint JSON /api/reportes/caja-medios.
 
 _HOY  = lambda: datetime.date.today().isoformat()
 _MES  = lambda: datetime.date.today().replace(day=1).isoformat()
@@ -27,33 +35,6 @@ def _fechas_default(desde: str, hasta: str):
     if not hasta:
         hasta = _HOY()
     return desde, hasta
-
-
-@router.get("/reportes")
-def reportes_get(
-    request: Request, user: Auth,
-    desde: str = "", hasta: str = "",
-    agrupacion: str = "dia",
-):
-    desde, hasta = _fechas_default(desde, hasta)
-    resumen    = db.get_reporte_resumen(desde, hasta)
-    ventas_ts  = db.get_reporte_ventas(desde, hasta, agrupacion)
-    medios     = db.get_reporte_medios_pago(desde, hasta)
-    productos  = db.get_reporte_productos_top(desde, hasta)
-    caja       = db.get_reporte_caja(desde, hasta)
-    stock_bajo = db.get_reporte_stock_bajo()
-    return templates.TemplateResponse(request, "reportes/index.html", {
-        "active":     "reportes",
-        "desde":      desde,
-        "hasta":      hasta,
-        "agrupacion": agrupacion,
-        "resumen":    resumen,
-        "ventas_ts":  ventas_ts,
-        "medios":     medios,
-        "productos":  productos,
-        "caja":       caja,
-        "stock_bajo": stock_bajo,
-    })
 
 
 @router.get("/reportes/export/ventas")
@@ -95,7 +76,7 @@ def export_productos(request: Request, user: Auth, desde: str = "", hasta: str =
                              headers={"Content-Disposition": f'attachment; filename="{fn}"'})
 
 
-# ── Reporte Caja por Medio de Cobro ──────────────────────────────────────────
+# ── Reporte Caja por Medio de Cobro (solo export) ────────────────────────────
 
 _MEDIO_LABEL = {
     "efectivo":         "Efectivo",
@@ -106,17 +87,6 @@ _MEDIO_LABEL = {
     "cuenta_corriente": "Cuenta Corriente",
     "cheque":           "Cheque",
     "sin_especificar":  "Sin especificar",
-}
-
-_MEDIO_ICON = {
-    "efectivo":         "payments",
-    "transferencia":    "account_balance",
-    "mercadopago":      "call",
-    "cuenta_dni":       "badge",
-    "billetera":        "wallet",
-    "cuenta_corriente": "menu_book",
-    "cheque":           "description",
-    "sin_especificar":  "help",
 }
 
 
@@ -170,30 +140,6 @@ def _totales_por_medio(cajas_pivot: list) -> dict:
             totales[medio]["egresos"]      += vals["egresos"]
             totales[medio]["egresos_ops"]  += vals["egresos_ops"]
     return dict(sorted(totales.items()))
-
-
-@router.get("/reportes/caja-medios")
-def reporte_caja_medios(
-    request: Request, user: Auth,
-    desde: str = "", hasta: str = "",
-    caja_id: int = 0,
-):
-    desde, hasta = _fechas_default(desde, hasta)
-    cajas_config = db.get_all_cajas()
-    rows         = db.get_reporte_caja_medios(desde, hasta, caja_id)
-    cajas_pivot  = _pivot_caja_medios(rows)
-    totales      = _totales_por_medio(cajas_pivot)
-    return templates.TemplateResponse(request, "reportes/caja_medios.html", {
-        "active":        "reporte_caja_medios",
-        "desde":         desde,
-        "hasta":         hasta,
-        "caja_id":       caja_id,
-        "cajas_config":  cajas_config,
-        "cajas":         cajas_pivot,
-        "totales":       totales,
-        "medio_label":   _MEDIO_LABEL,
-        "medio_icon":    _MEDIO_ICON,
-    })
 
 
 @router.get("/reportes/caja-medios/export")

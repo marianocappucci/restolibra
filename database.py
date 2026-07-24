@@ -172,6 +172,7 @@ from db_clients import (  # noqa: F401
     get_all_clients_including_inactive,
     get_client,
     desactivar_cliente,
+    activar_cliente,
     tiene_presupuestos_aprobados,
     get_facturas_by_client,
     update_client,
@@ -226,6 +227,9 @@ from db_mp import (  # noqa: F401
     get_mp_pagos_by_estado,
     get_mp_pagos_historial,
     update_mp_pago_estado,
+    crear_alias_facturacion,
+    get_alias_facturacion_by_cliente,
+    eliminar_alias_facturacion,
     get_mp_movimiento_by_mp_id,
     create_mp_movimiento,
     get_mp_movimiento_by_id,
@@ -278,6 +282,7 @@ from db_pedidos import (  # noqa: F401
     add_pedido_item,
     delete_pedido_item,
     set_pedido_item_nota,
+    anular_pedido,
 )
 from db_mesas import (  # noqa: F401
     get_mesas,
