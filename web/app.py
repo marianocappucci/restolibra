@@ -56,6 +56,7 @@ from web.api import remitos as api_remitos_router
 from web.api import reportes as api_reportes_router
 from web.api import libros_iva as api_libros_iva_router
 from web.api import usuarios as api_usuarios_router
+from web.api import kds as api_kds_router
 from web.api import logs as api_logs_router
 from web.api import ventas as api_ventas_router
 from web.api import mp_bandeja as api_mp_bandeja_router
@@ -64,7 +65,9 @@ from web.api import stock as api_stock_router
 from web.api import listas_precio as api_listas_precio_router
 from web.api import productos as api_productos_router
 from web.api import config as api_config_router
-from web.api_auth import get_current_user_json, require_admin_json  # noqa: F401
+from web.api import salon as api_salon_router
+from web.api import pedidos as api_pedidos_router
+from web.api_auth import get_current_user_json, require_admin_json, require_role_json  # noqa: F401
 from web.modules_gate import require_module  # noqa: F401
 
 app = FastAPI(title="Restolibra")
@@ -78,20 +81,24 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/
 # en salon/pedido.html) sin habilitar las pantallas de KDS (/kds/cocina, /kds/barra), que
 # son para cocina/barra, no para el mozo.
 _MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas",
-                       "/mi-cuenta", "/api/usuarios/me/password"}
+                       "/mi-cuenta", "/api/usuarios/me/password",
+                       "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
 _MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/",
-                          "/salon/reservas/")
+                          "/salon/reservas/",
+                          "/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
 # Nota (Etapa C, 2026-07-24): "/mi-cuenta" y el endpoint de cambio de
 # contrasena propio se agregaron a la allowlist para que el modulo Usuarios
 # de la SPA (autoservicio de password) funcione tambien para el rol mozo.
-# Pendiente real para la Etapa D (cuando Salon/Pedidos/KDS tengan su propio
-# backend /api/): hoy el mozo sigue operando 100% sobre las rutas Jinja2
-# viejas, nunca navega a la SPA, asi que este middleware no lo bloquea en la
-# practica -- pero cuando esos modulos tengan version SPA, esta lista de
-# paths exactos va a quedar chica (cada endpoint /api/salon/*, /api/pedidos/*
-# nuevo habria que agregarlo a mano). Revisar entonces si conviene
-# reemplazar este approach por gating a nivel de router (como ya hace
-# require_module) en vez de una allowlist de paths acá.
+# Nota (Etapa D, 2026-07-24): agregados los equivalentes /api/salon/* y
+# /api/pedidos/* que necesita el rol mozo ahora que Salon/Pedidos tienen
+# backend propio en la SPA -- espejo exacto del split ya usado arriba para
+# las rutas Jinja2 (/salon/config y /salon/reportes quedan deliberadamente
+# FUERA, son admin/gerente). Confirmado que esta lista de paths exactos ya
+# esta quedando larga como se anticipaba -- sigue siendo manejable a mano
+# por ahora (2 modulos, no docenas de endpoints), pero si el patron de
+# habilitar mas modulos SPA para mozo continua, conviene reemplazar este
+# approach por gating a nivel de router (como ya hace require_module) en
+# vez de una allowlist de paths acá.
 
 
 def _mozo_puede_ver(path: str) -> bool:
@@ -315,6 +322,33 @@ app.include_router(
     # esto corrige (require_admin -> get_current_user_json/_auth_json).
     api_usuarios_router.me_router,
     dependencies=[_auth_json],
+)
+app.include_router(
+    # KDS es exclusivo de cocina/barra -- el rol mozo NO tiene acceso (ver
+    # docstring de web/api/kds.py). require_role_json en vez de _auth_json,
+    # misma mecanica que require_admin_json pero con una lista de roles.
+    api_kds_router.router,
+    dependencies=[
+        Depends(require_role_json("admin", "operador", "cajero")),
+        Depends(require_module("restaurant")),
+    ],
+)
+app.include_router(
+    # Salon/Pedidos (Etapa D) -- a diferencia de KDS, el rol mozo SI opera
+    # estos dos routers (mapa de mesas, pedido abierto, cobro, reservas,
+    # board de canales sin mesa): _auth_json en vez de require_role_json,
+    # igual que el resto de los modulos operativos de arriba. Gateado solo
+    # por el modulo "restaurant" -- ver docstrings de web/api/salon.py y
+    # web/api/pedidos.py para la convencion de URLs pensada para que el
+    # allowlist de mozo en CurrentUserMiddleware (mas arriba en este mismo
+    # archivo) se pueda extender por prefijo de path, igual que ya hace con
+    # las rutas Jinja2 /salon/mesa/, /salon/reservas, /pedidos/.
+    api_salon_router.router,
+    dependencies=[_auth_json, Depends(require_module("restaurant"))],
+)
+app.include_router(
+    api_pedidos_router.router,
+    dependencies=[_auth_json, Depends(require_module("restaurant"))],
 )
 app.include_router(
     api_logs_router.router,

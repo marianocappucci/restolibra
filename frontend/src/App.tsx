@@ -49,6 +49,14 @@ import { Productos } from './pages/Productos'
 import { ProductoReceta } from './pages/ProductoReceta'
 import { ReporteCostos } from './pages/ReporteCostos'
 import { CategoriasProducto } from './pages/CategoriasProducto'
+import { Kds } from './pages/Kds'
+import { KdsMonitor } from './pages/KdsMonitor'
+import { MapaMesas } from './pages/MapaMesas'
+import { SalonConfig } from './pages/SalonConfig'
+import { Reservas } from './pages/Reservas'
+import { PedidoDetalle } from './pages/PedidoDetalle'
+import { PedidosBoard } from './pages/PedidosBoard'
+import { PedidoNuevo } from './pages/PedidoNuevo'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -61,6 +69,23 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   }
   if (!user) return <Navigate to="/login" replace />
   return <Layout>{children}</Layout>
+}
+
+// Igual que ProtectedRoute (exige sesión), pero sin envolver en <Layout> --
+// para los visores "monitor" standalone (KDS por ahora, ver
+// wiki/entities/restolibra.md) que no llevan sidebar ni topbar, pensados
+// para quedar fijos en su propio monitor.
+function StandaloneRoute({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
+  if (loading) {
+    return (
+      <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
+        Cargando…
+      </div>
+    )
+  }
+  if (!user) return <Navigate to="/login" replace />
+  return <>{children}</>
 }
 
 // Etapa A: solo Login + Dashboard. Mas rutas se agregan por etapa, igual
@@ -442,6 +467,81 @@ export default function App() {
         element={
           <ProtectedRoute>
             <CategoriasProducto />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/kds" element={<Navigate to="/kds/cocina" replace />} />
+      <Route
+        path="/kds/:estacion"
+        element={
+          <ProtectedRoute>
+            <Kds />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/kds/:estacion/monitor"
+        element={
+          <StandaloneRoute>
+            <KdsMonitor />
+          </StandaloneRoute>
+        }
+      />
+      <Route
+        path="/salon"
+        element={
+          <ProtectedRoute>
+            <MapaMesas />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/salon/config"
+        element={
+          <ProtectedRoute>
+            <SalonConfig />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/salon/reservas"
+        element={
+          <ProtectedRoute>
+            <Reservas />
+          </ProtectedRoute>
+        }
+      />
+      {/* Pantalla de pedido/cobro compartida -- mismo componente, dos
+          entradas de URL (mesa vs. canal sin mesa), ver PedidoDetalle.tsx. */}
+      <Route
+        path="/salon/pedido/:id"
+        element={
+          <ProtectedRoute>
+            <PedidoDetalle />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pedidos"
+        element={
+          <ProtectedRoute>
+            <PedidosBoard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pedidos/nuevo"
+        element={
+          <ProtectedRoute>
+            <PedidoNuevo />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pedidos/:id"
+        element={
+          <ProtectedRoute>
+            <PedidoDetalle />
           </ProtectedRoute>
         }
       />

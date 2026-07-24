@@ -282,6 +282,7 @@ from db_pedidos import (  # noqa: F401
     add_pedido_item,
     delete_pedido_item,
     set_pedido_item_nota,
+    anular_pedido,
 )
 from db_mesas import (  # noqa: F401
     get_mesas,

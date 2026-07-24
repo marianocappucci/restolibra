@@ -185,3 +185,19 @@ def set_pedido_item_nota(item_id: int, nota: str) -> bool:
             return False
         conn.execute("UPDATE pedido_items SET nota=? WHERE id=?", ((nota or "").strip(), item_id))
     return True
+
+
+def anular_pedido(pedido_id: int) -> bool:
+    """Anula un pedido abierto y libera la mesa (si tenía). Extraída del
+    router HTML (`web/routers/salon.py: salon_pedido_anular`, que queda
+    intacta) para que la API JSON de la Etapa D (Salón/Pedidos) reuse la
+    misma lógica en vez de duplicar el UPDATE inline. Sólo actúa si el
+    pedido sigue 'abierto' — devuelve False si ya fue cobrado/anulado."""
+    with get_connection() as conn:
+        row = conn.execute("SELECT estado, mesa_id FROM pedidos WHERE id=?", (pedido_id,)).fetchone()
+        if not row or row["estado"] != "abierto":
+            return False
+        conn.execute("UPDATE pedidos SET estado='anulado' WHERE id=?", (pedido_id,))
+        if row["mesa_id"]:
+            conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (row["mesa_id"],))
+    return True

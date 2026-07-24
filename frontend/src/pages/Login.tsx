@@ -20,8 +20,11 @@ export function Login() {
     setError(null)
     setSubmitting(true)
     try {
-      await login(username, password)
-      navigate('/dashboard', { replace: true })
+      const loggedIn = await login(username, password)
+      // El rol mozo solo opera Salon/Pedidos -- cae directo ahi, nunca en
+      // el dashboard (mismo comportamiento que el Jinja2 viejo, ver
+      // web/app.py: login_post / wiki/entities/restolibra.md).
+      navigate(loggedIn.role === 'mozo' ? '/salon' : '/dashboard', { replace: true })
     } catch (err) {
       setError(err instanceof ApiError ? err.detail : 'Error de conexión.')
     } finally {

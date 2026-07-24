@@ -135,6 +135,161 @@ export type ReporteGastronomicoResumen = {
   canales: ReporteCanal[]
 }
 
+// --- Salón / Pedidos (Etapa D -- sin equivalente en Contalibra, único
+// dominio de esta migración sin router Jinja2 hermano del que portar UI).
+// Ver web/api/salon.py y web/api/pedidos.py. `PedidoDetalle.tsx` es una
+// sola pantalla compartida entre mesas (`canal='salon'`) y canales sin
+// mesa (barra/takeaway/delivery) -- ambos flujos terminan en
+// GET/POST /api/pedidos/{id}..., mismo shape `Pedido` para los dos.
+
+export type Salon = { id: number; nombre: string; orden: number; activo: number }
+
+export type Mesa = {
+  id: number
+  salon_id: number
+  salon_nombre: string
+  nombre: string
+  capacidad: number
+  orden: number
+  activo: number
+  estado: 'libre' | 'ocupada' | 'cuenta'
+  pedido_id: number | null
+  pedido_numero: string | null
+  pedido_creado_at: string | null
+  pedido_total: number
+  mins_ocupada: number
+}
+
+export type MapaSalonData = {
+  salones: Salon[]
+  salon_sel: number
+  mesas: Mesa[]
+  reservas_por_mesa: Record<string, Reserva>
+}
+
+export type Reserva = {
+  id: number
+  mesa_id: number
+  mesa_nombre?: string
+  salon_nombre?: string
+  fecha: string
+  hora: string
+  cliente_nombre: string
+  telefono: string
+  comensales: number
+  notas: string
+  estado: 'pendiente' | 'cumplida' | 'cancelada'
+}
+
+export type MesaDetalle = {
+  mesa: Mesa
+  pedido_abierto_id: number | null
+  reservas_hoy: Reserva[]
+}
+
+export type SalonConfigData = {
+  salones: Salon[]
+  mesas_por_salon: Record<string, Mesa[]>
+  cfg: {
+    cubierto_activo: boolean
+    cubierto_precio: number
+    panera_activo: boolean
+    panera_precio: number
+  }
+}
+
+export const CANALES_SIN_MESA = ['barra', 'takeaway', 'delivery'] as const
+export type CanalSinMesa = (typeof CANALES_SIN_MESA)[number]
+export const CANAL_LABEL: Record<CanalSinMesa, string> = {
+  barra: 'Barra', takeaway: 'Takeaway', delivery: 'Delivery',
+}
+
+export type PedidoModificador = { ingrediente_id: number; ingrediente_nombre: string; modo: 'quitar' | 'doble' }
+
+export type PedidoItem = {
+  id: number
+  pedido_id: number
+  producto_id: number | null
+  nombre: string
+  qty: number
+  precio: number
+  subtotal: number
+  estacion: string
+  estado: 'nuevo' | 'tomando' | 'enviado' | 'anulado'
+  nota: string
+  modificadores: string
+  modificadores_resumen: string
+  comanda_id: number | null
+}
+
+// Comanda anidada dentro de un Pedido (GET /api/pedidos/{id}) -- shape más
+// chico que el `Comanda` de KDS (ver web/api/kds.py / KdsFeed más abajo en
+// este archivo), que trae items/mesa/mins para el feed de cocina/barra.
+// Nombre distinto a propósito para no colisionar con ese tipo.
+export type PedidoComanda = {
+  id: number
+  pedido_id: number
+  estacion: string
+  numero: number
+  estado: 'pendiente' | 'preparacion' | 'listo' | 'entregado'
+  created_at: string
+}
+
+export type Pedido = {
+  id: number
+  numero: string
+  canal: string
+  mesa_id: number | null
+  mesa_nombre: string | null
+  salon_id: number | null
+  salon_nombre: string | null
+  comensales: number
+  mozo: string | null
+  cliente_id: number | null
+  cliente_nombre: string
+  observaciones: string
+  telefono: string
+  direccion: string
+  repartidor: string
+  costo_envio: number
+  hora_retiro: string
+  estado: 'abierto' | 'cobrando' | 'cobrado' | 'anulado'
+  venta_id: number | null
+  created_at: string
+  items: PedidoItem[]
+  comandas: PedidoComanda[]
+  total: number
+}
+
+export type PedidoResumen = {
+  id: number
+  numero: string
+  canal: string
+  mesa_id: number | null
+  mesa_nombre: string | null
+  mozo: string | null
+  cliente_nombre: string
+  telefono: string
+  direccion: string
+  repartidor: string
+  costo_envio: number
+  hora_retiro: string
+  observaciones: string
+  estado: string
+  created_at: string
+  total: number
+  n_items: number
+}
+
+export type PedidosBoardData = { por_canal: Record<CanalSinMesa, PedidoResumen[]> }
+
+export type MenuProducto = { id: number; nombre: string; precio_venta: number; estacion: string }
+export type MenuData = { productos: MenuProducto[]; recetas_por_producto: Record<string, RecetaIngrediente[]> }
+
+export type MedioPago = { id: string; label: string }
+
+export type CobroResultado = { venta_id: number; ya_cobrado: boolean }
+
 export type PedidoActivo = {
   id: number
   canal: string
@@ -627,6 +782,25 @@ export type MpPago = {
   created_at: string
   cliente: Cliente | null
 }
+
+// --- KDS (Kitchen Display System) -- ver web/api/kds.py, exclusivo de
+// Restolibra sin equivalente en Contalibra (Etapa D). Mismo shape que el
+// feed Jinja2 viejo (web/routers/kds.py::kds_feed) -- ver useKdsFeed.ts.
+export type ComandaEstacion = 'cocina' | 'barra'
+export type ComandaEstado = 'pendiente' | 'preparacion' | 'listo'
+export type ComandaItem = { qty: number; nombre: string; nota: string }
+export type Comanda = {
+  id: number
+  estado: ComandaEstado
+  numero: number
+  pedido_numero: string
+  mesa: string
+  mozo: string
+  created_at: string
+  mins: number
+  items: ComandaItem[]
+}
+export type KdsFeed = { comandas: Comanda[] }
 
 // --- Stock (Etapa C, divergencia real con Contalibra) -- ver
 // web/api/stock.py. `StockItem` (arriba) ya cubre el listado
