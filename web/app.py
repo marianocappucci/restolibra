@@ -42,6 +42,24 @@ from web.routers import kds as kds_router
 from web.routers import pedidos as pedidos_router
 from web.api import auth as api_auth_router
 from web.api import dashboard as api_dashboard_router
+from web.api import caja as api_caja_router
+from web.api import cajas as api_cajas_router
+from web.api import turnos as api_turnos_router
+from web.api import tesoreria as api_tesoreria_router
+from web.api import clientes as api_clientes_router
+from web.api import proveedores as api_proveedores_router
+from web.api import egresos as api_egresos_router
+from web.api import cuenta_corriente as api_cc_router
+from web.api import presupuestos as api_presupuestos_router
+from web.api import remitos as api_remitos_router
+from web.api import reportes as api_reportes_router
+from web.api import libros_iva as api_libros_iva_router
+from web.api import logs as api_logs_router
+from web.api import ventas as api_ventas_router
+from web.api import mp_bandeja as api_mp_bandeja_router
+from web.api import depositos as api_depositos_router
+from web.api import listas_precio as api_listas_precio_router
+from web.api import config as api_config_router
 from web.api_auth import get_current_user_json, require_admin_json  # noqa: F401
 from web.modules_gate import require_module  # noqa: F401
 
@@ -187,8 +205,82 @@ app.include_router(pedidos_router.router)
 # a React) -- convive con los routers HTML de arriba sobre la misma cookie
 # hasta la etapa de corte. Mas routers /api/<modulo> se agregan por etapa,
 # igual que se hizo en Contalibra. ---
+_auth_json = Depends(get_current_user_json)
+
 app.include_router(api_auth_router.router)
 app.include_router(api_dashboard_router.router)
+app.include_router(
+    api_caja_router.router,
+    dependencies=[_auth_json, Depends(require_module("caja"))],
+)
+app.include_router(
+    api_cajas_router.router,
+    dependencies=[_auth_json, Depends(require_module("cajas"))],
+)
+app.include_router(
+    api_turnos_router.router,
+    dependencies=[_auth_json],
+)
+app.include_router(
+    api_tesoreria_router.router,
+    dependencies=[Depends(require_admin_json), Depends(require_module("tesoreria"))],
+)
+app.include_router(
+    api_depositos_router.router,
+    dependencies=[_auth_json, Depends(require_module("depositos"))],
+)
+app.include_router(
+    api_listas_precio_router.router,
+    dependencies=[_auth_json, Depends(require_module("listas_precio"))],
+)
+app.include_router(
+    api_config_router.router,
+    dependencies=[Depends(require_admin_json)],
+)
+app.include_router(
+    api_ventas_router.router,
+    dependencies=[_auth_json, Depends(require_module("ventas"))],
+)
+app.include_router(
+    api_mp_bandeja_router.router,
+    dependencies=[_auth_json],
+)
+app.include_router(
+    api_clientes_router.router,
+    dependencies=[_auth_json, Depends(require_module("clientes"))],
+)
+app.include_router(
+    api_proveedores_router.router,
+    dependencies=[_auth_json, Depends(require_module("proveedores"))],
+)
+app.include_router(
+    api_egresos_router.router,
+    dependencies=[_auth_json, Depends(require_module("egresos"))],
+)
+app.include_router(
+    api_cc_router.router,
+    dependencies=[_auth_json, Depends(require_module("cuenta_corriente"))],
+)
+app.include_router(
+    api_presupuestos_router.router,
+    dependencies=[_auth_json, Depends(require_module("presupuestos"))],
+)
+app.include_router(
+    api_remitos_router.router,
+    dependencies=[_auth_json, Depends(require_module("remitos"))],
+)
+app.include_router(
+    api_reportes_router.router,
+    dependencies=[_auth_json, Depends(require_module("reportes"))],
+)
+app.include_router(
+    api_libros_iva_router.router,
+    dependencies=[Depends(require_admin_json), Depends(require_module("libros_iva"))],
+)
+app.include_router(
+    api_logs_router.router,
+    dependencies=[Depends(require_admin_json)],
+)
 
 
 @app.on_event("startup")

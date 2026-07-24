@@ -150,11 +150,10 @@ async def lista_importar(
 
 
 # ── API para ventas ────────────────────────────────────────────────────────────
-
-@router.get("/api/listas-precio")
-def api_listas(user: Auth):
-    return JSONResponse(db.get_all_listas_precio(solo_activas=True))
-
+# GET /api/listas-precio (sin path param) se removio de aca: colisionaba con
+# el router nuevo de la SPA (web/api/listas_precio.py, mismo path, sin el
+# filtro solo_activas) y no lo usaba ningun template Jinja2 vigente -- mismo
+# saneamiento que ya se hizo en Contalibra durante su migracion.
 
 @router.get("/api/listas-precio/{lista_id}/precios")
 def api_precios_lista(lista_id: int, user: Auth):

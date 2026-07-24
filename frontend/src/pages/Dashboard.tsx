@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import {
   Gauge, Receipt, ArrowDownCircle, ArrowUpCircle, Wallet, ClipboardList,
   Hourglass, CheckCircle2, Inbox, History, UtensilsCrossed, CalendarClock,
-  LineChart, Flame, Plus, Beer, ShoppingBag, Truck as TruckIcon,
+  LineChart, Flame, Plus, Beer, ShoppingBag, Truck as TruckIcon, PiggyBank,
 } from 'lucide-react'
 
 const CANAL_LABEL: Record<string, string> = { salon: 'Salón', barra: 'Barra', takeaway: 'Takeaway', delivery: 'Delivery' }
@@ -170,6 +170,9 @@ export function Dashboard() {
             <Button asChild size="sm" variant="outline"><Link to="/salon/reservas"><CalendarClock />Reservas</Link></Button>
             <Button asChild size="sm" variant="outline"><Link to="/kds"><Flame />KDS</Link></Button>
             <Button asChild size="sm" variant="outline"><Link to="/facturas/nueva"><Plus />Nueva factura</Link></Button>
+            {/* Deep-link a Caja.tsx: ?nuevo=1 abre el diálogo "Nuevo movimiento"
+                directo (mismo patrón que Contalibra Dashboard.tsx). */}
+            <Button asChild size="sm" variant="outline"><Link to="/caja?nuevo=1"><PiggyBank />Nuevo movimiento de caja</Link></Button>
           </div>
 
           {/* ── Resumen contable del mes ── */}
