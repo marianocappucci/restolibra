@@ -3,11 +3,14 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
-import { api, ApiError, IVA_CONDITIONS, type Cliente, type ClienteConComprobantes } from '../api'
+import {
+  api, ApiError, IVA_CONDITIONS, type AliasFacturacion, type Cliente, type ClienteConComprobantes,
+} from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -20,7 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
-  IdCard, Pencil, ArrowLeft, Plus, Trash2,
+  IdCard, Pencil, Undo2, ArrowLeft, ArrowLeftRight, Plus, Trash2,
   BarChart3, Receipt, FileText, Truck, Inbox, Eye, Search, Loader2, CheckCircle2, XCircle,
 } from 'lucide-react'
 
@@ -59,15 +62,15 @@ const EMPTY_VALUES: ClienteFormValues = {
 }
 
 // Portado desde Contalibra (frontend/src/pages/ClienteDetalle.tsx) -- mismo
-// backend libracore. Dos diferencias deliberadas con Contalibra, ver
-// web/api/clientes.py para el detalle completo:
-// 1. Sin boton "Reactivar cliente" -- GET /api/clientes/{id} siempre trae un
-//    cliente activo en esta etapa (el listado que llega aca solo tiene
-//    activos), asi que no hace falta la rama `!cliente.activo`.
-// 2. Sin la tarjeta "Alias de facturación (Mercado Pago)" -- feature nueva
-//    de Contalibra sin equivalente en el router Jinja2 viejo de Restolibra,
-//    no se porta. El toggle de auto-factura MP SI se porta (es baseline en
-//    Restolibra, ver web/templates/clientes/detail.html).
+// backend libracore. Etapa C (2026-07-24): se completan las dos features
+// que la Etapa B habia dejado afuera, ver web/api/clientes.py para el
+// detalle completo:
+// 1. Boton "Reactivar cliente" cuando `!cliente.activo` -- la baja
+//    (`eliminar`, boton "Eliminar cliente" mas abajo) se sigue conservando
+//    tal cual estaba en el baseline de Restolibra, ahora condicionada a
+//    `cliente.activo` igual que "Editar".
+// 2. Tarjeta "Alias de facturación (Mercado Pago)" -- portada de Contalibra
+//    tal cual.
 //
 // El resumen de facturas/presupuestos/remitos y las tres tablas de
 // comprobantes asociados usan datos reales de GET /api/clientes/{id} (ver
@@ -83,6 +86,11 @@ export function ClienteDetalle() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [toggling, setToggling] = useState(false)
+  const [aliasTipo, setAliasTipo] = useState<'cuit' | 'email'>('cuit')
+  const [aliasValor, setAliasValor] = useState('')
+  const [aliasError, setAliasError] = useState<string | null>(null)
+  const [savingAlias, setSavingAlias] = useState(false)
+  const [confirmDeleteAlias, setConfirmDeleteAlias] = useState<AliasFacturacion | null>(null)
 
   const [editOpen, setEditOpen] = useState(false)
   const [guardando, setGuardando] = useState(false)
@@ -118,6 +126,17 @@ export function ClienteDetalle() {
     }
   }
 
+  async function reactivar() {
+    if (!cliente) return
+    setError(null)
+    try {
+      await api.post(`/api/clientes/${cliente.id}/activar`)
+      await cargar()
+    } catch (err) {
+      setError(describeError(err))
+    }
+  }
+
   async function toggleAutoFacturar() {
     if (!cliente) return
     setToggling(true)
@@ -129,6 +148,34 @@ export function ClienteDetalle() {
       setError(describeError(err))
     } finally {
       setToggling(false)
+    }
+  }
+
+  async function agregarAlias() {
+    if (!cliente || !aliasValor.trim()) return
+    setSavingAlias(true)
+    setAliasError(null)
+    try {
+      const alias = await api.post<AliasFacturacion[]>(`/api/clientes/${cliente.id}/alias-facturacion`, {
+        tipo: aliasTipo, valor: aliasValor,
+      })
+      setCliente({ ...cliente, alias_facturacion: alias })
+      setAliasValor('')
+    } catch (err) {
+      setAliasError(describeError(err))
+    } finally {
+      setSavingAlias(false)
+    }
+  }
+
+  async function eliminarAlias(aliasId: number) {
+    if (!cliente) return
+    setAliasError(null)
+    try {
+      const alias = await api.del<AliasFacturacion[]>(`/api/clientes/${cliente.id}/alias-facturacion/${aliasId}`)
+      setCliente({ ...cliente, alias_facturacion: alias })
+    } catch (err) {
+      setAliasError(describeError(err))
     }
   }
 
@@ -219,12 +266,15 @@ export function ClienteDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <IdCard className="size-5 text-primary" />
-          {cliente ? cliente.name : 'Cliente'}
-        </h2>
+        <div className="flex items-center gap-3">
+          <h2 className="flex items-center gap-2 text-lg font-semibold">
+            <IdCard className="size-5 text-primary" />
+            {cliente ? cliente.name : 'Cliente'}
+          </h2>
+          {cliente && !cliente.activo && <Badge variant="secondary">Inactivo</Badge>}
+        </div>
         <div className="flex flex-wrap gap-2">
-          {cliente && (
+          {cliente && cliente.activo && (
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogTrigger asChild>
                 <Button size="sm" variant="outline" onClick={abrirEditar}><Pencil />Editar</Button>
@@ -362,6 +412,9 @@ export function ClienteDetalle() {
               </DialogContent>
             </Dialog>
           )}
+          {cliente && !cliente.activo && (
+            <Button size="sm" variant="outline" onClick={reactivar}><Undo2 />Reactivar cliente</Button>
+          )}
           <Button asChild size="sm" variant="outline"><Link to="/clientes"><ArrowLeft />Volver</Link></Button>
         </div>
       </div>
@@ -422,6 +475,57 @@ export function ClienteDetalle() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base"><ArrowLeftRight className="size-4" />Alias de facturación (Mercado Pago)</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3">
+              <p className="text-xs text-muted-foreground">
+                Si un pago de MP llega con un CUIT o email distinto al de este cliente (por ejemplo, paga con otra
+                cuenta), agregá ese CUIT o email acá para que se facture igual a <strong>{cliente.name}</strong> en
+                vez de crear un cliente nuevo.
+              </p>
+
+              {aliasError && <p className="text-sm text-destructive">{aliasError}</p>}
+
+              {cliente.alias_facturacion.length > 0 ? (
+                <ul className="divide-y">
+                  {cliente.alias_facturacion.map((a) => (
+                    <li key={a.id} className="flex items-center justify-between gap-2 py-2 text-sm">
+                      <span className="flex items-center gap-2">
+                        <Badge variant="secondary">{a.tipo === 'cuit' ? 'CUIT' : 'Email'}</Badge>
+                        <span className="font-mono">{a.valor}</span>
+                      </span>
+                      <Button size="icon" variant="outline" onClick={() => setConfirmDeleteAlias(a)}><Trash2 /></Button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-muted-foreground">Todavía no hay alias configurados para este cliente.</p>
+              )}
+
+              <div className="flex flex-wrap items-end gap-2 border-t pt-3">
+                <div className="grid gap-1.5">
+                  <Label>Tipo</Label>
+                  <Select value={aliasTipo} onValueChange={(v) => setAliasTipo(v as 'cuit' | 'email')}>
+                    <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cuit">CUIT</SelectItem>
+                      <SelectItem value="email">Email</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Valor</Label>
+                  <Input value={aliasValor} onChange={(e) => setAliasValor(e.target.value)} placeholder="20-12345678-9 o correo@ejemplo.com" className="w-56" />
+                </div>
+                <Button size="sm" variant="outline" disabled={savingAlias || !aliasValor.trim()} onClick={agregarAlias}>
+                  <Plus />{savingAlias ? 'Agregando…' : 'Agregar alias'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
 
           {cliente.facturas.length > 0 && (
             <Card>
@@ -551,11 +655,13 @@ export function ClienteDetalle() {
             </Card>
           )}
 
-          <div className="flex justify-end">
-            <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
-              <Trash2 />Eliminar cliente
-            </Button>
-          </div>
+          {cliente.activo && (
+            <div className="flex justify-end">
+              <Button variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(true)}>
+                <Trash2 />Eliminar cliente
+              </Button>
+            </div>
+          )}
         </>
       )}
 
@@ -573,6 +679,16 @@ export function ClienteDetalle() {
         onOpenChange={setConfirmDelete}
         title={`¿Eliminar a ${cliente?.name ?? ''}?`}
         onConfirm={() => { setConfirmDelete(false); eliminar() }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmDeleteAlias}
+        onOpenChange={(o) => !o && setConfirmDeleteAlias(null)}
+        title="¿Quitar este alias de facturación?"
+        onConfirm={() => {
+          if (confirmDeleteAlias) eliminarAlias(confirmDeleteAlias.id)
+          setConfirmDeleteAlias(null)
+        }}
       />
     </div>
   )

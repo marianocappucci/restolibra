@@ -162,12 +162,10 @@ export type DashboardData = {
 }
 
 // --- Clientes / Cuenta Corriente / Proveedores / Egresos -- portados desde
-// Contalibra (frontend/src/api.ts), mismo backend libracore. Nota: Cliente
-// NO incluye `alias_facturacion` -- esa feature (alias de facturacion MP) es
-// nueva en Contalibra y no se porta a Restolibra en esta etapa (ver
-// web/api/clientes.py). `activo` se deja tipado porque el backend lo
-// devuelve, pero no hay UI de reactivacion -- el listado solo trae clientes
-// activos (tambien sin portar, mismo motivo).
+// Contalibra (frontend/src/api.ts), mismo backend libracore. Etapa C
+// (2026-07-24): se completan activar/reactivar (`activo`, ya tipado desde
+// la Etapa B) y el alias de facturacion MP (`AliasFacturacion`), portados
+// del estado actual de Contalibra -- ver web/api/clientes.py.
 
 export type Cliente = {
   id: number
@@ -179,6 +177,13 @@ export type Cliente = {
   iva_condition: string
   auto_facturar: number
   activo: number
+}
+
+export type AliasFacturacion = {
+  id: number
+  tipo: 'cuit' | 'email'
+  valor: string
+  cliente_id: number
 }
 
 export const IVA_CONDITIONS = [
@@ -198,18 +203,55 @@ export type ConsultaCuit = {
   error?: string
 }
 
-// Tipos minimos de comprobantes asociados al cliente (GET /api/clientes/{id})
-// -- el modulo Facturas en si (alta/detalle completo) es aparte, no se toca
-// aca (ver App.tsx / FacturaNueva.tsx).
+// Shape completo que devuelve GET /api/facturas/{id} (dentro de
+// FacturaDetalle) y GET /api/facturas (listado) -- modulo Facturas
+// (Etapa C, portado desde Contalibra, mismo motor libracore.db.facturas).
+// Superset del shape minimo que ya se usaba en ClienteConComprobantes mas
+// abajo (id/tipo/punto_venta/numero/fecha/total/cae), asi que no rompe ese uso.
+export type FacturaItem = { description: string; qty: number; unit_price: number; subtotal: number }
+
 export type Factura = {
   id: number
   tipo: number
   punto_venta: number
   numero: number
   fecha: string
+  cliente_cuit: string
+  cliente_razon: string
+  cliente_domicilio?: string
+  items: FacturaItem[]
+  subtotal: number
+  iva_amount: number
   total: number
+  concepto: number
   cae: string
+  cae_vto: string
+  observaciones: string
+  condicion_venta: string
+  total_cobrado?: number
+  cbte_asoc_tipo?: number
+  cbte_asoc_pv?: number
+  cbte_asoc_nro?: number
+  fch_serv_desde?: string
+  fch_serv_hasta?: string
+  fch_vto_pago?: string
 }
+
+export type FacturaDetalle = {
+  factura: Factura
+  tipo_label: string
+  concepto_label: string
+  iva_label: string
+  notas_credito: Factura[]
+  notas_debito: Factura[]
+  factura_original: Factura | null
+  cobros: { id: number; monto: number; medio_pago: string; fecha: string; referencia: string }[]
+  total_cobrado: number
+  pendiente: number
+  cliente_email: string
+}
+
+export type TipoFactura = { value: number; label: string }
 
 // Presupuesto/Remito ampliados al shape completo que devuelve
 // GET /api/presupuestos/{id} y GET /api/remitos/{id} (modulos Presupuestos/
@@ -254,6 +296,7 @@ export type Remito = {
 }
 
 export type ClienteConComprobantes = Cliente & {
+  alias_facturacion: AliasFacturacion[]
   facturas: Factura[]
   presupuestos: Presupuesto[]
   remitos: Remito[]
@@ -447,6 +490,16 @@ export type Usuario = {
   activo: number
 }
 
+// Portado desde Contalibra (ROLES de frontend/src/api.ts), con 'mozo' agregado
+// -- rol exclusivo de Restolibra sin equivalente en Contalibra (ver comentario
+// de `User` mas arriba). Usado en el Select de rol de Usuarios.tsx.
+export const ROLES = [
+  { value: 'admin', label: 'Admin' },
+  { value: 'operador', label: 'Operador' },
+  { value: 'cajero', label: 'Cajero' },
+  { value: 'mozo', label: 'Mozo' },
+] as const
+
 export type LibroIvaFactura = {
   id: number; tipo: number; punto_venta: number; numero: number; fecha: string
   cliente_razon: string; cliente_cuit: string; subtotal: number; iva_amount: number; total: number
@@ -575,22 +628,142 @@ export type MpPago = {
   cliente: Cliente | null
 }
 
+// --- Stock (Etapa C, divergencia real con Contalibra) -- ver
+// web/api/stock.py. `StockItem` (arriba) ya cubre el listado
+// (GET /api/stock -> {productos, alertas}); acá va lo propio del ajuste:
+// movimientos con tipo/motivo y el modo "entrada" con conversión de
+// unidad de compra (texto libre + factor, no persistido en `productos`,
+// ver docstring del router).
+
+export type MovimientoStock = {
+  id: number
+  producto_id: number
+  producto_nombre: string
+  unidad: string
+  tipo: 'entrada' | 'salida' | 'ajuste' | 'venta' | 'merma' | 'produccion'
+  cantidad: number
+  referencia: string
+  fecha: string
+  usuario_id: number | null
+  venta_id: number | null
+  created_at: string
+}
+
+export type StockListado = { productos: StockItem[]; alertas: StockItem[] }
+
+export const TIPO_MOVIMIENTO_LABELS: Record<MovimientoStock['tipo'], string> = {
+  entrada: 'Entrada',
+  salida: 'Salida',
+  ajuste: 'Ajuste',
+  venta: 'Venta',
+  merma: 'Merma',
+  produccion: 'Producción',
+}
+
+// Misma lista cerrada que el backend (web/api/stock.py MOTIVOS_MERMA,
+// portada de web/templates/stock/ajuste.html) -- no hay tabla de motivos
+// en el modelo real, es un dropdown fijo.
+export const MOTIVOS_MERMA = [
+  'Quemado',
+  'Caída al piso',
+  'Vencimiento',
+  'Rotura',
+  'Degustación',
+  'Consumo del personal',
+  'Otro',
+] as const
+
 // --- Depósitos / Listas de precio (detalle) / Config -- portados desde
 // Contalibra (frontend/src/api.ts), mismo backend libracore (db_productos.py/
 // db_listas_precio.py/config_manager.py, todos shims de libracore). `Producto`
-// acá es un shape mínimo (solo lo que usa DepositoTransferencia.tsx: id/codigo/
-// nombre/activo) -- si el módulo Productos (etapa aparte, divergencia real de
-// receta/food-cost/estación) ya declaró un tipo `Producto` más completo,
-// unificar con ese en vez de duplicar el identificador.
+// es ahora el shape completo (módulo Productos, Etapa C -- divergencia real
+// frente a Contalibra: suma `estacion`/`vendible` y todo lo que consume la
+// ficha técnica/receta) -- DepositoTransferencia.tsx seguía usándolo con un
+// subset (id/codigo/nombre/activo), así que ampliar acá no rompe ese uso.
 
 export type Producto = {
   id: number
   codigo: string | null
   nombre: string
+  descripcion: string
+  precio_venta: number
+  precio_costo: number
+  unidad: string
+  categoria: string
+  stock_minimo: number
+  estacion: string
+  vendible: number
   activo: number
 }
 
+export const UNIDADES = ['u', 'kg', 'g', 'lt', 'ml', 'm', 'cm', 'm²', 'caja', 'par', 'docena', 'pack']
+export const ESTACIONES = [
+  { value: '', label: '— Sin comanda —' },
+  { value: 'cocina', label: 'Cocina' },
+  { value: 'barra', label: 'Barra' },
+] as const
+
 export type CategoriaProducto = { id: number; nombre: string }
+
+// --- Recetas / ficha técnica (módulo Productos, Etapa C -- sin equivalente
+// en Contalibra) -- ver web/api/productos.py / db_recetas.py.
+
+export type RecetaIngrediente = {
+  id: number
+  ingrediente_id: number
+  cantidad: number
+  ingrediente_nombre: string
+  ingrediente_unidad: string
+  ingrediente_precio_costo: number
+}
+
+export type Receta = {
+  id: number
+  producto_id: number
+  notas: string
+  rinde: number
+  rinde_unidad: string
+  rendimiento_pct: number
+  ingredientes: RecetaIngrediente[]
+}
+
+export type RecetaDetalle = {
+  producto: Producto
+  receta: Receta | null
+  // Candidatos para agregar como ingrediente (productos activos, sin el propio).
+  ingredientes: Producto[]
+  costo: number
+  food_cost_pct: number | null
+  stock_actual: number
+}
+
+// Shape que devuelven PUT .../receta y POST .../receta/producir -- subset de
+// RecetaDetalle sin `ingredientes` (esa lista de candidatos no cambia al
+// guardar/producir, así que el backend no la vuelve a mandar).
+export type RecetaCosteo = Omit<RecetaDetalle, 'ingredientes'>
+
+export type ReporteFoodCostRow = {
+  id: number
+  nombre: string
+  categoria: string
+  precio_venta: number
+  costo: number
+  margen: number
+  food_cost_pct: number | null
+}
+
+export type ConsumoInsumoRow = {
+  id: number
+  nombre: string
+  unidad: string
+  consumido_venta: number
+  consumido_merma: number
+}
+
+export type ReporteCostosData = {
+  reporte: ReporteFoodCostRow[]
+  consumo: ConsumoInsumoRow[]
+}
 
 export type ItemListaPrecio = {
   id: number

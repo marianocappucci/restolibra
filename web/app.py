@@ -51,14 +51,18 @@ from web.api import proveedores as api_proveedores_router
 from web.api import egresos as api_egresos_router
 from web.api import cuenta_corriente as api_cc_router
 from web.api import presupuestos as api_presupuestos_router
+from web.api import facturas as api_facturas_router
 from web.api import remitos as api_remitos_router
 from web.api import reportes as api_reportes_router
 from web.api import libros_iva as api_libros_iva_router
+from web.api import usuarios as api_usuarios_router
 from web.api import logs as api_logs_router
 from web.api import ventas as api_ventas_router
 from web.api import mp_bandeja as api_mp_bandeja_router
 from web.api import depositos as api_depositos_router
+from web.api import stock as api_stock_router
 from web.api import listas_precio as api_listas_precio_router
+from web.api import productos as api_productos_router
 from web.api import config as api_config_router
 from web.api_auth import get_current_user_json, require_admin_json  # noqa: F401
 from web.modules_gate import require_module  # noqa: F401
@@ -73,9 +77,21 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/logout", "/favicon.ico", "/api/auth/
 # ni el resto del admin. Se permite reimprimir el ticket de una comanda ya enviada (botón
 # en salon/pedido.html) sin habilitar las pantallas de KDS (/kds/cocina, /kds/barra), que
 # son para cocina/barra, no para el mozo.
-_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas"}
+_MOZO_ALLOWED_EXACT = {"/salon", "/pedidos", "/salon/reservas",
+                       "/mi-cuenta", "/api/usuarios/me/password"}
 _MOZO_ALLOWED_PREFIXES = ("/salon/mesa/", "/salon/pedido/", "/pedidos/",
                           "/salon/reservas/")
+# Nota (Etapa C, 2026-07-24): "/mi-cuenta" y el endpoint de cambio de
+# contrasena propio se agregaron a la allowlist para que el modulo Usuarios
+# de la SPA (autoservicio de password) funcione tambien para el rol mozo.
+# Pendiente real para la Etapa D (cuando Salon/Pedidos/KDS tengan su propio
+# backend /api/): hoy el mozo sigue operando 100% sobre las rutas Jinja2
+# viejas, nunca navega a la SPA, asi que este middleware no lo bloquea en la
+# practica -- pero cuando esos modulos tengan version SPA, esta lista de
+# paths exactos va a quedar chica (cada endpoint /api/salon/*, /api/pedidos/*
+# nuevo habria que agregarlo a mano). Revisar entonces si conviene
+# reemplazar este approach por gating a nivel de router (como ya hace
+# require_module) en vez de una allowlist de paths acá.
 
 
 def _mozo_puede_ver(path: str) -> bool:
@@ -230,8 +246,16 @@ app.include_router(
     dependencies=[_auth_json, Depends(require_module("depositos"))],
 )
 app.include_router(
+    api_stock_router.router,
+    dependencies=[_auth_json, Depends(require_module("stock"))],
+)
+app.include_router(
     api_listas_precio_router.router,
     dependencies=[_auth_json, Depends(require_module("listas_precio"))],
+)
+app.include_router(
+    api_productos_router.router,
+    dependencies=[_auth_json, Depends(require_module("productos"))],
 )
 app.include_router(
     api_config_router.router,
@@ -266,6 +290,10 @@ app.include_router(
     dependencies=[_auth_json, Depends(require_module("presupuestos"))],
 )
 app.include_router(
+    api_facturas_router.router,
+    dependencies=[_auth_json, Depends(require_module("facturacion"))],
+)
+app.include_router(
     api_remitos_router.router,
     dependencies=[_auth_json, Depends(require_module("remitos"))],
 )
@@ -276,6 +304,17 @@ app.include_router(
 app.include_router(
     api_libros_iva_router.router,
     dependencies=[Depends(require_admin_json), Depends(require_module("libros_iva"))],
+)
+app.include_router(
+    api_usuarios_router.router,
+    dependencies=[Depends(require_admin_json)],
+)
+app.include_router(
+    # "Mi Cuenta" (autoservicio de la propia contraseña) -- NO admin-only,
+    # ver comentario en web/api/usuarios.py sobre el bug preexistente que
+    # esto corrige (require_admin -> get_current_user_json/_auth_json).
+    api_usuarios_router.me_router,
+    dependencies=[_auth_json],
 )
 app.include_router(
     api_logs_router.router,

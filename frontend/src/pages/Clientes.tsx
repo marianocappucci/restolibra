@@ -8,6 +8,7 @@ import { api, ApiError, IVA_CONDITIONS, type Cliente } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -20,7 +21,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTable, sortableHeader } from '@/components/data-table'
 import {
-  Users, Plus, Pencil, Eye, Trash2, Search, Loader2, CheckCircle2, XCircle,
+  Users, Plus, Pencil, Eye, Trash2, Undo2, Search, Loader2, CheckCircle2, XCircle,
 } from 'lucide-react'
 
 const clienteSchema = z.object({
@@ -40,15 +41,11 @@ const EMPTY_VALUES: ClienteFormValues = {
 }
 
 // Portado desde Contalibra (frontend/src/pages/Clientes.tsx) -- mismo
-// backend libracore. Dos diferencias deliberadas con Contalibra, ver
-// web/api/clientes.py para el detalle:
-// 1. Sin activar/reactivar: GET /api/clientes solo trae clientes activos
-//    (igual que el router Jinja2 viejo de Restolibra, web/routers/
-//    clientes.py -> `clientes_list` con `get_all_clients()`), asi que
-//    "Eliminar" es una baja sin vuelta atras desde esta pantalla -- no hay
-//    boton "Reactivar" ni columna/badge de estado "Inactivo".
-// 2. Sin alias de facturacion MP -- feature nueva de Contalibra sin
-//    equivalente en el router Jinja2 viejo de Restolibra, no se porta.
+// backend libracore. Etapa C (2026-07-24): se completa activar/reactivar
+// (ver web/api/clientes.py) -- GET /api/clientes ahora trae activos e
+// inactivos, el nombre lleva el badge "Inactivo" y "Eliminar" se reemplaza
+// por "Reactivar" cuando el cliente ya esta dado de baja, igual que en
+// Contalibra.
 export function Clientes() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,13 +87,16 @@ export function Clientes() {
   }
 
   // El "eliminar" de web/templates/clientes/list.html en realidad desactiva
-  // (sin endpoint de reactivacion en esta etapa) -- se conserva el mismo
-  // texto de confirmacion y verbo que usaba la pagina vieja, ahora via
+  // (existe un endpoint de "activar" para deshacerlo) -- se conserva el
+  // mismo texto de confirmacion y verbo que usaba la pagina vieja, ahora via
   // ConfirmDialog en vez de window.confirm.
-  async function eliminar(cliente: Cliente) {
+  async function toggleActivo(cliente: Cliente) {
     setError(null)
     try {
-      await api.post(`/api/clientes/${cliente.id}/desactivar`)
+      const path = cliente.activo
+        ? `/api/clientes/${cliente.id}/desactivar`
+        : `/api/clientes/${cliente.id}/activar`
+      await api.post(path)
       await loadClientes()
     } catch (err) {
       setError(describeError(err))
@@ -172,7 +172,10 @@ export function Clientes() {
   // misma página de detalle en vez de navegar a /clientes/:id/editar.
   const columns = useMemo<ColumnDef<Cliente>[]>(() => [
     { accessorKey: 'name', header: sortableHeader('Nombre / Razón social'), cell: ({ row }) => (
-      <Link to={`/clientes/${row.original.id}`} className="font-medium hover:underline">{row.original.name}</Link>
+      <Link to={`/clientes/${row.original.id}`} className="font-medium hover:underline">
+        {row.original.name}
+        {!row.original.activo && <Badge variant="secondary" className="ml-2">Inactivo</Badge>}
+      </Link>
     ) },
     { accessorKey: 'cuit_dni', header: 'CUIT / DNI', cell: ({ row }) => row.original.cuit_dni || '—' },
     { accessorKey: 'iva_condition', header: 'Condición IVA', cell: ({ row }) => row.original.iva_condition || '—' },
@@ -185,10 +188,16 @@ export function Clientes() {
           <Button asChild size="sm" variant="outline" title="Ver ficha">
             <Link to={`/clientes/${row.original.id}`}><Eye />Ver</Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link to={`/clientes/${row.original.id}`}><Pencil />Editar</Link>
-          </Button>
-          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(row.original)}><Trash2 />Eliminar</Button>
+          {row.original.activo && (
+            <Button asChild size="sm" variant="outline">
+              <Link to={`/clientes/${row.original.id}`}><Pencil />Editar</Link>
+            </Button>
+          )}
+          {row.original.activo ? (
+            <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmDelete(row.original)}><Trash2 />Eliminar</Button>
+          ) : (
+            <Button size="sm" variant="outline" title="Reactivar cliente" onClick={() => toggleActivo(row.original)}><Undo2 />Reactivar</Button>
+          )}
         </div>
       ),
     },
@@ -329,6 +338,7 @@ export function Clientes() {
               columns={columns}
               data={clientes}
               emptyMessage="No hay clientes registrados aún."
+              getRowClassName={(c) => !c.activo ? 'opacity-50' : undefined}
             />
           )}
         </CardContent>
@@ -339,7 +349,7 @@ export function Clientes() {
         onOpenChange={(o) => !o && setConfirmDelete(null)}
         title={`¿Eliminar a ${confirmDelete?.name ?? ''}?`}
         onConfirm={() => {
-          if (confirmDelete) eliminar(confirmDelete)
+          if (confirmDelete) toggleActivo(confirmDelete)
           setConfirmDelete(null)
         }}
       />

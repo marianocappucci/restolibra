@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { type ColumnDef } from '@tanstack/react-table'
+import {
+  api, ApiError, TIPO_MOVIMIENTO_LABELS, type MovimientoStock, type Producto,
+} from '../api'
+import { Card, CardContent } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
+import { DataTable, sortableHeader } from '@/components/data-table'
+import { formatEntero } from '@/lib/utils'
+import {
+  ArrowDownCircle, ArrowLeft, ArrowUpCircle, History, RefreshCw, ShoppingCart, TriangleAlert, X,
+} from 'lucide-react'
+
+const TIPO_BADGE: Record<MovimientoStock['tipo'], { className: string; icon: typeof ArrowDownCircle }> = {
+  entrada: { className: 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400', icon: ArrowDownCircle },
+  salida: { className: 'border-destructive/30 bg-destructive/10 text-destructive', icon: ArrowUpCircle },
+  venta: { className: 'border-primary/30 bg-primary/10 text-primary', icon: ShoppingCart },
+  ajuste: { className: 'border-muted-foreground/30 bg-muted text-muted-foreground', icon: RefreshCw },
+  merma: { className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400', icon: TriangleAlert },
+  produccion: { className: 'border-muted-foreground/30 bg-muted text-muted-foreground', icon: RefreshCw },
+}
+
+// Portado desde web/routers/stock.py (stock_movimientos) + web/templates/
+// stock/movimientos.html -- filtro por producto/fecha, mismo endpoint que
+// consume el link "Ver movimientos" de Stock.tsx.
+export function StockMovimientos() {
+  const [searchParams, setSearchParams] = useSearchParams()
+  const productoId = searchParams.get('producto_id') ?? ''
+  const desde = searchParams.get('desde') ?? ''
+  const hasta = searchParams.get('hasta') ?? ''
+
+  const [movimientos, setMovimientos] = useState<MovimientoStock[]>([])
+  const [productos, setProductos] = useState<Producto[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    api.get<Producto[]>('/api/productos').then((p) => setProductos(p.filter((x) => x.activo))).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    cargar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productoId, desde, hasta])
+
+  function describeError(err: unknown): string {
+    if (err instanceof ApiError) return err.detail
+    return 'Error de conexión.'
+  }
+
+  async function cargar() {
+    setLoading(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (productoId) params.set('producto_id', productoId)
+      if (desde) params.set('desde', desde)
+      if (hasta) params.set('hasta', hasta)
+      const qs = params.toString()
+      setMovimientos(await api.get<MovimientoStock[]>(`/api/stock/movimientos${qs ? `?${qs}` : ''}`))
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function actualizarFiltro(campo: 'producto_id' | 'desde' | 'hasta', valor: string) {
+    const next = new URLSearchParams(searchParams)
+    if (valor) next.set(campo, valor); else next.delete(campo)
+    setSearchParams(next)
+  }
+
+  function limpiarFiltros() {
+    setSearchParams(new URLSearchParams())
+  }
+
+  const productoNombre = productos.find((p) => String(p.id) === productoId)?.nombre
+
+  const columns = useMemo<ColumnDef<MovimientoStock>[]>(() => [
+    { accessorKey: 'fecha', header: sortableHeader('Fecha'), cell: ({ row }) => <span className="text-muted-foreground">{row.original.fecha}</span> },
+    {
+      accessorKey: 'producto_nombre',
+      header: 'Producto',
+      cell: ({ row }) => (
+        <Link to={`/stock/movimientos?producto_id=${row.original.producto_id}`} className="font-medium hover:underline">
+          {row.original.producto_nombre}
+          <span className="ml-1.5 text-xs text-muted-foreground">{row.original.unidad}</span>
+        </Link>
+      ),
+    },
+    {
+      accessorKey: 'tipo',
+      header: () => <div className="text-center">Tipo</div>,
+      cell: ({ row }) => {
+        const t = row.original.tipo
+        const info = TIPO_BADGE[t] ?? TIPO_BADGE.ajuste
+        const Icon = info.icon
+        return <div className="flex justify-center"><Badge variant="outline" className={info.className}><Icon className="mr-1 size-3.5" />{TIPO_MOVIMIENTO_LABELS[t] ?? t}</Badge></div>
+      },
+    },
+    {
+      accessorKey: 'cantidad',
+      header: () => <div className="text-center">Cantidad</div>,
+      cell: ({ row }) => {
+        const c = row.original.cantidad
+        return <div className={`text-center font-semibold ${c > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>{c > 0 ? '+' : ''}{formatEntero(c)}</div>
+      },
+    },
+    { accessorKey: 'referencia', header: 'Referencia', cell: ({ row }) => row.original.referencia || '—' },
+  ], [])
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="flex items-center gap-2 text-lg font-semibold">
+          <History className="size-5 text-primary" />
+          Movimientos de stock
+          {productoNombre && <span className="text-sm font-normal text-muted-foreground">· {productoNombre}</span>}
+        </h2>
+        <Button asChild size="sm" variant="outline"><Link to="/stock"><ArrowLeft />Stock</Link></Button>
+      </div>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <Card>
+        <CardContent className="flex flex-wrap items-end gap-2 py-3">
+          <Select value={productoId || '__todos__'} onValueChange={(v) => actualizarFiltro('producto_id', v === '__todos__' ? '' : v)}>
+            <SelectTrigger className="w-56"><SelectValue placeholder="— Todos los productos —" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__todos__">— Todos los productos —</SelectItem>
+              {productos.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.nombre}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Input type="date" value={desde} onChange={(e) => actualizarFiltro('desde', e.target.value)} className="w-40" />
+          <Input type="date" value={hasta} onChange={(e) => actualizarFiltro('hasta', e.target.value)} className="w-40" />
+          {(productoId || desde || hasta) && (
+            <Button variant="outline" size="icon" onClick={limpiarFiltros} title="Limpiar filtros"><X /></Button>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          {loading ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
+          ) : (
+            <DataTable columns={columns} data={movimientos} emptyMessage="No hay movimientos registrados." />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

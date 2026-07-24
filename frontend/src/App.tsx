@@ -7,6 +7,8 @@ import { Dashboard } from './pages/Dashboard'
 import { Depositos } from './pages/Depositos'
 import { DepositoDetalle } from './pages/DepositoDetalle'
 import { DepositoTransferencia } from './pages/DepositoTransferencia'
+import { Stock } from './pages/Stock'
+import { StockMovimientos } from './pages/StockMovimientos'
 import { ListasPrecio } from './pages/ListasPrecio'
 import { ListaPrecioDetalle } from './pages/ListaPrecioDetalle'
 import { Config } from './pages/Config'
@@ -31,6 +33,9 @@ import { CuentaCorrienteDetalle } from './pages/CuentaCorrienteDetalle'
 import { Presupuestos } from './pages/Presupuestos'
 import { PresupuestoForm } from './pages/PresupuestoForm'
 import { PresupuestoDetalle } from './pages/PresupuestoDetalle'
+import { Facturas } from './pages/Facturas'
+import { FacturaNueva } from './pages/FacturaNueva'
+import { FacturaDetalle } from './pages/FacturaDetalle'
 import { Remitos } from './pages/Remitos'
 import { RemitoNuevo } from './pages/RemitoNuevo'
 import { RemitoDetalle } from './pages/RemitoDetalle'
@@ -38,6 +43,12 @@ import { Reportes } from './pages/Reportes'
 import { CajaMedios } from './pages/CajaMedios'
 import { LibrosIva } from './pages/LibrosIva'
 import { Logs } from './pages/Logs'
+import { Usuarios } from './pages/Usuarios'
+import { MiCuenta } from './pages/MiCuenta'
+import { Productos } from './pages/Productos'
+import { ProductoReceta } from './pages/ProductoReceta'
+import { ReporteCostos } from './pages/ReporteCostos'
+import { CategoriasProducto } from './pages/CategoriasProducto'
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -243,6 +254,30 @@ export default function App() {
         }
       />
       <Route
+        path="/facturas"
+        element={
+          <ProtectedRoute>
+            <Facturas />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/facturas/nueva"
+        element={
+          <ProtectedRoute>
+            <FacturaNueva />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/facturas/:id"
+        element={
+          <ProtectedRoute>
+            <FacturaDetalle />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/remitos"
         element={
           <ProtectedRoute>
@@ -299,6 +334,38 @@ export default function App() {
         }
       />
       <Route
+        path="/usuarios"
+        element={
+          <ProtectedRoute>
+            <Usuarios />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mi-cuenta"
+        element={
+          <ProtectedRoute>
+            <MiCuenta />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stock"
+        element={
+          <ProtectedRoute>
+            <Stock />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/stock/movimientos"
+        element={
+          <ProtectedRoute>
+            <StockMovimientos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/depositos"
         element={
           <ProtectedRoute>
@@ -343,6 +410,38 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Config />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/productos"
+        element={
+          <ProtectedRoute>
+            <Productos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/productos/reportes-costos"
+        element={
+          <ProtectedRoute>
+            <ReporteCostos />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/productos/:id/receta"
+        element={
+          <ProtectedRoute>
+            <ProductoReceta />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/config/categorias-producto"
+        element={
+          <ProtectedRoute>
+            <CategoriasProducto />
           </ProtectedRoute>
         }
       />

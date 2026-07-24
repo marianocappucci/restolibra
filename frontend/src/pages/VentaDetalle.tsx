@@ -176,7 +176,7 @@ export function VentaDetalle() {
 
           {(detalle.estado === 'cobrada' || detalle.estado === 'parcial') && (
             <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-              {!detalle.factura_id && <Button asChild size="sm" variant="outline"><Link to="/facturas/nueva"><ReceiptText />Generar factura</Link></Button>}
+              {!detalle.factura_id && <Button asChild size="sm" variant="outline"><Link to={`/facturas/nueva?from_venta=${detalle.id}`}><ReceiptText />Generar factura</Link></Button>}
               {!detalle.remito_id && <Button asChild size="sm" variant="outline"><Link to="/remitos/nuevo"><PackageCheck />Generar remito</Link></Button>}
               {user?.role === 'admin' && (
                 <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setConfirmAnular(true)}><Ban />Anular venta</Button>
