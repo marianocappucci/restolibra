@@ -395,7 +395,7 @@ def init_db():
                 costo_envio    REAL NOT NULL DEFAULT 0,
                 hora_retiro    TEXT DEFAULT '',
                 observaciones  TEXT DEFAULT '',
-                venta_id       INTEGER REFERENCES ventas(id) ON DELETE SET NULL,
+                venta_id       INTEGER REFERENCES sales(id) ON DELETE SET NULL,
                 created_at     TEXT DEFAULT (datetime('now')),
                 updated_at     TEXT DEFAULT (datetime('now'))
             );
