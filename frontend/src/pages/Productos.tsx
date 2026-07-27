@@ -178,32 +178,39 @@ export function Productos() {
   }
 
   const columns = useMemo<ColumnDef<Producto>[]>(() => [
-    { accessorKey: 'codigo', header: 'Código', cell: ({ row }) => <span className="font-mono text-xs">{row.original.codigo || '—'}</span> },
+    { accessorKey: 'codigo', header: 'Código', size: 88, minSize: 78, cell: ({ row }) => <span className="block truncate font-mono text-xs" title={row.original.codigo ?? undefined}>{row.original.codigo || '—'}</span> },
     {
       accessorKey: 'nombre',
       header: sortableHeader('Nombre'),
+      size: 110,
+      minSize: 90,
+      meta: { stretch: true },
       cell: ({ row }) => (
-        <span className="flex items-center gap-1.5 font-medium">
-          {row.original.nombre}
-          {!row.original.vendible && <Badge variant="secondary">Insumo</Badge>}
+        <span className="flex w-full items-center gap-1.5 font-medium">
+          <span className="truncate" title={row.original.nombre}>{row.original.nombre}</span>
+          {!row.original.vendible && <Badge variant="secondary" className="shrink-0">Insumo</Badge>}
         </span>
       ),
     },
-    { accessorKey: 'categoria', header: 'Categoría', cell: ({ row }) => row.original.categoria || '—' },
-    { accessorKey: 'unidad', header: 'Unidad' },
+    { accessorKey: 'categoria', header: 'Categoría', size: 96, minSize: 84, cell: ({ row }) => <span className="block truncate" title={row.original.categoria ?? undefined}>{row.original.categoria || '—'}</span> },
+    { accessorKey: 'unidad', header: 'Unidad', size: 70, minSize: 64, cell: ({ row }) => <span className="block truncate">{row.original.unidad}</span> },
     {
       accessorKey: 'estacion',
       header: 'Estación',
+      size: 96,
+      minSize: 84,
       cell: ({ row }) => {
         const est = ESTACIONES.find((e) => e.value === row.original.estacion)
-        return <span className="text-muted-foreground">{est && est.value ? est.label : '—'}</span>
+        return <span className="block truncate text-muted-foreground">{est && est.value ? est.label : '—'}</span>
       },
     },
-    { accessorKey: 'precio_venta', header: 'Precio venta', cell: ({ row }) => formatCurrency(row.original.precio_venta) },
-    { accessorKey: 'precio_costo', header: 'Precio costo', cell: ({ row }) => <span className="text-muted-foreground">{formatCurrency(row.original.precio_costo)}</span> },
+    { accessorKey: 'precio_venta', header: () => <div className="text-right">Precio venta</div>, size: 114, minSize: 100, cell: ({ row }) => <div className="truncate text-right">{formatCurrency(row.original.precio_venta)}</div> },
+    { accessorKey: 'precio_costo', header: () => <div className="text-right">Precio costo</div>, size: 114, minSize: 100, cell: ({ row }) => <div className="truncate text-right text-muted-foreground">{formatCurrency(row.original.precio_costo)}</div> },
     {
       accessorKey: 'activo',
       header: () => <div className="text-center">Estado</div>,
+      size: 78,
+      minSize: 72,
       cell: ({ row }) => (
         <div className="text-center">
           <Badge variant={row.original.activo ? 'default' : 'secondary'}>
@@ -215,13 +222,15 @@ export function Productos() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 118,
+      minSize: 104,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="outline" asChild>
-            <Link to={`/productos/${row.original.id}/receta`}><ClipboardList />Receta</Link>
+        <div className="flex justify-end gap-1">
+          <Button size="icon" variant="outline" title="Receta" aria-label="Receta" asChild>
+            <Link to={`/productos/${row.original.id}/receta`}><ClipboardList /></Link>
           </Button>
-          <Button size="sm" variant="outline" onClick={() => abrirEditar(row.original)}><Pencil />Editar</Button>
-          <Button size="sm" variant="outline" onClick={() => setConfirmDelete(row.original)}><Trash2 />Eliminar</Button>
+          <Button size="icon" variant="outline" title="Editar producto" aria-label="Editar producto" onClick={() => abrirEditar(row.original)}><Pencil /></Button>
+          <Button size="icon" variant="outline" title="Eliminar producto" aria-label="Eliminar producto" onClick={() => setConfirmDelete(row.original)}><Trash2 /></Button>
         </div>
       ),
     },

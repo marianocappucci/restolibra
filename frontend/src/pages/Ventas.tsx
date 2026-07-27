@@ -225,33 +225,46 @@ export function Ventas() {
   }
 
   const columns = useMemo<ColumnDef<Venta>[]>(() => [
-    { accessorKey: 'numero', header: sortableHeader('N°'), cell: ({ row }) => <span className="font-mono text-sm font-semibold text-primary">{row.original.numero}</span> },
-    { accessorKey: 'fecha', header: 'Fecha' },
-    { accessorKey: 'cliente_nombre', header: 'Cliente', cell: ({ row }) => row.original.cliente_nombre || '—' },
+    { accessorKey: 'numero', header: sortableHeader('N°'), size: 100, minSize: 90, cell: ({ row }) => <span className="block truncate font-mono text-sm font-semibold text-primary" title={row.original.numero}>{row.original.numero}</span> },
+    { accessorKey: 'fecha', header: 'Fecha', size: 100, minSize: 90 },
+    {
+      accessorKey: 'cliente_nombre',
+      header: 'Cliente',
+      size: 130,
+      minSize: 90,
+      meta: { stretch: true },
+      cell: ({ row }) => <span className="block w-full truncate" title={row.original.cliente_nombre ?? undefined}>{row.original.cliente_nombre || '—'}</span>,
+    },
     {
       id: 'pagos',
       header: 'Medios de pago',
+      size: 140,
+      minSize: 110,
       cell: ({ row }) => (
         <div className="flex flex-wrap gap-1">
           {row.original.pagos.length === 0
-            ? null
+            ? <span className="text-muted-foreground">—</span>
             : row.original.pagos.map((p, i) => (
               <Badge key={i} variant="outline" className="font-normal">{MEDIOS_PAGO_LABELS[p.medio] ?? p.medio}: {formatCurrency(p.monto)}</Badge>
             ))}
         </div>
       ),
     },
-    { accessorKey: 'total', header: 'Total', cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.total)}</span> },
+    { accessorKey: 'total', header: 'Total', size: 100, minSize: 80, cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.total)}</span> },
     {
       accessorKey: 'estado',
       header: 'Estado',
+      size: 110,
+      minSize: 90,
       cell: ({ row }) => <Badge variant={estadoVariant[row.original.estado] ?? 'outline'}>{estadoLabel(row.original.estado)}</Badge>,
     },
     {
       id: 'factura',
       header: 'Factura',
+      size: 140,
+      minSize: 100,
       cell: ({ row }) => row.original.factura_display
-        ? <a href={`/facturas/${row.original.factura_id}`} className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400"><ReceiptText className="size-3.5" />{row.original.factura_display}</a>
+        ? <a href={`/facturas/${row.original.factura_id}`} className="inline-flex w-full items-center gap-1 truncate text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400" title={row.original.factura_display}><ReceiptText className="size-3.5 shrink-0" /><span className="truncate">{row.original.factura_display}</span></a>
         : row.original.estado !== 'anulada'
           ? <Badge variant="outline" className="text-amber-700 dark:text-amber-400">Sin facturar</Badge>
           : <span className="text-muted-foreground">—</span>,
@@ -259,15 +272,17 @@ export function Ventas() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 150,
+      minSize: 130,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button asChild size="sm" variant="outline"><Link to={`/ventas/${row.original.id}`}><Eye />Ver</Link></Button>
-          <Button asChild size="sm" variant="outline"><a href={`/ventas/${row.original.id}/ticket`} target="_blank" rel="noreferrer"><Printer />Ticket</a></Button>
+        <div className="flex justify-end gap-1">
+          <Button asChild size="icon" variant="outline" title="Ver venta"><Link to={`/ventas/${row.original.id}`} aria-label="Ver venta"><Eye /></Link></Button>
+          <Button asChild size="icon" variant="outline" title="Imprimir ticket"><a href={`/ventas/${row.original.id}/ticket`} target="_blank" rel="noreferrer" aria-label="Imprimir ticket"><Printer /></a></Button>
           {row.original.pagos.length > 0 && (
-            <Button asChild size="sm" variant="outline"><a href={`/ventas/${row.original.id}/recibo`} target="_blank" rel="noreferrer"><FileCheck />Recibo</a></Button>
+            <Button asChild size="icon" variant="outline" title="Ver recibo"><a href={`/ventas/${row.original.id}/recibo`} target="_blank" rel="noreferrer" aria-label="Ver recibo"><FileCheck /></a></Button>
           )}
           {user?.role === 'admin' && row.original.estado !== 'anulada' && (
-            <Button size="sm" variant="outline" onClick={() => anular(row.original)}><Ban />Anular</Button>
+            <Button size="icon" variant="outline" title="Anular" onClick={() => anular(row.original)}><Ban /></Button>
           )}
         </div>
       ),

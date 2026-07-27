@@ -214,7 +214,13 @@ export function TesoreriaDetalle() {
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => <Button size="sm" variant="ghost" onClick={() => setConfirmDeleteMov(row.original.id)}><Trash2 />Eliminar</Button>,
+      size: 60,
+      minSize: 50,
+      cell: ({ row }) => (
+        <div className="flex justify-end">
+          <Button size="icon" variant="ghost" title="Eliminar movimiento" aria-label="Eliminar movimiento" onClick={() => setConfirmDeleteMov(row.original.id)}><Trash2 /></Button>
+        </div>
+      ),
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
   ], [])

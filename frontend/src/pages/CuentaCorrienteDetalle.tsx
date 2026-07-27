@@ -185,9 +185,13 @@ export function CuentaCorrienteDetalle() {
     {
       id: 'actions',
       header: '',
+      size: 60,
+      minSize: 50,
       cell: ({ row }) => (
         row.original.cc_pago_id && user?.role === 'admin' ? (
-          <Button size="sm" variant="ghost" onClick={() => setConfirmDeletePago(row.original.cc_pago_id!)}><Trash2 />Eliminar</Button>
+          <div className="flex justify-end">
+            <Button size="icon" variant="ghost" title="Eliminar pago" aria-label="Eliminar pago" onClick={() => setConfirmDeletePago(row.original.cc_pago_id!)}><Trash2 /></Button>
+          </div>
         ) : null
       ),
     },

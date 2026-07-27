@@ -209,7 +209,13 @@ export function Caja() {
       {
         id: 'actions',
         header: '',
-        cell: ({ row }) => <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(row.original)}><Trash2 />Eliminar</Button>,
+        size: 60,
+        minSize: 50,
+        cell: ({ row }) => (
+          <div className="flex justify-end">
+            <Button size="icon" variant="ghost" title="Eliminar movimiento" aria-label="Eliminar movimiento" onClick={() => setConfirmDelete(row.original)}><Trash2 /></Button>
+          </div>
+        ),
       },
     )
     return cols

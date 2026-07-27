@@ -152,28 +152,35 @@ export function Stock() {
     {
       accessorKey: 'nombre',
       header: sortableHeader('Producto'),
+      size: 200,
+      minSize: 110,
+      meta: { stretch: true },
       cell: ({ row }) => (
-        <div>
+        <span className="block truncate" title={row.original.nombre}>
           <span className="font-medium">{row.original.nombre}</span>
           {row.original.codigo && <span className="ml-1.5 text-xs text-muted-foreground">· {row.original.codigo}</span>}
-        </div>
+        </span>
       ),
     },
-    { accessorKey: 'categoria', header: 'Categoría', cell: ({ row }) => row.original.categoria || '—' },
-    { accessorKey: 'unidad', header: () => <div className="text-center">Unidad</div>, cell: ({ row }) => <div className="text-center text-muted-foreground">{row.original.unidad}</div> },
-    { accessorKey: 'stock_minimo', header: () => <div className="text-center">Mínimo</div>, cell: ({ row }) => <div className="text-center text-muted-foreground">{row.original.stock_minimo > 0 ? formatEntero(row.original.stock_minimo) : '—'}</div> },
+    { accessorKey: 'categoria', header: 'Categoría', size: 120, minSize: 90, cell: ({ row }) => <span className="block truncate" title={row.original.categoria ?? undefined}>{row.original.categoria || '—'}</span> },
+    { accessorKey: 'unidad', header: () => <div className="text-center">Unidad</div>, size: 85, minSize: 70, cell: ({ row }) => <div className="truncate text-center text-muted-foreground">{row.original.unidad}</div> },
+    { accessorKey: 'stock_minimo', header: () => <div className="text-center">Mínimo</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-center text-muted-foreground">{row.original.stock_minimo > 0 ? formatEntero(row.original.stock_minimo) : '—'}</div> },
     {
       accessorKey: 'stock_actual',
       header: () => <div className="text-center">Stock actual</div>,
+      size: 115,
+      minSize: 95,
       cell: ({ row }) => {
         const p = row.original
         const cls = p.stock_actual <= 0 ? 'text-destructive' : (p.stock_minimo > 0 && p.stock_actual <= p.stock_minimo) ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
-        return <div className={`text-center text-base font-bold ${cls}`}>{formatEntero(p.stock_actual)}</div>
+        return <div className={`truncate text-center text-base font-bold ${cls}`}>{formatEntero(p.stock_actual)}</div>
       },
     },
     {
       id: 'estado',
       header: () => <div className="text-center">Estado</div>,
+      size: 125,
+      minSize: 95,
       cell: ({ row }) => {
         const e = estadoStock(row.original)
         return <div className="flex justify-center"><Badge variant="outline" className={e.className}>{e.label}</Badge></div>
@@ -182,12 +189,14 @@ export function Stock() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 92,
+      minSize: 84,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button asChild size="sm" variant="outline" title="Ver movimientos">
+        <div className="flex justify-end gap-1">
+          <Button asChild size="icon" variant="outline" title="Ver movimientos" aria-label="Ver movimientos">
             <Link to={`/stock/movimientos?producto_id=${row.original.id}`}><History /></Link>
           </Button>
-          <Button size="sm" variant="outline" title="Ajustar stock" onClick={() => abrirAjuste(row.original)}><Pencil /></Button>
+          <Button size="icon" variant="outline" title="Ajustar stock" aria-label="Ajustar stock" onClick={() => abrirAjuste(row.original)}><Pencil /></Button>
         </div>
       ),
     },

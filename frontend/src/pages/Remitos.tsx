@@ -39,16 +39,22 @@ export function Remitos() {
   }
 
   const columns = useMemo<ColumnDef<Remito>[]>(() => [
-    { accessorKey: 'number', header: sortableHeader('Número'), cell: ({ row }) => <span className="font-mono text-sm">{row.original.number}</span> },
-    { accessorKey: 'date', header: 'Fecha' },
-    { accessorKey: 'client_name', header: 'Cliente' },
+    { accessorKey: 'number', header: sortableHeader('Número'), size: 120, minSize: 100, cell: ({ row }) => <span className="font-mono text-sm">{row.original.number}</span> },
+    { accessorKey: 'date', header: 'Fecha', size: 100, minSize: 90 },
+    { accessorKey: 'client_name', header: 'Cliente', size: 160, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.client_name ?? undefined}>{row.original.client_name}</span> },
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 90,
+      minSize: 80,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button asChild size="sm" variant="outline"><Link to={`/remitos/${row.original.id}`}><Eye />Ver</Link></Button>
-          <Button asChild size="sm" variant="outline"><a href={`/remitos/${row.original.id}/pdf`} target="_blank" rel="noreferrer"><FileDown />PDF</a></Button>
+        <div className="flex justify-end gap-1">
+          <Button asChild size="icon" variant="outline" title="Ver remito">
+            <Link to={`/remitos/${row.original.id}`} aria-label="Ver remito"><Eye /></Link>
+          </Button>
+          <Button asChild size="icon" variant="outline" title="Descargar PDF">
+            <a href={`/remitos/${row.original.id}/pdf`} target="_blank" rel="noreferrer" aria-label="Descargar PDF"><FileDown /></a>
+          </Button>
         </div>
       ),
     },

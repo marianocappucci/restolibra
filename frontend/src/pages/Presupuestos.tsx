@@ -62,26 +62,34 @@ export function Presupuestos() {
   }
 
   const columns = useMemo<ColumnDef<Presupuesto>[]>(() => [
-    { accessorKey: 'number', header: sortableHeader('Número'), cell: ({ row }) => <span className="font-mono text-sm">{row.original.number}</span> },
-    { accessorKey: 'date', header: 'Fecha' },
-    { accessorKey: 'client_name', header: 'Cliente' },
+    { accessorKey: 'number', header: sortableHeader('Número'), size: 120, minSize: 100, cell: ({ row }) => <span className="font-mono text-sm">{row.original.number}</span> },
+    { accessorKey: 'date', header: 'Fecha', size: 100, minSize: 90 },
+    { accessorKey: 'client_name', header: 'Cliente', size: 160, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.client_name ?? undefined}>{row.original.client_name}</span> },
     {
       accessorKey: 'status',
       header: 'Estado',
+      size: 110,
+      minSize: 90,
       cell: ({ row }) => <Badge variant={estadoVariant[row.original.status] ?? 'outline'}>{ESTADO_LABELS[row.original.status] ?? row.original.status}</Badge>,
     },
-    { accessorKey: 'valid_until', header: 'Válido hasta', cell: ({ row }) => row.original.valid_until || '—' },
-    { accessorKey: 'total', header: 'Total', cell: ({ row }) => <span className="font-medium">{formatCurrency(row.original.total)}</span> },
+    { accessorKey: 'valid_until', header: 'Válido hasta', size: 115, minSize: 90, cell: ({ row }) => row.original.valid_until || '—' },
+    { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 130, minSize: 100, cell: ({ row }) => <div className="truncate text-right font-medium">{formatCurrency(row.original.total)}</div> },
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 116,
+      minSize: 100,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button asChild size="sm" variant="outline"><Link to={`/presupuestos/${row.original.id}`}><Eye />Ver</Link></Button>
+        <div className="flex justify-end gap-1">
+          <Button asChild size="icon" variant="outline" title="Ver presupuesto">
+            <Link to={`/presupuestos/${row.original.id}`} aria-label="Ver presupuesto"><Eye /></Link>
+          </Button>
           {row.original.status === 'borrador' && (
-            <Button asChild size="sm" variant="outline" title="Editar"><Link to={`/presupuestos/${row.original.id}/editar`}><Pencil /></Link></Button>
+            <Button asChild size="icon" variant="outline" title="Editar"><Link to={`/presupuestos/${row.original.id}/editar`} aria-label="Editar"><Pencil /></Link></Button>
           )}
-          <Button asChild size="sm" variant="outline"><a href={`/presupuestos/${row.original.id}/pdf`} target="_blank" rel="noreferrer"><FileDown />PDF</a></Button>
+          <Button asChild size="icon" variant="outline" title="Descargar PDF">
+            <a href={`/presupuestos/${row.original.id}/pdf`} target="_blank" rel="noreferrer" aria-label="Descargar PDF"><FileDown /></a>
+          </Button>
         </div>
       ),
     },

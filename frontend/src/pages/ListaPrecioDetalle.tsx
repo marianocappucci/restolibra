@@ -240,17 +240,19 @@ export function ListaPrecioDetalle() {
   }
 
   const itemColumns = useMemo<ColumnDef<ItemListaPrecio>[]>(() => [
-    { accessorKey: 'codigo', header: 'Código', cell: ({ row }) => <span className="font-mono text-xs">{row.original.codigo || '—'}</span> },
-    { accessorKey: 'nombre', header: 'Producto', cell: ({ row }) => <span className="font-medium">{row.original.nombre}</span> },
-    { accessorKey: 'categoria', header: 'Categoría', cell: ({ row }) => row.original.categoria || '—' },
-    { accessorKey: 'precio_costo', header: 'P. Costo', cell: ({ row }) => <span className="text-muted-foreground">{formatCurrency(row.original.precio_costo)}</span> },
-    { accessorKey: 'precio_venta', header: 'P. Venta', cell: ({ row }) => <span className="text-muted-foreground">{formatCurrency(row.original.precio_venta)}</span> },
+    { accessorKey: 'codigo', header: 'Código', size: 90, minSize: 78, cell: ({ row }) => <span className="block truncate font-mono text-xs" title={row.original.codigo ?? undefined}>{row.original.codigo || '—'}</span> },
+    { accessorKey: 'nombre', header: 'Producto', size: 160, minSize: 100, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate font-medium" title={row.original.nombre}>{row.original.nombre}</span> },
+    { accessorKey: 'categoria', header: 'Categoría', size: 100, minSize: 85, cell: ({ row }) => <span className="block truncate" title={row.original.categoria ?? undefined}>{row.original.categoria || '—'}</span> },
+    { accessorKey: 'precio_costo', header: () => <div className="text-right">P. Costo</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-right text-muted-foreground">{formatCurrency(row.original.precio_costo)}</div> },
+    { accessorKey: 'precio_venta', header: () => <div className="text-right">P. Venta</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-right text-muted-foreground">{formatCurrency(row.original.precio_venta)}</div> },
     {
       id: 'precio_lista',
       header: 'Precio lista',
+      size: 150,
+      minSize: 130,
       cell: ({ row }) => (
         <Input
-          type="number" step="0.01" className="w-32"
+          type="number" step="0.01" className="w-full"
           placeholder={formatCurrency(row.original.precio_venta)}
           value={precios[row.original.id] ?? ''}
           onChange={(e) => setPrecios((p) => ({ ...p, [row.original.id]: e.target.value }))}
@@ -259,12 +261,14 @@ export function ListaPrecioDetalle() {
     },
     {
       id: 'margen',
-      header: 'Margen',
+      header: () => <div className="text-right">Margen</div>,
+      size: 90,
+      minSize: 75,
       cell: ({ row }) => {
         const precio = Number(precios[row.original.id]) || row.original.precio_venta
         const label = margenPct(precio, row.original.precio_costo)
         const cls = label === '—' ? 'text-muted-foreground' : precio >= row.original.precio_costo ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'
-        return <span className={`text-sm ${cls}`}>{label}</span>
+        return <div className={`truncate text-right text-sm ${cls}`}>{label}</div>
       },
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
