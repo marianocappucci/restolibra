@@ -98,32 +98,47 @@ export function LibrosIva() {
   }
 
   const columnasVentas = useMemo<ColumnDef<LibroIvaFactura>[]>(() => [
-    { accessorKey: 'fecha', header: sortableHeader('Fecha') },
-    { accessorKey: 'tipo', header: 'Tipo', cell: ({ row }) => <Badge variant="outline">{TIPO_LABELS[row.original.tipo] ?? row.original.tipo}</Badge> },
+    { accessorKey: 'fecha', header: sortableHeader('Fecha'), size: 95, minSize: 85 },
+    { accessorKey: 'tipo', header: 'Tipo', size: 80, minSize: 70, cell: ({ row }) => <Badge variant="outline">{TIPO_LABELS[row.original.tipo] ?? row.original.tipo}</Badge> },
     {
       id: 'pv_nro', header: 'PV-Nro',
-      cell: ({ row }) => <span className="font-mono text-xs">{String(row.original.punto_venta).padStart(4, '0')}-{String(row.original.numero).padStart(8, '0')}</span>,
+      size: 120,
+      minSize: 100,
+      cell: ({ row }) => <span className="block truncate font-mono text-xs">{String(row.original.punto_venta).padStart(4, '0')}-{String(row.original.numero).padStart(8, '0')}</span>,
     },
-    { accessorKey: 'cae', header: 'CAE', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{row.original.cae || '—'}</span> },
-    { accessorKey: 'cliente_razon', header: 'Cliente' },
-    { accessorKey: 'cliente_cuit', header: 'CUIT', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{formatCuit(row.original.cliente_cuit)}</span> },
-    { accessorKey: 'subtotal', header: () => <div className="text-right">Neto</div>, cell: ({ row }) => <div className="text-right">{formatCurrency(row.original.subtotal)}</div> },
+    {
+      accessorKey: 'cae',
+      header: 'CAE',
+      size: 130,
+      minSize: 100,
+      // Es una tabla ya ancha (9 columnas): el CAE es un dato de compliance que
+      // casi nunca hace falta mirar de un vistazo, se oculta primero para que
+      // el resto entre completo en 1280 (mismo criterio que Turnos con el
+      // fondo inicial).
+      meta: { opcional: true, className: 'hidden min-[1500px]:table-cell', colClassName: 'hidden min-[1500px]:table-column' },
+      cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground" title={row.original.cae ?? undefined}>{row.original.cae || '—'}</span>,
+    },
+    { accessorKey: 'cliente_razon', header: 'Cliente', size: 150, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.cliente_razon ?? undefined}>{row.original.cliente_razon}</span> },
+    { accessorKey: 'cliente_cuit', header: 'CUIT', size: 110, minSize: 95, cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{formatCuit(row.original.cliente_cuit)}</span> },
+    { accessorKey: 'subtotal', header: () => <div className="text-right">Neto</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-right">{formatCurrency(row.original.subtotal)}</div> },
     {
       accessorKey: 'iva_amount', header: () => <div className="text-right">IVA</div>,
-      cell: ({ row }) => <div className={`text-right ${row.original.iva_amount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>{formatCurrency(row.original.iva_amount)}</div>,
+      size: 100,
+      minSize: 85,
+      cell: ({ row }) => <div className={`truncate text-right ${row.original.iva_amount > 0 ? 'text-primary' : 'text-muted-foreground'}`}>{formatCurrency(row.original.iva_amount)}</div>,
     },
-    { accessorKey: 'total', header: () => <div className="text-right">Total</div>, cell: ({ row }) => <div className="text-right font-semibold">{formatCurrency(row.original.total)}</div> },
+    { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 110, minSize: 90, cell: ({ row }) => <div className="truncate text-right font-semibold">{formatCurrency(row.original.total)}</div> },
   ], [])
 
   const columnasCompras = useMemo<ColumnDef<LibroIvaEgreso>[]>(() => [
-    { accessorKey: 'fecha', header: sortableHeader('Fecha') },
-    { accessorKey: 'numero', header: 'Número', cell: ({ row }) => <span className="font-mono text-xs">{row.original.numero || '—'}</span> },
-    { accessorKey: 'proveedor_nombre', header: 'Proveedor', cell: ({ row }) => row.original.proveedor_nombre || '—' },
-    { accessorKey: 'proveedor_cuit', header: 'CUIT', cell: ({ row }) => <span className="font-mono text-xs text-muted-foreground">{formatCuit(row.original.proveedor_cuit)}</span> },
-    { accessorKey: 'monto_neto', header: () => <div className="text-right">Neto</div>, cell: ({ row }) => <div className="text-right">{formatCurrency(row.original.monto_neto)}</div> },
-    { accessorKey: 'iva_pct', header: () => <div className="text-right">IVA %</div>, cell: ({ row }) => <div className="text-right text-muted-foreground">{row.original.iva_pct ?? 0}%</div> },
-    { accessorKey: 'iva_monto', header: () => <div className="text-right">IVA $</div>, cell: ({ row }) => <div className="text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(row.original.iva_monto)}</div> },
-    { accessorKey: 'total', header: () => <div className="text-right">Total</div>, cell: ({ row }) => <div className="text-right font-semibold">{formatCurrency(row.original.total)}</div> },
+    { accessorKey: 'fecha', header: sortableHeader('Fecha'), size: 95, minSize: 85 },
+    { accessorKey: 'numero', header: 'Número', size: 110, minSize: 95, cell: ({ row }) => <span className="block truncate font-mono text-xs">{row.original.numero || '—'}</span> },
+    { accessorKey: 'proveedor_nombre', header: 'Proveedor', size: 150, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.proveedor_nombre ?? undefined}>{row.original.proveedor_nombre || '—'}</span> },
+    { accessorKey: 'proveedor_cuit', header: 'CUIT', size: 110, minSize: 95, cell: ({ row }) => <span className="block truncate font-mono text-xs text-muted-foreground">{formatCuit(row.original.proveedor_cuit)}</span> },
+    { accessorKey: 'monto_neto', header: () => <div className="text-right">Neto</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-right">{formatCurrency(row.original.monto_neto)}</div> },
+    { accessorKey: 'iva_pct', header: () => <div className="text-right">IVA %</div>, size: 80, minSize: 70, cell: ({ row }) => <div className="truncate text-right text-muted-foreground">{row.original.iva_pct ?? 0}%</div> },
+    { accessorKey: 'iva_monto', header: () => <div className="text-right">IVA $</div>, size: 100, minSize: 85, cell: ({ row }) => <div className="truncate text-right font-semibold text-emerald-600 dark:text-emerald-400">{formatCurrency(row.original.iva_monto)}</div> },
+    { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 110, minSize: 90, cell: ({ row }) => <div className="truncate text-right font-semibold">{formatCurrency(row.original.total)}</div> },
   ], [])
 
   return (

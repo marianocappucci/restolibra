@@ -102,23 +102,36 @@ export function Facturas() {
       {
         accessorKey: 'numero',
         header: sortableHeader('Número'),
+        // El numero siempre mide lo mismo (0000-00000000, mono), asi que la
+        // columna va fija a ese ancho en vez de repartirse espacio de mas.
+        size: 120,
+        minSize: 100,
         cell: ({ row }) => <span className="font-mono text-sm">{String(row.original.punto_venta).padStart(4, '0')}-{String(row.original.numero).padStart(8, '0')}</span>,
       },
       {
         id: 'tipo',
         header: 'Tipo',
+        size: 70,
+        minSize: 55,
         cell: ({ row }) => {
           const b = TIPO_BADGE[row.original.tipo] ?? { label: '?', className: 'bg-secondary text-secondary-foreground' }
           return <Badge className={b.className}>{b.label}</Badge>
         },
       },
-      { accessorKey: 'fecha', header: 'Fecha' },
-      { accessorKey: 'cliente_razon', header: 'Cliente' },
+      { accessorKey: 'fecha', header: 'Fecha', size: 100, minSize: 90 },
+      // Cliente es la columna elastica: su `size` solo fija cuanto ancho pide
+      // como minimo (para el scroll interno), porque en pantalla se queda con
+      // todo el sobrante. Cuanto mas chico, en pantallas mas angostas entra la
+      // tabla completa -- importante en las vistas NC/ND, que suman una
+      // columna mas ("Cbte. asoc.").
+      { accessorKey: 'cliente_razon', header: 'Cliente', size: 160, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.cliente_razon ?? undefined}>{row.original.cliente_razon}</span> },
     ]
     if (vista === 'nc' || vista === 'nd') {
       cols.push({
         id: 'cbte_asoc',
-        header: 'Cbte. asociado',
+        header: 'Cbte. asoc.',
+        size: 118,
+        minSize: 95,
         cell: ({ row }) => row.original.cbte_asoc_nro
           ? <span className="font-mono text-xs text-muted-foreground">{String(row.original.cbte_asoc_pv ?? 0).padStart(4, '0')}-{String(row.original.cbte_asoc_nro).padStart(8, '0')}</span>
           : null,
@@ -127,16 +140,20 @@ export function Facturas() {
     cols.push(
       {
         accessorKey: 'total',
-        header: 'Total',
+        header: () => <div className="text-right">Total</div>,
+        size: 130,
+        minSize: 100,
         cell: ({ row }) => (
-          <span className={`font-medium ${vista === 'nc' ? 'text-destructive' : vista === 'nd' ? 'text-primary' : ''}`}>
+          <div className={`truncate text-right font-medium ${vista === 'nc' ? 'text-destructive' : vista === 'nd' ? 'text-primary' : ''}`}>
             {vista === 'nc' ? '- ' : vista === 'nd' ? '+ ' : ''}{formatCurrency(row.original.total)}
-          </span>
+          </div>
         ),
       },
       {
         id: 'estado',
         header: 'Estado',
+        size: 112,
+        minSize: 90,
         cell: ({ row }) => {
           const f = row.original
           if (!estaAutorizada(f)) return <Badge variant="secondary">Sin CAE</Badge>
@@ -150,19 +167,28 @@ export function Facturas() {
       {
         id: 'actions',
         header: () => <div className="text-right">Acciones</div>,
+        // Solo iconos (el texto "Ver"/"PDF" vive ahora en el tooltip): la
+        // columna baja de ~180px a lo que ocupan los botones. En NC/ND nunca
+        // aparece el boton de cobro, asi que alcanza con el ancho de dos.
+        size: vista === 'nc' || vista === 'nd' ? 90 : 116,
+        minSize: 80,
         cell: ({ row }) => {
           const f = row.original
           const tc = f.total_cobrado ?? 0
           const puedeCobrar = (vista === 'facturas' || vista === 'sin_cobrar') && estaAutorizada(f) && tc < f.total
           return (
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-1">
               {puedeCobrar && (
-                <Button asChild size="sm" variant="outline" title="Registrar cobro">
-                  <Link to={`/facturas/${f.id}`}><CircleDollarSign /></Link>
+                <Button asChild size="icon" variant="outline" title="Registrar cobro">
+                  <Link to={`/facturas/${f.id}`} aria-label="Registrar cobro"><CircleDollarSign /></Link>
                 </Button>
               )}
-              <Button asChild size="sm" variant="outline"><Link to={`/facturas/${f.id}`}><Eye />Ver</Link></Button>
-              <Button asChild size="sm" variant="outline"><a href={`/facturas/${f.id}/pdf`} target="_blank" rel="noreferrer"><FileDown />PDF</a></Button>
+              <Button asChild size="icon" variant="outline" title="Ver comprobante">
+                <Link to={`/facturas/${f.id}`} aria-label="Ver comprobante"><Eye /></Link>
+              </Button>
+              <Button asChild size="icon" variant="outline" title="Descargar PDF">
+                <a href={`/facturas/${f.id}/pdf`} target="_blank" rel="noreferrer" aria-label="Descargar PDF"><FileDown /></a>
+              </Button>
             </div>
           )
         },

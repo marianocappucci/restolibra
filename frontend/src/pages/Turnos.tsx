@@ -18,6 +18,14 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
+// El backend guarda "YYYY-MM-DD HH:MM:SS"; en el listado los segundos son
+// ruido y cuestan ~18px de ancho por columna (son dos). Se recortan solo si
+// el valor tiene exactamente ese formato -- cualquier otra cosa pasa igual.
+function sinSegundos(valor: string | null | undefined): string {
+  if (!valor) return ''
+  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(valor) ? valor.slice(0, 16) : valor
+}
+
 function DiferenciaBadge({ esperado, declarado }: { esperado: number | null; declarado: number | null }) {
   if (esperado === null || declarado === null) return <span className="text-muted-foreground">—</span>
   const dif = Math.round((declarado - esperado) * 100) / 100
@@ -88,33 +96,55 @@ export function Turnos() {
 
   const columns = useMemo<ColumnDef<Turno>[]>(() => {
     const cols: ColumnDef<Turno>[] = [
-      { accessorKey: 'id', header: 'N°', cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.id}</span> },
+      { accessorKey: 'id', header: 'N°', size: 45, minSize: 40, cell: ({ row }) => <span className="text-sm text-muted-foreground">{row.original.id}</span> },
     ]
     if (esAdmin) {
-      cols.push({ accessorKey: 'usuario_nombre', header: sortableHeader('Cajero'), cell: ({ row }) => <span className="font-medium">{row.original.usuario_nombre}</span> })
+      cols.push({ accessorKey: 'usuario_nombre', header: sortableHeader('Cajero'), size: 85, minSize: 80, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate font-medium" title={row.original.usuario_nombre ?? undefined}>{row.original.usuario_nombre}</span> })
     }
     cols.push(
-      { accessorKey: 'apertura', header: 'Apertura' },
-      { accessorKey: 'cierre', header: 'Cierre', cell: ({ row }) => row.original.cierre || '—' },
-      { accessorKey: 'monto_inicial', header: 'Fondo inicial', cell: ({ row }) => formatCurrency(row.original.monto_inicial) },
-      { accessorKey: 'monto_esperado_cierre', header: 'Efectivo esperado', cell: ({ row }) => row.original.monto_esperado_cierre != null ? formatCurrency(row.original.monto_esperado_cierre) : '—' },
-      { accessorKey: 'monto_declarado_cierre', header: 'Efectivo declarado', cell: ({ row }) => row.original.monto_declarado_cierre != null ? formatCurrency(row.original.monto_declarado_cierre) : '—' },
+      { accessorKey: 'apertura', header: 'Apertura', size: 126, minSize: 110, cell: ({ row }) => <span className="block truncate" title={row.original.apertura ?? undefined}>{sinSegundos(row.original.apertura)}</span> },
+      { accessorKey: 'cierre', header: 'Cierre', size: 126, minSize: 110, cell: ({ row }) => <span className="block truncate" title={row.original.cierre ?? undefined}>{sinSegundos(row.original.cierre) || '—'}</span> },
+      {
+        accessorKey: 'monto_inicial',
+        header: () => <div className="text-right">Fondo inicial</div>,
+        size: 114,
+        minSize: 95,
+        // El fondo de apertura es el dato menos consultado de un vistazo (los
+        // que importan al cerrar son esperado/declarado/diferencia) y ademas
+        // esta en el detalle del turno: se oculta por debajo de 1400px para
+        // que las otras 9 columnas entren completas en pantallas de 1280.
+        meta: { opcional: true, className: 'hidden min-[1400px]:table-cell', colClassName: 'hidden min-[1400px]:table-column' },
+        cell: ({ row }) => <div className="truncate text-right">{formatCurrency(row.original.monto_inicial)}</div>,
+      },
+      // Encabezados acortados (eran "Efectivo esperado"/"Efectivo declarado")
+      // para que el ancho lo fije el monto y no el titulo: Turnos ya arranca
+      // con 10 columnas, es la tabla mas ancha del sistema.
+      { accessorKey: 'monto_esperado_cierre', header: () => <div className="text-right">Esperado</div>, size: 114, minSize: 95, cell: ({ row }) => <div className="truncate text-right">{row.original.monto_esperado_cierre != null ? formatCurrency(row.original.monto_esperado_cierre) : '—'}</div> },
+      { accessorKey: 'monto_declarado_cierre', header: () => <div className="text-right">Declarado</div>, size: 114, minSize: 95, cell: ({ row }) => <div className="truncate text-right">{row.original.monto_declarado_cierre != null ? formatCurrency(row.original.monto_declarado_cierre) : '—'}</div> },
       {
         id: 'diferencia',
         header: 'Diferencia',
+        size: 100,
+        minSize: 85,
         cell: ({ row }) => <DiferenciaBadge esperado={row.original.monto_esperado_cierre} declarado={row.original.monto_declarado_cierre} />,
       },
       {
         accessorKey: 'estado',
         header: 'Estado',
+        size: 80,
+        minSize: 70,
         cell: ({ row }) => <Badge variant={row.original.estado === 'abierto' ? 'default' : 'secondary'}>{row.original.estado === 'abierto' ? 'Abierto' : 'Cerrado'}</Badge>,
       },
       {
         id: 'actions',
         header: () => <div className="text-right">Acciones</div>,
+        size: 76,
+        minSize: 70,
         cell: ({ row }) => (
           <div className="flex justify-end">
-            <Button asChild size="sm" variant="outline"><Link to={`/turnos/${row.original.id}`}><Eye />Ver detalle</Link></Button>
+            <Button asChild size="icon" variant="outline" title="Ver detalle">
+              <Link to={`/turnos/${row.original.id}`} aria-label="Ver detalle"><Eye /></Link>
+            </Button>
           </div>
         ),
       },

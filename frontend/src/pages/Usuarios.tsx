@@ -149,12 +149,14 @@ export function Usuarios() {
   const roleLabel: Record<string, string> = { admin: 'Admin', operador: 'Operador', cajero: 'Cajero', mozo: 'Mozo' }
 
   const columns = useMemo<ColumnDef<Usuario>[]>(() => [
-    { accessorKey: 'username', header: sortableHeader('Usuario'), cell: ({ row }) => <span className="font-medium">{row.original.username}</span> },
-    { accessorKey: 'nombre', header: 'Nombre' },
-    { accessorKey: 'email', header: 'Email', cell: ({ row }) => row.original.email || '—' },
+    { accessorKey: 'username', header: sortableHeader('Usuario'), size: 140, minSize: 100, cell: ({ row }) => <span className="block truncate font-medium">{row.original.username}</span> },
+    { accessorKey: 'nombre', header: 'Nombre', size: 160, minSize: 90, meta: { stretch: true }, cell: ({ row }) => <span className="block truncate" title={row.original.nombre ?? undefined}>{row.original.nombre}</span> },
+    { accessorKey: 'email', header: 'Email', size: 200, minSize: 120, cell: ({ row }) => <span className="block truncate" title={row.original.email ?? undefined}>{row.original.email || '—'}</span> },
     {
       accessorKey: 'role',
       header: 'Rol',
+      size: 100,
+      minSize: 80,
       cell: ({ row }) => (
         <Badge variant={row.original.role === 'admin' ? 'default' : 'secondary'}>
           {roleLabel[row.original.role] ?? row.original.role}
@@ -164,6 +166,8 @@ export function Usuarios() {
     {
       accessorKey: 'activo',
       header: 'Estado',
+      size: 105,
+      minSize: 85,
       cell: ({ row }) => (
         <Badge
           variant="outline"
@@ -178,11 +182,13 @@ export function Usuarios() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
+      size: 92,
+      minSize: 84,
       cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => abrirEditar(row.original)}><Pencil />Editar</Button>
+        <div className="flex justify-end gap-1">
+          <Button size="icon" variant="outline" title="Editar usuario" aria-label="Editar usuario" onClick={() => abrirEditar(row.original)}><Pencil /></Button>
           {row.original.username !== me?.username && (
-            <Button size="sm" variant="outline" onClick={() => setConfirmDelete(row.original)}><Trash2 />Eliminar</Button>
+            <Button size="icon" variant="outline" title="Eliminar usuario" aria-label="Eliminar usuario" onClick={() => setConfirmDelete(row.original)}><Trash2 /></Button>
           )}
         </div>
       ),
