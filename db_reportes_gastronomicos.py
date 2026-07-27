@@ -1,9 +1,12 @@
 """
 Reportes del módulo restaurant: ventas por canal y tiempos de comanda por
-estación. Extraído de database.py como parte del split en módulos lógicos
-(Fase 3 de LibraCore, sub-paso previo dentro de cada producto, sin cambiar
-comportamiento — ver wiki/entities/libracore.md). Dominio propio de
-Restolibra, sin equivalente en Contalibra.
+estación. Dominio propio de Restolibra, sin equivalente en Contalibra.
+
+`reporte_gastronomia` hace JOIN contra `ventas`, que en Restolibra ya no es
+la fuente de verdad desde P8: las ventas viven en `sales` de LibraCommerce
+(ver `db_ventas.py`) — `pedidos.venta_id` sigue apuntando al mismo ID
+(preservado 1:1 por la migración), solo cambia la tabla/columnas de origen
+(`v.fecha` -> `v.occurred_on`).
 """
 from db_core import get_connection
 
@@ -18,8 +21,8 @@ def reporte_gastronomia(desde: str, hasta: str) -> dict:
         canales = [dict(r) for r in conn.execute(
             """SELECT p.canal AS canal, COUNT(*) AS n,
                       COALESCE(SUM(v.total), 0) AS total
-               FROM pedidos p JOIN ventas v ON v.id = p.venta_id
-               WHERE p.estado = 'cobrado' AND v.fecha >= ? AND v.fecha <= ?
+               FROM pedidos p JOIN sales v ON v.id = p.venta_id
+               WHERE p.estado = 'cobrado' AND v.occurred_on >= ? AND v.occurred_on <= ?
                GROUP BY p.canal
                ORDER BY total DESC""",
             (desde, hasta),

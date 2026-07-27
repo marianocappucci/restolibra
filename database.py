@@ -7,6 +7,7 @@ import os
 # existentes (`db.get_connection()`, `db.DB_PATH`, `db.create_usuario(...)`,
 # etc.) no cambien una línea.
 from libracore.db.schema import init_core_schema
+from libracommerce.db.schema import init_schema as init_commerce_schema
 from db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, get_connection, minutos_desde  # noqa: F401
 from db_usuarios import (  # noqa: F401
     _hash_password,
@@ -305,22 +306,42 @@ from db_comandas import (  # noqa: F401
 from db_cobro_pedido import cobrar_pedido  # noqa: F401
 from db_reportes_gastronomicos import reporte_gastronomia  # noqa: F401
 
-# descontar_stock_venta (libracore.db.stock) es receta-aware vía hook
-# inyectado, no importa db_recetas directo (evita acoplar el core a un
-# dominio de producto específico — ver wiki/entities/libracore.md, Fase 3
-# Tier 2, stock). Configurado acá porque es el único punto que se ejecuta
-# una vez, después de que get_receta ya está disponible.
-from libracore.db.core import configure_resolver_receta as _configure_resolver_receta
-_configure_resolver_receta(get_receta)
+# Antes de P8, descontar_stock_venta (libracore.db.stock) era receta-aware
+# vía un hook inyectado acá (configure_resolver_receta), para no acoplar
+# LibraCore a un dominio de producto específico. Desde P8, db_stock.py es
+# implementación propia de Restolibra y llama a db_recetas.get_receta()
+# directo — el hook ya no se usa y LibraCore no se toca.
 
 
 def init_db():
     with get_connection() as conn:
         init_core_schema(conn)
+        # Catálogo/stock/ventas viven en las tablas de LibraCommerce desde
+        # P8 (ver db_productos.py). Conviven en el MISMO archivo SQLite que
+        # el resto de Restolibra, a propósito: `crear_venta_directa`/
+        # `cobrar_pedido` cruzan ambos motores en una única transacción
+        # atómica. Mismo patrón que Contalibra (P7).
+        init_commerce_schema(conn)
+
+        # Referencias cruzadas entre la venta (LibraCommerce) y contextos que
+        # no son suyos: facturación/remitos y turno de caja (LibraCore) y
+        # MercadoPago. No van dentro de `sales` para no meter dominio ajeno en
+        # el motor genérico — ver db_ventas.py.
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS venta_links (
+                venta_id      INTEGER PRIMARY KEY REFERENCES sales(id) ON DELETE CASCADE,
+                factura_id    INTEGER REFERENCES facturas(id) ON DELETE SET NULL,
+                remito_id     INTEGER REFERENCES remitos(id) ON DELETE SET NULL,
+                turno_id      INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL,
+                mp_order_id   TEXT DEFAULT '',
+                mp_payment_id TEXT DEFAULT ''
+            )
+        """)
+
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS recetas (
                 id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                producto_id     INTEGER NOT NULL UNIQUE REFERENCES productos(id) ON DELETE CASCADE,
+                producto_id     INTEGER NOT NULL UNIQUE REFERENCES catalog_items(id) ON DELETE CASCADE,
                 rinde           REAL NOT NULL DEFAULT 1,
                 rinde_unidad    TEXT NOT NULL DEFAULT 'u',
                 rendimiento_pct REAL NOT NULL DEFAULT 100,
@@ -333,7 +354,7 @@ def init_db():
             CREATE TABLE IF NOT EXISTS receta_items (
                 id             INTEGER PRIMARY KEY AUTOINCREMENT,
                 receta_id      INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
-                ingrediente_id INTEGER NOT NULL REFERENCES productos(id) ON DELETE CASCADE,
+                ingrediente_id INTEGER NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
                 cantidad       REAL NOT NULL DEFAULT 0,
                 created_at     TEXT DEFAULT (datetime('now'))
             );

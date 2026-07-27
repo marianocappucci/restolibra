@@ -1,9 +1,21 @@
 """
 Recetas / fichas técnicas: ingredientes, producción de elaborados, costeo
-(food cost, margen) y consumo real vs. teórico de insumos. Extraído de
-database.py como parte del split en módulos lógicos (Fase 3 de LibraCore,
-sub-paso previo dentro de cada producto, sin cambiar comportamiento — ver
-wiki/entities/libracore.md).
+(food cost, margen) y consumo real vs. teórico de insumos — P8 del plan de
+consolidación de la familia Libra (ver
+wiki/analyses/migracion-p8-restolibra-libracommerce.md).
+
+Dominio exclusivo de Restolibra (sin equivalente en Contalibra ni en
+LibraCommerce — ver [[arquitectura-familia-libra-alcance]], "Recetas,
+elaborados, food cost y mermas: exclusivo gastronómico"). Las tablas
+`recetas`/`receta_items` siguen siendo propias de Restolibra (no se
+mueven a LibraCommerce), pero sus FK ahora apuntan a `catalog_items` en
+vez de a la vieja `productos` — el script de migración (P8 Fase 1) ya
+repuntó el constraint sin tocar los datos (los IDs se preservan 1:1).
+
+Antes de P8, `descontar_stock_venta` de LibraCore resolvía recetas vía el
+hook `configure_resolver_receta` (Restolibra era el único producto que lo
+configuraba). Ese hook ya no se usa: `db_stock.py` (reescrito en P8) llama
+directo a `get_receta()` de este módulo.
 """
 from db_core import get_connection, _ar_now
 from db_productos import get_all_productos
@@ -20,12 +32,12 @@ def get_receta(producto_id: int) -> dict | None:
             return None
         items = conn.execute(
             """SELECT ri.id, ri.ingrediente_id, ri.cantidad,
-                      p.nombre AS ingrediente_nombre, p.unidad AS ingrediente_unidad,
-                      p.precio_costo AS ingrediente_precio_costo
+                      p.name AS ingrediente_nombre, p.unit_code AS ingrediente_unidad,
+                      p.default_cost AS ingrediente_precio_costo
                FROM receta_items ri
-               JOIN productos p ON p.id = ri.ingrediente_id
+               JOIN catalog_items p ON p.id = ri.ingrediente_id
                WHERE ri.receta_id=?
-               ORDER BY p.nombre""",
+               ORDER BY p.name""",
             (receta["id"],),
         ).fetchall()
     data = dict(receta)
@@ -76,14 +88,14 @@ def guardar_receta(producto_id: int, items: list[dict], notas: str = "",
                 "INSERT INTO receta_items (receta_id, ingrediente_id, cantidad) VALUES (?,?,?)",
                 (receta_id, ingrediente_id, cantidad),
             )
-    # Sincroniza productos.precio_costo con el costo calculado de la receta, para
-    # que si este producto se usa a su vez como ingrediente de otra receta (ej. un
-    # combo que incluye una hamburguesa ya armada), tome un costo real y no 0.
-    # No es recursivo: usa el precio_costo *guardado* de cada ingrediente, no vuelve
-    # a recalcular la cadena completa.
+    # Sincroniza catalog_items.default_cost con el costo calculado de la
+    # receta, para que si este producto se usa a su vez como ingrediente de
+    # otra receta (ej. un combo que incluye una hamburguesa ya armada), tome
+    # un costo real y no 0. No es recursivo: usa el default_cost *guardado*
+    # de cada ingrediente, no vuelve a recalcular la cadena completa.
     costo = costo_receta(producto_id)
     with get_connection() as conn:
-        conn.execute("UPDATE productos SET precio_costo=? WHERE id=?", (costo, producto_id))
+        conn.execute("UPDATE catalog_items SET default_cost=? WHERE id=?", (costo, producto_id))
     return receta_id
 
 
@@ -165,19 +177,27 @@ def get_reporte_food_cost() -> list[dict]:
 
 def get_consumo_insumos(desde: str = "", hasta: str = "") -> list[dict]:
     """Consumo real de insumos (ventas + mermas, en negativo) por producto en un
-    rango de fechas, para comparar contra el consumo teórico de las recetas."""
-    where = ["m.tipo IN ('venta','merma')"]
+    rango de fechas, para comparar contra el consumo teórico de las recetas.
+
+    `stock_movements.reason_code` preserva el tipo original ('venta'/'merma')
+    -- `movement_type` los colapsaría a 'sale'/'waste' sin distinguirlos del
+    resto de ajustes. `occurred_at` es un timestamp ISO; se compara el
+    prefijo de 10 caracteres, mismo patrón que `db_stock.get_movimientos_stock`.
+    """
+    where = ["m.reason_code IN ('venta','merma')"]
     params: list = []
     if desde:
-        where.append("m.fecha >= ?"); params.append(desde)
+        where.append("substr(m.occurred_at, 1, 10) >= ?"); params.append(desde)
     if hasta:
-        where.append("m.fecha <= ?"); params.append(hasta)
+        where.append("substr(m.occurred_at, 1, 10) <= ?"); params.append(hasta)
     sql = f"""
-        SELECT p.id, p.nombre, p.unidad,
-               SUM(CASE WHEN m.tipo='venta' THEN -m.cantidad ELSE 0 END) AS consumido_venta,
-               SUM(CASE WHEN m.tipo='merma' THEN -m.cantidad ELSE 0 END) AS consumido_merma
-        FROM movimientos_stock m
-        JOIN productos p ON p.id = m.producto_id
+        SELECT p.id, p.name AS nombre, p.unit_code AS unidad,
+               SUM(CASE WHEN m.reason_code='venta'
+                        THEN -CAST(m.quantity_delta AS REAL) ELSE 0 END) AS consumido_venta,
+               SUM(CASE WHEN m.reason_code='merma'
+                        THEN -CAST(m.quantity_delta AS REAL) ELSE 0 END) AS consumido_merma
+        FROM stock_movements m
+        JOIN catalog_items p ON p.id = m.item_id
         WHERE {' AND '.join(where)}
         GROUP BY p.id
         ORDER BY (consumido_venta + consumido_merma) DESC
