@@ -19,7 +19,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Check, Pencil, Plus, Trash2, UserCog, Users } from 'lucide-react'
 
 const crearSchema = z.object({

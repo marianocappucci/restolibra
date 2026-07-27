@@ -5,7 +5,7 @@ import { api, ApiError, type Remito } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { FileText, Plus, Search, X, Eye, FileDown } from 'lucide-react'
 
 export function Remitos() {

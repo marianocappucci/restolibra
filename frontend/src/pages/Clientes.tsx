@@ -19,7 +19,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   Users, Plus, Pencil, Eye, Trash2, Undo2, Search, Loader2, CheckCircle2, XCircle,
 } from 'lucide-react'

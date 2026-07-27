@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   Eye, FileDown, Plus, CheckCircle2, Hourglass, CircleDollarSign,
   Receipt, FileText, FileMinus, FilePlus, Search, X, ChevronLeft, ChevronRight,

@@ -21,7 +21,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Tag, Plus, Pencil, Trash2, Ban, Undo2 } from 'lucide-react'
 
 const listaSchema = z.object({

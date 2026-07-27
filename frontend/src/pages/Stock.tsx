@@ -22,7 +22,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import {
   Archive, ArrowDownCircle, ArrowUpCircle, Check, History, Pencil,

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import {
   ArrowDownCircle, ArrowLeft, ArrowUpCircle, History, RefreshCw, ShoppingCart, TriangleAlert, X,

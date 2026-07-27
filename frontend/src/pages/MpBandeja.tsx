@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   CreditCard, Wallet, Landmark, Banknote, RefreshCw, UserPlus, ReceiptText, X, Mail,
   Forward, UserRoundX, MailWarning, History, ArrowDownCircle, Hourglass, Info, User,

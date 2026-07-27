@@ -1,9 +1,4 @@
-import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
-
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
-}
+export { cn } from 'libra-ui/utils'
 
 // Redondeo a entero para mostrar cantidades de stock -- equivalente al
 // filtro Jinja `entero` de web/templates_config.py (round + int). Solo para
