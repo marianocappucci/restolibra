@@ -22,7 +22,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Package, Plus, Pencil, Trash2, Search, X, TrendingUp, ClipboardList } from 'lucide-react'
 
 function formatCurrency(value: number): string {

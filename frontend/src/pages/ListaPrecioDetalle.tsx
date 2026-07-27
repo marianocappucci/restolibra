@@ -17,7 +17,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetClose, SheetTrigger,
 } from '@/components/ui/sheet'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable } from '@/components/data-table'
+import { DataTable } from 'libra-ui/data-table'
 import {
   ArrowLeft, Tag, Percent, Download, Settings, Trash2, Check,
 } from 'lucide-react'

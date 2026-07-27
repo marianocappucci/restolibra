@@ -15,7 +15,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable } from '@/components/data-table'
+import { DataTable } from 'libra-ui/data-table'
 import {
   Landmark, Plus, Pencil, List, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, ArrowDownCircle, ArrowUpCircle, Check,
 } from 'lucide-react'

@@ -17,7 +17,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Truck, Plus, Pencil, Eye, Search, X } from 'lucide-react'
 
 const proveedorSchema = z.object({

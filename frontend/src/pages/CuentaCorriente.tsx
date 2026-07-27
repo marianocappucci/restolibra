@@ -5,7 +5,7 @@ import { api, ApiError, type ClienteConSaldoCC } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { BookOpen, Eye } from 'lucide-react'
 
 function formatCurrency(value: number): string {

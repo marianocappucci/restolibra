@@ -23,7 +23,7 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
-import { DataTable, sortableHeader } from '@/components/data-table'
+import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   ArrowUpCircle, CheckCircle2, Eye, Filter, Hourglass, Plus, X,
 } from 'lucide-react'
