@@ -1,4 +1,4 @@
-libracore @ git+ssh://git@github.com/marianocappucci/libracore.git@v0.26.0
+libracore @ git+ssh://git@github.com/marianocappucci/libracore.git@v0.26.1
 libracommerce @ git+ssh://git@github.com/marianocappucci/libracommerce.git@develop
 fpdf2>=2.7.9
 rich>=13.0.0
