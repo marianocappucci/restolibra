@@ -2,10 +2,23 @@ services:
   restolibra-dev:
     build:
       context: .
-      # requirements.txt depende de libracore (paquete privado) via git+ssh —
-      # ver LIBRACORE_SSH_KEY en scripts/panel_admin.py y wiki/entities/libracore.md.
+      # requirements.txt depende de libracore Y libracommerce (P8), paquetes
+      # privados distintos via git+ssh, cada uno con su propia deploy key —
+      # el Dockerfile monta dos ids separados (libracore/libracommerce) para
+      # que GitHub no autentique con la key equivocada (ver Dockerfile y
+      # wiki/entities/restolibra.md).
+      # Desde la migración a libra-ui son TRES: el stage `frontend-build`
+      # del Dockerfile monta `id=libra-ui` para el `npm ci`, y sin él
+      # `docker compose build` falla con exit 128 al clonarlo (mismo bug que
+      # tenían los otros cuatro productos, corregido el 2026-07-28 — acá no
+      # se había notado porque el backend sigue arrancando: el bind mount
+      # `./:/app` sólo trae el código Python, el frontend se sirve horneado
+      # desde la imagen, así que un rebuild fallido dejaba el dev sirviendo
+      # un frontend viejo en silencio).
       ssh:
-        - default=${LIBRACORE_SSH_KEY:-~/.ssh/id_ed25519_libracore}
+        - libracore=${LIBRACORE_SSH_KEY:-~/.ssh/id_ed25519_libracore}
+        - libracommerce=${LIBRACOMMERCE_SSH_KEY:-~/.ssh/id_ed25519_libracommerce}
+        - libra-ui=${LIBRA_UI_SSH_KEY:-~/.ssh/id_ed25519_libra_ui}
     container_name: restolibra-dev
     restart: unless-stopped
     # Límites agregados en la auditoría 2026-07-12 (ver
