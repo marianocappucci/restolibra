@@ -30,6 +30,31 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
+const MS_POR_DIA = 86_400_000
+
+function isoADias(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  if (!m) return null
+  const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+  return Number.isNaN(ms) ? null : ms / MS_POR_DIA
+}
+
+function diasAIso(dias: number): string {
+  return new Date(dias * MS_POR_DIA).toISOString().slice(0, 10)
+}
+
+// Vencimiento de pago de una factura duplicada: conserva los dias de plazo
+// que el original tenia entre el fin del periodo de servicio y el
+// vencimiento, contados desde hoy. Nunca devuelve una fecha pasada, ni
+// cuando el original no tiene fechas de servicio (concepto Productos).
+function vencimientoDuplicado(servHasta: string, vtoOriginal: string, hoy: string): string {
+  const hasta = isoADias(servHasta)
+  const vto = isoADias(vtoOriginal)
+  const hoyDias = isoADias(hoy)
+  if (hasta === null || vto === null || hoyDias === null) return hoy
+  return diasAIso(hoyDias + Math.max(0, vto - hasta))
+}
+
 function labelComprobante(f: Factura): string {
   const letra = ({ 1: 'A', 6: 'B', 11: 'C', 3: 'NC-A', 8: 'NC-B', 13: 'NC-C', 2: 'ND-A', 7: 'ND-B', 12: 'ND-C' } as Record<number, string>)[f.tipo] ?? '?'
   const pv = String(f.punto_venta).padStart(4, '0')
@@ -181,6 +206,10 @@ export function FacturaDetalle() {
     if (!detalle) return
     const f = detalle.factura
     const cliente = clientes.find((c) => c.cuit_dni && c.cuit_dni === f.cliente_cuit)
+    // La copia se emite hoy, asi que las fechas de servicio del original
+    // quedarian en el pasado: el periodo arranca de nuevo y el vencimiento
+    // conserva los dias de plazo que tenia el original.
+    const hoy = todayIso()
     navigate('/facturas/nueva', {
       state: {
         tipo: String(f.tipo),
@@ -192,9 +221,9 @@ export function FacturaDetalle() {
         taxRate: f.subtotal > 0 ? String(Math.round((f.iva_amount / f.subtotal) * 10000) / 10000) : '0.21',
         items: f.items.map((it) => ({ description: it.description, qty: String(it.qty), unit_price: String(it.unit_price) })),
         observations: f.observaciones || '',
-        fchServDesde: f.fch_serv_desde || '',
-        fchServHasta: f.fch_serv_hasta || '',
-        fchVtoPago: f.fch_vto_pago || '',
+        fchServDesde: hoy,
+        fchServHasta: hoy,
+        fchVtoPago: vencimientoDuplicado(f.fch_serv_hasta || '', f.fch_vto_pago || '', hoy),
       },
     })
   }
