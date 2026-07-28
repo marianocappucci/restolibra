@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
 import {
-  api, ApiError, MEDIOS_PAGO_LABELS, type Caja, type Cliente, type Factura, type FacturaDetalle as FacturaDetalleType,
+  api, ApiError, MEDIOS_PAGO_LABELS, type BorradorDuplicado, type Caja, type Factura,
+  type FacturaDetalle as FacturaDetalleType,
 } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -28,31 +29,6 @@ function todayIso(): string {
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
-
-const MS_POR_DIA = 86_400_000
-
-function isoADias(iso: string): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
-  if (!m) return null
-  const ms = Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
-  return Number.isNaN(ms) ? null : ms / MS_POR_DIA
-}
-
-function diasAIso(dias: number): string {
-  return new Date(dias * MS_POR_DIA).toISOString().slice(0, 10)
-}
-
-// Vencimiento de pago de una factura duplicada: conserva los dias de plazo
-// que el original tenia entre el fin del periodo de servicio y el
-// vencimiento, contados desde hoy. Nunca devuelve una fecha pasada, ni
-// cuando el original no tiene fechas de servicio (concepto Productos).
-function vencimientoDuplicado(servHasta: string, vtoOriginal: string, hoy: string): string {
-  const hasta = isoADias(servHasta)
-  const vto = isoADias(vtoOriginal)
-  const hoyDias = isoADias(hoy)
-  if (hasta === null || vto === null || hoyDias === null) return hoy
-  return diasAIso(hoyDias + Math.max(0, vto - hasta))
 }
 
 function labelComprobante(f: Factura): string {
@@ -92,14 +68,12 @@ export function FacturaDetalle() {
   const [emailOpen, setEmailOpen] = useState(false)
   const [cobroOpen, setCobroOpen] = useState(false)
   const [cobroPagos, setCobroPagos] = useState<{ medio: string; monto: string; referencia: string }[]>([{ medio: 'efectivo', monto: '', referencia: '' }])
-  const [clientes, setClientes] = useState<Cliente[]>([])
   const [cajas, setCajas] = useState<Caja[]>([])
   const [cajaId, setCajaId] = useState<string>('')
   const [confirmNota, setConfirmNota] = useState<'nota-credito' | 'nota-debito' | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
-    api.get<Cliente[]>('/api/clientes').then((c) => setClientes(c.filter((x) => x.activo))).catch(() => {})
     api.get<Caja[]>('/api/cajas').then((cs) => {
       setCajas(cs)
       const def = cs.find((c) => c.es_default) ?? cs[0]
@@ -202,30 +176,35 @@ export function FacturaDetalle() {
     }
   }
 
-  function duplicar() {
-    if (!detalle) return
-    const f = detalle.factura
-    const cliente = clientes.find((c) => c.cuit_dni && c.cuit_dni === f.cliente_cuit)
-    // La copia se emite hoy, asi que las fechas de servicio del original
-    // quedarian en el pasado: el periodo arranca de nuevo y el vencimiento
-    // conserva los dias de plazo que tenia el original.
-    const hoy = todayIso()
-    navigate('/facturas/nueva', {
-      state: {
-        tipo: String(f.tipo),
-        clienteId: cliente ? String(cliente.id) : '',
-        clienteNombreLibre: cliente ? '' : f.cliente_razon,
-        concepto: String(f.concepto || 1),
-        puntoVenta: String(f.punto_venta),
-        condicionVenta: f.condicion_venta || 'Contado',
-        taxRate: f.subtotal > 0 ? String(Math.round((f.iva_amount / f.subtotal) * 10000) / 10000) : '0.21',
-        items: f.items.map((it) => ({ description: it.description, qty: String(it.qty), unit_price: String(it.unit_price) })),
-        observations: f.observaciones || '',
-        fchServDesde: hoy,
-        fchServHasta: hoy,
-        fchVtoPago: vencimientoDuplicado(f.fch_serv_hasta || '', f.fch_vto_pago || '', hoy),
-      },
-    })
+  // El borrador lo arma el backend (`libracore.facturas_borrador`,
+  // compartido con el resto de la familia): ahi vive la regla de que el
+  // periodo de servicio y el vencimiento se recalculan para hoy en vez de
+  // heredar los del original, que ya pasaron.
+  async function duplicar() {
+    setSaving(true)
+    setError(null)
+    try {
+      const b = await api.post<BorradorDuplicado>(`/api/facturas/${facturaId}/duplicar`)
+      navigate('/facturas/nueva', {
+        state: {
+          tipo: String(b.tipo),
+          clienteId: b.client_id ? String(b.client_id) : '',
+          clienteNombreLibre: b.client_name,
+          concepto: String(b.concepto),
+          puntoVenta: String(b.punto_venta),
+          condicionVenta: b.condicion_venta,
+          taxRate: String(b.tax_rate),
+          items: b.items.map((it) => ({ description: it.description, qty: String(it.qty), unit_price: String(it.unit_price) })),
+          observations: b.observations,
+          fchServDesde: b.fch_serv_desde,
+          fchServHasta: b.fch_serv_hasta,
+          fchVtoPago: b.fch_vto_pago,
+        },
+      })
+    } catch (err) {
+      setError(describeError(err))
+      setSaving(false)
+    }
   }
 
   async function eliminar() {

@@ -40,6 +40,7 @@ from pydantic import BaseModel
 import config_manager
 import database as db
 import pdf_generator as pdf_gen
+from libracore.facturas_borrador import armar_borrador
 from web.api_auth import get_current_user_json, require_role_json
 from web.helpers.arca_helper import get_next_numero_with_arca, solicitar_cae as _solicitar_cae
 from web.helpers.email_helper import send_comprobante, smtp_configurado
@@ -318,6 +319,18 @@ def detalle(factura_id: int):
     if not factura:
         raise HTTPException(404, "Factura no encontrada")
     return _detalle(factura)
+
+
+@router.post("/{factura_id}/duplicar")
+def duplicar(factura_id: int):
+    """Borrador para emitir una copia de la factura, con las fechas de
+    servicio y el vencimiento recalculados para hoy (la regla vive en
+    `libracore.facturas_borrador`, compartida con el resto de la familia).
+    No emite nada: la SPA prefillea el formulario de alta con esto."""
+    factura = db.get_factura(factura_id)
+    if not factura:
+        raise HTTPException(404, "Factura no encontrada")
+    return armar_borrador(factura)
 
 
 @router.post("/{factura_id}/autorizar")
