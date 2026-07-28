@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Clock, PlayCircle, StopCircle, Eye, ArrowUpCircle, ArrowDownCircle, CheckCircle2 } from 'lucide-react'
 
 function formatCurrency(value: number): string {
@@ -138,8 +138,8 @@ export function Turnos() {
       {
         id: 'actions',
         header: () => <div className="text-right">Acciones</div>,
-        size: 76,
-        minSize: 70,
+        size: anchoColumnaAcciones(1),
+        minSize: anchoColumnaAcciones(1),
         cell: ({ row }) => (
           <div className="flex justify-end">
             <Button asChild size="icon" variant="outline" title="Ver detalle">

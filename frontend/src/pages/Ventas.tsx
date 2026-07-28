@@ -18,7 +18,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   ShoppingCart, Plus, Eye, Printer, FileCheck, Ban, ReceiptText, ListChecks, UserPlus, X, CheckCircle2,
 } from 'lucide-react'
@@ -272,8 +272,8 @@ export function Ventas() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 150,
-      minSize: 130,
+      size: anchoColumnaAcciones(4),
+      minSize: anchoColumnaAcciones(4),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button asChild size="icon" variant="outline" title="Ver venta"><Link to={`/ventas/${row.original.id}`} aria-label="Ver venta"><Eye /></Link></Button>

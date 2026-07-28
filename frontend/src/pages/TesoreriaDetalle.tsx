@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable } from 'libra-ui/data-table'
 import {
   ArrowLeft, ArrowLeftRight, Archive, Check, Landmark, Pencil, Plus, Trash2,
 } from 'lucide-react'
@@ -214,8 +214,8 @@ export function TesoreriaDetalle() {
     {
       id: 'actions',
       header: '',
-      size: 60,
-      minSize: 50,
+      size: anchoColumnaAcciones(1),
+      minSize: anchoColumnaAcciones(1),
       cell: ({ row }) => (
         <div className="flex justify-end">
           <Button size="icon" variant="ghost" title="Eliminar movimiento" aria-label="Eliminar movimiento" onClick={() => setConfirmDeleteMov(row.original.id)}><Trash2 /></Button>

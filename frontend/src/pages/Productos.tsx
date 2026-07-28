@@ -22,7 +22,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Package, Plus, Pencil, Trash2, Search, X, TrendingUp, ClipboardList } from 'lucide-react'
 
 function formatCurrency(value: number): string {
@@ -222,8 +222,8 @@ export function Productos() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 118,
-      minSize: 104,
+      size: anchoColumnaAcciones(3),
+      minSize: anchoColumnaAcciones(3),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button size="icon" variant="outline" title="Receta" aria-label="Receta" asChild>

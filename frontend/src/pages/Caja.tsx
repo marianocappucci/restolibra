@@ -14,7 +14,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   PiggyBank, Plus, Trash2, Receipt, ArrowDownCircle, ArrowUpCircle, Wallet, Filter, X, Check,
 } from 'lucide-react'
@@ -209,8 +209,8 @@ export function Caja() {
       {
         id: 'actions',
         header: '',
-        size: 60,
-        minSize: 50,
+        size: anchoColumnaAcciones(1),
+        minSize: anchoColumnaAcciones(1),
         cell: ({ row }) => (
           <div className="flex justify-end">
             <Button size="icon" variant="ghost" title="Eliminar movimiento" aria-label="Eliminar movimiento" onClick={() => setConfirmDelete(row.original)}><Trash2 /></Button>

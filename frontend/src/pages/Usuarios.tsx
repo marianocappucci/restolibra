@@ -19,7 +19,7 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Check, Pencil, Plus, Trash2, UserCog, Users } from 'lucide-react'
 
 const crearSchema = z.object({
@@ -182,8 +182,8 @@ export function Usuarios() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 92,
-      minSize: 84,
+      size: anchoColumnaAcciones(2),
+      minSize: anchoColumnaAcciones(2),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button size="icon" variant="outline" title="Editar usuario" aria-label="Editar usuario" onClick={() => abrirEditar(row.original)}><Pencil /></Button>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Plus, Pencil, Search, X, Eye, FileDown, Calculator } from 'lucide-react'
 
 function formatCurrency(value: number): string {
@@ -77,8 +77,8 @@ export function Presupuestos() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 116,
-      minSize: 100,
+      size: anchoColumnaAcciones(3),
+      minSize: anchoColumnaAcciones(3),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button asChild size="icon" variant="outline" title="Ver presupuesto">

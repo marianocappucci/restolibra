@@ -22,7 +22,7 @@ import {
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogClose,
 } from '@/components/ui/dialog'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import {
   Archive, ArrowDownCircle, ArrowUpCircle, Check, History, Pencil,
@@ -189,8 +189,8 @@ export function Stock() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 92,
-      minSize: 84,
+      size: anchoColumnaAcciones(2),
+      minSize: anchoColumnaAcciones(2),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button asChild size="icon" variant="outline" title="Ver movimientos" aria-label="Ver movimientos">
