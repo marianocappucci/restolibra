@@ -23,7 +23,7 @@ import {
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   ArrowUpCircle, CheckCircle2, Eye, Filter, Hourglass, Plus, X,
 } from 'lucide-react'
@@ -188,8 +188,8 @@ export function Egresos() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 76,
-      minSize: 70,
+      size: anchoColumnaAcciones(1),
+      minSize: anchoColumnaAcciones(1),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button asChild size="icon" variant="outline" title="Ver egreso">

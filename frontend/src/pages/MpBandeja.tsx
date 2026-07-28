@@ -11,7 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   CreditCard, Wallet, Landmark, Banknote, RefreshCw, UserPlus, ReceiptText, X, Mail,
   Forward, UserRoundX, MailWarning, History, ArrowDownCircle, Hourglass, Info, User,
@@ -327,8 +327,8 @@ export function MpBandeja() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 100,
-      minSize: 90,
+      size: anchoColumnaAcciones(2),
+      minSize: anchoColumnaAcciones(2),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button size="icon" variant="outline" title="Facturar" disabled={saving} onClick={() => facturar('mov', row.original.id)}><ReceiptText /></Button>
@@ -382,8 +382,8 @@ export function MpBandeja() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 100,
-      minSize: 90,
+      size: anchoColumnaAcciones(2),
+      minSize: anchoColumnaAcciones(2),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button size="icon" variant="outline" title="Facturar" disabled={saving} onClick={() => facturar('pago', row.original.id)}><ReceiptText /></Button>

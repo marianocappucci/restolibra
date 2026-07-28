@@ -5,7 +5,7 @@ import { api, ApiError, type Remito } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { FileText, Plus, Search, X, Eye, FileDown } from 'lucide-react'
 
 export function Remitos() {
@@ -45,8 +45,8 @@ export function Remitos() {
     {
       id: 'actions',
       header: () => <div className="text-right">Acciones</div>,
-      size: 90,
-      minSize: 80,
+      size: anchoColumnaAcciones(2),
+      minSize: anchoColumnaAcciones(2),
       cell: ({ row }) => (
         <div className="flex justify-end gap-1">
           <Button asChild size="icon" variant="outline" title="Ver remito">

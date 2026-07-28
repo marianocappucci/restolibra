@@ -17,7 +17,7 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { DataTable } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable } from 'libra-ui/data-table'
 import {
   ArrowLeft, BookOpen, CircleDollarSign, Trash2, ArrowUpCircle, ArrowDownCircle,
   ShoppingCart, Receipt, User,
@@ -185,8 +185,8 @@ export function CuentaCorrienteDetalle() {
     {
       id: 'actions',
       header: '',
-      size: 60,
-      minSize: 50,
+      size: anchoColumnaAcciones(1),
+      minSize: anchoColumnaAcciones(1),
       cell: ({ row }) => (
         row.original.cc_pago_id && user?.role === 'admin' ? (
           <div className="flex justify-end">

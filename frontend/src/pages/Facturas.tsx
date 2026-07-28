@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { DataTable, sortableHeader } from 'libra-ui/data-table'
+import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   Eye, FileDown, Plus, CheckCircle2, Hourglass, CircleDollarSign,
   Receipt, FileText, FileMinus, FilePlus, Search, X, ChevronLeft, ChevronRight,
@@ -170,8 +170,12 @@ export function Facturas() {
         // Solo iconos (el texto "Ver"/"PDF" vive ahora en el tooltip): la
         // columna baja de ~180px a lo que ocupan los botones. En NC/ND nunca
         // aparece el boton de cobro, asi que alcanza con el ancho de dos.
-        size: vista === 'nc' || vista === 'nd' ? 90 : 116,
-        minSize: 80,
+        // El ancho lo calcula libra-ui a partir de la cantidad de botones —
+        // hacer la cuenta a mano fue el bug: los 116px de antes se olvidaban
+        // del padding de la celda y recortaban 16px del PRIMER boton (el
+        // contenido va alineado a la derecha).
+        size: anchoColumnaAcciones(vista === 'nc' || vista === 'nd' ? 2 : 3),
+        minSize: anchoColumnaAcciones(vista === 'nc' || vista === 'nd' ? 2 : 3),
         cell: ({ row }) => {
           const f = row.original
           const tc = f.total_cobrado ?? 0
