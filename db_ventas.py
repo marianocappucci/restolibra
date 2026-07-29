@@ -35,6 +35,7 @@ import sqlite3
 from libracore.db.caja import MEDIOS_PAGO_LABELS, create_caja_movimiento
 from libracore.db.core import _ar_now
 from libracore.db.cuenta_corriente import create_cc_pago
+from libracore.db.reversiones import revertir_cobro_venta
 from libracore.db.turnos import get_turno_activo
 
 from db_core import get_connection
@@ -309,7 +310,13 @@ def anular_venta(vid: int, usuario_id: int | None = None) -> None:
     movimiento de caja generado por sus pagos y, si tenía un pago a cuenta
     corriente, acredita la deuda del cliente. Todo en una única transacción;
     no-op si la venta ya estaba anulada, para no revertir dos veces si se
-    reintenta la acción."""
+    reintenta la acción.
+
+    La reversión del dinero es de LibraCore (`db.reversiones`, extraída el
+    2026-07-28: el cuerpo de esta función era idéntico al de Contalibra). La
+    reposición de stock se queda acá porque pasa por `add_movimiento_stock`,
+    que es el que sabe de recetas.
+    """
     with get_connection() as conn:
         try:
             venta = conn.execute(
@@ -333,23 +340,16 @@ def anular_venta(vid: int, usuario_id: int | None = None) -> None:
                     deposito_id=m["location_id"], conn=conn,
                 )
 
-            for p in conn.execute(
-                "SELECT id, medio, monto FROM ventas_pagos WHERE venta_id=?", (vid,)
-            ).fetchall():
-                label = MEDIOS_PAGO_LABELS.get(p["medio"], p["medio"])
-                create_caja_movimiento(
-                    fecha=fecha, tipo="egreso",
-                    concepto=f"Anulación venta {venta['number']} — {label}",
-                    monto=p["monto"], referencia=f"anulacion:venta:{vid}:pago:{p['id']}",
-                    medio_pago=p["medio"], usuario_id=usuario_id, conn=conn,
-                )
-                if p["medio"] == "cuenta_corriente" and venta["customer_party_id"]:
-                    create_cc_pago(
-                        cliente_id=venta["customer_party_id"], monto=p["monto"], fecha=fecha,
-                        concepto=f"Anulación venta {venta['number']}",
-                        referencia="", medio_pago="cuenta_corriente",
-                        caja_id=None, usuario_id=usuario_id, conn=conn,
-                    )
+            pagos = [
+                dict(p) for p in conn.execute(
+                    "SELECT id, medio, monto FROM ventas_pagos WHERE venta_id=?", (vid,)
+                ).fetchall()
+            ]
+            revertir_cobro_venta(
+                venta_id=vid, numero=venta["number"], fecha=fecha, pagos=pagos,
+                cliente_id=venta["customer_party_id"], usuario_id=usuario_id,
+                conn=conn,
+            )
 
             conn.execute(
                 "UPDATE sales SET status='cancelled', status_detail='anulada' WHERE id=?", (vid,)
