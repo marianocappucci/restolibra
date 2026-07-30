@@ -1,7 +1,11 @@
-"""Shim de compatibilidad — la implementación real vive en libracore (paquete
-interno, ver requirements.txt y wiki/entities/libracore.md). No editar el
-comportamiento acá; los cambios van en el repo libracore."""
-from libracore.auth import AdminAuth
+"""Shim de compatibilidad — la implementación real vive en libraauth (paquete
+interno, ver requirements.txt y wiki/entities/libraauth.md). No editar el
+comportamiento acá; los cambios van en el repo libraauth.
+
+Migrado el 2026-07-30 de `libracore.auth`. `AdminAuth` se portó a libraauth
+(`v0.2.0`) sin cambios de comportamiento justamente para poder cerrar esta
+migración: era lo último que ataba este producto a `libracore.auth`."""
+from libraauth.admin_auth import AdminAuth
 
 _auth = AdminAuth(dev_secret_fallback="restolibra-admin-secret-change-me")
 
