@@ -18,6 +18,7 @@ services:
       ssh:
         - libracore=${LIBRACORE_SSH_KEY:-~/.ssh/id_ed25519_libracore}
         - libracommerce=${LIBRACOMMERCE_SSH_KEY:-~/.ssh/id_ed25519_libracommerce}
+        - libraauth=${LIBRAAUTH_SSH_KEY:-~/.ssh/id_ed25519_libraauth}
         - libra-ui=${LIBRA_UI_SSH_KEY:-~/.ssh/id_ed25519_libra_ui}
     container_name: restolibra-dev
     restart: unless-stopped

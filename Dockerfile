@@ -54,7 +54,14 @@ RUN --mount=type=ssh,id=libracommerce,target=/tmp/ssh-commerce.sock \
     SSH_AUTH_SOCK=/tmp/ssh-commerce.sock \
     sh -c 'grep "^libracommerce" requirements.txt > /tmp/req-commerce.txt && \
            pip install --no-cache-dir -r /tmp/req-commerce.txt'
-RUN sh -c 'grep -v "^libracore" requirements.txt | grep -v "^libracommerce" > /tmp/req-pub.txt && \
+RUN --mount=type=ssh,id=libraauth,target=/tmp/ssh-auth.sock \
+    SSH_AUTH_SOCK=/tmp/ssh-auth.sock \
+    sh -c 'grep "^libraauth" requirements.txt > /tmp/req-auth.txt && \
+           pip install --no-cache-dir -r /tmp/req-auth.txt'
+# El paso publico EXCLUYE las tres privadas. Agregar una dependencia privada
+# sin sumarla tambien a este grep hace que pip la intente clonar sin
+# credenciales y el build falle -- paso al agregarse libraauth el 2026-07-30.
+RUN sh -c 'grep -v "^libracore" requirements.txt | grep -v "^libracommerce" | grep -v "^libraauth" > /tmp/req-pub.txt && \
            pip install --no-cache-dir -r /tmp/req-pub.txt'
 
 COPY . .
