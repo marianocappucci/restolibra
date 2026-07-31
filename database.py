@@ -7,6 +7,7 @@ import os
 # existentes (`db.get_connection()`, `db.DB_PATH`, `db.create_usuario(...)`,
 # etc.) no cambien una línea.
 from libracore.db.schema import init_core_schema
+from libracore.db.clients import sincronizar_parties_de_clientes
 from libracommerce.db.schema import init_schema as init_commerce_schema
 from db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, get_connection, minutos_desde  # noqa: F401
 from db_usuarios import (  # noqa: F401
@@ -318,6 +319,50 @@ from db_reportes_gastronomicos import reporte_gastronomia  # noqa: F401
 # directo — el hook ya no se usa y LibraCore no se toca.
 
 
+def _migrar_ventas_pagos_a_sales(conn):
+    """Repunta la FK de `ventas_pagos` de `ventas(id)` (schema de LibraCore)
+    a `sales(id)` (LibraCommerce), que es donde viven las ventas de
+    Restolibra desde P8. Mismo fix que Contalibra (2026-07-30).
+
+    El schema compartido de LibraCore crea la tabla con `REFERENCES
+    ventas(id)`, así que sobre una base desde cero cada INSERT de un pago
+    falla con FOREIGN KEY constraint (el pragma está activo por conexión).
+    Idempotente: si ya apunta a `sales`, no hace nada.
+
+    `ventas_pagos` no tiene tablas hijas, así que el rebuild no pisa la
+    trampa del RENAME de SQLite que reescribe las FK de las hijas — la
+    misma que sí apareció en P8 con `pedidos`/`comandas`.
+    """
+    row = conn.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='ventas_pagos'"
+    ).fetchone()
+    if not row or "REFERENCES sales(" in row[0]:
+        return
+
+    conn.execute("PRAGMA foreign_keys=OFF")
+    try:
+        conn.execute("ALTER TABLE ventas_pagos RENAME TO ventas_pagos_old")
+        conn.execute("""
+            CREATE TABLE ventas_pagos (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                venta_id   INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
+                medio      TEXT NOT NULL,
+                monto      REAL NOT NULL,
+                referencia TEXT DEFAULT '',
+                created_at TEXT DEFAULT (datetime('now'))
+            )
+        """)
+        conn.execute("""
+            INSERT INTO ventas_pagos (id, venta_id, medio, monto, referencia, created_at)
+            SELECT id, venta_id, medio, monto, referencia, created_at
+            FROM ventas_pagos_old
+        """)
+        conn.execute("DROP TABLE ventas_pagos_old")
+        conn.commit()
+    finally:
+        conn.execute("PRAGMA foreign_keys=ON")
+
+
 def init_db():
     with get_connection() as conn:
         init_core_schema(conn)
@@ -327,6 +372,17 @@ def init_db():
         # `cobrar_pedido` cruzan ambos motores en una única transacción
         # atómica. Mismo patrón que Contalibra (P7).
         init_commerce_schema(conn)
+        _migrar_ventas_pagos_a_sales(conn)
+
+        # Depósito por defecto: LibraCommerce no seed-ea ninguna location, y
+        # sin al menos una cualquier movimiento de stock revienta con NOT
+        # NULL location_id sobre una base desde cero. Mismo fix que
+        # Contalibra (2026-07-30).
+        if not conn.execute("SELECT 1 FROM locations LIMIT 1").fetchone():
+            conn.execute(
+                "INSERT INTO locations (name, description, is_default, active)"
+                " VALUES ('Depósito principal', '', 1, 1)"
+            )
 
         # Referencias cruzadas entre la venta (LibraCommerce) y contextos que
         # no son suyos: facturación/remitos y turno de caja (LibraCore) y
@@ -422,7 +478,14 @@ def init_db():
                 id          INTEGER PRIMARY KEY AUTOINCREMENT,
                 pedido_id   INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
                 comanda_id  INTEGER REFERENCES comandas(id) ON DELETE SET NULL,
-                producto_id INTEGER REFERENCES productos(id) ON DELETE SET NULL,
+                -- catalog_items (LibraCommerce) y no `productos`: el catálogo
+                -- se migró en P8 y esta FK quedó apuntando a la tabla vieja.
+                -- Las instancias existentes ya se repuntaron en la migración
+                -- de P8, pero este CREATE seguía naciendo con la FK vieja, así
+                -- que una instancia NUEVA no podía cargar un ítem a un pedido
+                -- (FOREIGN KEY constraint failed). Lo encontró la suite el
+                -- 2026-07-30. Ver `recetas` más arriba, ya repuntada entonces.
+                producto_id INTEGER REFERENCES catalog_items(id) ON DELETE SET NULL,
                 nombre      TEXT NOT NULL,
                 qty         REAL NOT NULL DEFAULT 1,
                 precio      REAL NOT NULL DEFAULT 0,
@@ -513,6 +576,14 @@ def init_db():
                 "INSERT OR IGNORE INTO modulos (modulo, habilitado, plan) VALUES (?,?,?)",
                 (modulo, habilitado, plan),
             )
+        conn.commit()
+
+    # Backfill de los `parties` espejo de `clients` (libracore v1.2.0). Va
+    # al final y FUERA del `with`: necesita que `init_commerce_schema` ya
+    # haya creado `parties`, y abre su propia conexión. Sin espejo, vender a
+    # un cliente creado después de P8 falla con FOREIGN KEY constraint (ver
+    # libracore/db/clients.py). Idempotente.
+    sincronizar_parties_de_clientes()
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

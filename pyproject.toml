@@ -1,0 +1,13 @@
+# Solo configuracion de pytest -- Restolibra NO es un paquete instalable
+# (43 modulos .py en la raiz del repo, importados con el repo como cwd,
+# ver web/app.py que hace sys.path.insert). Las dependencias siguen en
+# requirements.txt (runtime) y requirements-dev.txt (tests); no hay
+# [project] ni build-system a proposito: agregarlos convertiria esto en
+# un re-empaquetado del layout completo, que es otro proyecto.
+#
+# La suite y el CI se sumaron el 2026-07-30 para emparejar este repo con
+# el resto de la familia (gestiolibra/medlibra/ventalibra/libradesk) --
+# ver wiki/entities/restolibra.md.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

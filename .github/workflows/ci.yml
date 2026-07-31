@@ -1,0 +1,113 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # libracore, libracommerce y libraauth son repos privados,
+      # inalcanzables con el GITHUB_TOKEN por defecto (scopeado solo a este
+      # repo). Se accede con deploy keys SSH de solo lectura, una por
+      # repo-motor, cuyas claves privadas viven en los secrets de abajo.
+      #
+      # Por que deploy keys y no un PAT: un PAT vence sin aviso y tumba el
+      # CI de todos los repos que lo comparten a la vez (y en el VPS tumbo
+      # un deploy real: incidente Restolibra del 2026-07-25). Las deploy
+      # keys no vencen. Mismo mecanismo que ya usa el VPS.
+      #
+      # El alias `github-<repo>` con IdentitiesOnly no es adorno: con dos
+      # claves cargadas, SSH las ofrece en orden y GitHub autentica con la
+      # primera que acepta, que puede no ser la del repo que se esta
+      # clonando -- una deploy key ES una identidad por repo.
+      #
+      # DIFERENCIA con gestiolibra/medlibra/ventalibra: este repo declara
+      # sus motores como `git+ssh://git@github.com/...` y no `git+https`,
+      # asi que el insteadOf tiene que reescribir ESA forma. Se configuran
+      # las dos por las dudas: la https no molesta y cubre cualquier
+      # `git clone` que aparezca despues.
+      - name: Configure SSH access to private Libra dependencies
+        env:
+          LIBRACORE_DEPLOY_KEY: ${{ secrets.LIBRACORE_DEPLOY_KEY }}
+          LIBRACOMMERCE_DEPLOY_KEY: ${{ secrets.LIBRACOMMERCE_DEPLOY_KEY }}
+          LIBRAAUTH_DEPLOY_KEY: ${{ secrets.LIBRAAUTH_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          ssh-keyscan -t ed25519 github.com >> ~/.ssh/known_hosts 2>/dev/null
+          configurar() {
+            repo=$1; clave=$2
+            if [ -z "$clave" ]; then
+              echo "::error::Falta el secret con la deploy key de $repo en este repositorio."
+              exit 1
+            fi
+            printf '%s\n' "$clave" > ~/.ssh/id_"$repo"
+            chmod 600 ~/.ssh/id_"$repo"
+            printf 'Host github-%s\n  HostName github.com\n  User git\n  IdentityFile ~/.ssh/id_%s\n  IdentitiesOnly yes\n' \
+              "$repo" "$repo" >> ~/.ssh/config
+            destino="git@github-$repo:marianocappucci/$repo"
+            git config --global "url.$destino.insteadOf" "ssh://git@github.com/marianocappucci/$repo"
+            git config --global --add "url.$destino.insteadOf" "https://github.com/marianocappucci/$repo"
+          }
+          configurar libracore "$LIBRACORE_DEPLOY_KEY"
+          configurar libracommerce "$LIBRACOMMERCE_DEPLOY_KEY"
+          configurar libraauth "$LIBRAAUTH_DEPLOY_KEY"
+
+      # Confirma que cada clave autentica contra SU repo y no contra otro:
+      # es exactamente el modo de fallar que motiva los alias de arriba, y
+      # sin este paso recien se notaria dentro del pip install, como un
+      # error de git que no dice cual de las claves se uso.
+      - name: Verify each deploy key resolves to its own repo
+        run: |
+          for repo in libracore libracommerce libraauth; do
+            saludo=$(ssh -o StrictHostKeyChecking=yes -T "git@github-$repo" 2>&1 || true)
+            echo "$repo -> $saludo"
+            case "$saludo" in
+              *"marianocappucci/$repo"*) ;;
+              *) echo "::error::La deploy key de $repo no resuelve a marianocappucci/$repo."; exit 1 ;;
+            esac
+          done
+
+      # Este repo NO es un paquete instalable (43 modulos .py en la raiz,
+      # importados con el repo como cwd -- ver pyproject.toml), asi que no
+      # hay `pip install -e .` como en gestiolibra: se instalan las
+      # dependencias declaradas y la suite corre sobre el checkout.
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      # Que el pin del requirements sea el que efectivamente quedo
+      # instalado. Un pip install que falla parcialmente ya dejo pasar
+      # suites en verde contra la version anterior de un motor.
+      - name: Verify installed engine versions match the pins
+        run: |
+          python - <<'PY'
+          import importlib.metadata as m, re, sys
+          pins = {}
+          for linea in open("requirements.txt"):
+              hit = re.match(r'^(libra\w+) @ .*\.git@v([\d.]+)', linea.strip())
+              if hit:
+                  pins[hit.group(1)] = hit.group(2)
+          fallo = False
+          for paquete, esperada in pins.items():
+              real = m.version(paquete)
+              print(f"{paquete}: pin={esperada} instalado={real}")
+              if real != esperada:
+                  print(f"::error::{paquete} instalado {real}, se esperaba {esperada}")
+                  fallo = True
+          sys.exit(1 if fallo else 0)
+          PY
+
+      - name: Run tests
+        run: pytest -v
