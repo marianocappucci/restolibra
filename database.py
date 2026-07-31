@@ -339,6 +339,23 @@ def _migrar_ventas_pagos_a_sales(conn):
     if not row or "REFERENCES sales(" in row[0]:
         return
 
+    # Ver el comentario equivalente en contalibra/database.py: las filas que
+    # no tienen su venta en `sales` no se descartan (son registros de
+    # dinero), se copian igual y se avisa, porque quedan como referencias
+    # colgadas y eso tiene que ser una decisión de alguien.
+    huerfanas = conn.execute("""
+        SELECT COUNT(*) FROM ventas_pagos vp
+        LEFT JOIN sales s ON s.id = vp.venta_id
+        WHERE s.id IS NULL
+    """).fetchone()[0]
+    if huerfanas:
+        print(
+            f"[ADVERTENCIA] ventas_pagos: {huerfanas} fila(s) referencian una venta "
+            "que no está en `sales` (entorno a medio migrar de P8). Se conservan "
+            "tal cual, pero quedan como referencias colgadas: revisar a mano.",
+            flush=True,
+        )
+
     conn.execute("PRAGMA foreign_keys=OFF")
     try:
         conn.execute("ALTER TABLE ventas_pagos RENAME TO ventas_pagos_old")
