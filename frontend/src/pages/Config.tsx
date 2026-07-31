@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { PasswordInput } from 'libra-ui/PasswordInput'
 import {
   Ban, Building2, Check, CheckCircle2, ChevronDown, Copy, Database, Download,
   ExternalLink, Info, Mail, Pause, Phone, Power, Printer, Save, Send,
@@ -817,10 +818,16 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
 function Field({ label, value, onChange, type = 'text' }: {
   label: string; value: string; onChange: (v: string) => void; type?: string
 }) {
+  // Los campos secretos (token de MercadoPago, webhook secret, clave SMTP)
+  // se declaran con type="password" en sus call sites: el ojito se
+  // resuelve acá una sola vez en vez de en cada uno.
+  const Campo = type === 'password'
+    ? <PasswordInput value={value} onChange={(e) => onChange(e.target.value)} />
+    : <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
   return (
     <div className="grid gap-1.5">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      {Campo}
     </div>
   )
 }

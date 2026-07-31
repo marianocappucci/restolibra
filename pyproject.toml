@@ -1,0 +1,57 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "restolibra"
+version = "0.1.0.dev0"
+description = "Gestion gastronomica: salon, comandas, KDS, recetas y food cost, sobre el motor contable."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+# Declaradas con git+https y no git+ssh a proposito: asi el dev local en
+# WSL funciona sin identidad SSH propia contra GitHub. El Dockerfile y el
+# CI reescriben esas URLs a ssh con `insteadOf`, cada una con su alias y su
+# clave -- ver el comentario del Dockerfile.
+dependencies = [
+    # libracore provee facturacion/caja/ARCA y la base donde vive `usuarios`.
+    # El auth SALIO de aca el 2026-07-30 y ahora lo da libraauth.
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.2.0",
+    "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.4.0",
+    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.5.0",
+    # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
+    # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
+    "sqlalchemy>=2.0",
+    "fpdf2>=2.7.9",
+    "rich>=13.0.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "jinja2>=3.1.4",
+    "itsdangerous>=2.2.0",
+    "python-multipart>=0.0.9",
+    "aiofiles>=23.2.1",
+    "httpx>=0.27.0",
+    "cryptography>=42.0.0",
+    "qrcode>=7.4.2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27.0",
+]
+
+# `plans.py` NO entra en el paquete: libracore lo importa por nombre
+# (`import plans`) desde tres lugares -- db/modulos.py, provisioning/ y
+# admin/services.py, este ultimo usado por el backoffice, que es
+# produccion. Vive en la raiz del repo, igual que en gestiolibra, medlibra
+# y ventalibra. `admin/` y `scripts/` tampoco: son procesos aparte que
+# corren fuera del contenedor (systemd y cron).
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.hatch.metadata]
+allow-direct-references = true

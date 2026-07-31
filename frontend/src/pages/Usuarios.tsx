@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/form'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
+import { PasswordInput } from 'libra-ui/PasswordInput'
 import { Check, Pencil, Plus, Trash2, UserCog, Users } from 'lucide-react'
 
 const crearSchema = z.object({
@@ -232,7 +233,7 @@ export function Usuarios() {
                   </FormItem>
                 )} />
                 <FormField control={createForm.control} name="password" render={({ field }) => (
-                  <FormItem><FormLabel>Contraseña</FormLabel><FormControl><Input type="password" {...field} placeholder="Mínimo 6 caracteres" /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Contraseña</FormLabel><FormControl><PasswordInput {...field} placeholder="Mínimo 6 caracteres" /></FormControl><FormMessage /></FormItem>
                 )} />
                 <DialogFooter>
                   <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>
@@ -301,7 +302,7 @@ export function Usuarios() {
               <FormField control={editForm.control} name="new_password" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nueva contraseña <span className="font-normal text-muted-foreground">(dejar vacío para no cambiar)</span></FormLabel>
-                  <FormControl><Input type="password" {...field} placeholder="Mínimo 6 caracteres" /></FormControl>
+                  <FormControl><PasswordInput {...field} placeholder="Mínimo 6 caracteres" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

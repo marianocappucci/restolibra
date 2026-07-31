@@ -8,6 +8,9 @@ export const Login = createLogin<User>({
   redirectTo: '/dashboard',
   useAuth,
   formatError: (err) => err.detail,
+  // Enlace "¿Olvidaste tu contraseña?" -- va de la mano con los endpoints
+  // /api/forgot-password y /api/reset-password de web/api/auth.py.
+  forgotPasswordPath: '/forgot-password',
   // El rol mozo solo opera Salon/Pedidos -- cae directo ahi, nunca en el
   // dashboard (mismo comportamiento que el Jinja2 viejo, ver web/app.py:
   // login_post / wiki/entities/restolibra.md).

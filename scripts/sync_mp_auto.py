@@ -4,8 +4,14 @@ Sincronización automática de pagos MercadoPago con auto-facturación.
 Uso: python3 /app/scripts/sync_mp_auto.py [--dias N]
 Pensado para ejecutarse vía cron: docker exec restolibra python3 /app/scripts/sync_mp_auto.py
 """
-import sys
 import os
+import sys
+
+# Este script corre POR RUTA desde cron, asi que sys.path[0] es
+# /app/scripts y no /app: sin esto no encuentra el paquete `app`. En
+# el resto del repo el insert se saco al empaquetar (2026-07-31),
+# porque ahi sobraba; aca es lo unico que sostiene el import y hay un
+# test que lo vigila (tests/test_layout_paquete.py).
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import asyncio
@@ -20,10 +26,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-import database as db
-import config_manager
-import mp_api
-import mp_facturacion
+from app import database as db
+from app import config_manager
+from app import mp_api
+from app import mp_facturacion
 
 
 async def sync_and_invoice(dias: int = 2) -> dict:

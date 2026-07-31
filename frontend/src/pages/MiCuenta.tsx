@@ -6,10 +6,10 @@ import { api, ApiError } from '../api'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
+import { PasswordInput } from 'libra-ui/PasswordInput'
 import { Check, UserCircle } from 'lucide-react'
 import { useState } from 'react'
 
@@ -84,7 +84,7 @@ export function MiCuenta() {
               <FormField control={form.control} name="new_password" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nueva contraseña</FormLabel>
-                  <FormControl><Input type="password" {...field} placeholder="Mínimo 6 caracteres" autoFocus /></FormControl>
+                  <FormControl><PasswordInput {...field} placeholder="Mínimo 6 caracteres" autoFocus /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
