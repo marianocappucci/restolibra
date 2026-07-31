@@ -48,6 +48,16 @@ services:
       - DATA_DIR=/app/dev-data
       - ENV=development
       - DOCS_AUTH_SECRET=${DOCS_AUTH_SECRET:-}
+      # Recuperacion de contrasena (libraauth v0.5.0). Sin SMTP la app
+      # levanta igual y POST /api/forgot-password devuelve 503: cargar
+      # estas variables es lo unico que falta para que mande mails.
+      - RESTOLIBRA_RESET_URL_BASE=${RESTOLIBRA_RESET_URL_BASE:-https://dev.restolibra.com.ar/reset-password}
+      - LIBRAAUTH_SMTP_HOST=${LIBRAAUTH_SMTP_HOST:-}
+      - LIBRAAUTH_SMTP_PORT=${LIBRAAUTH_SMTP_PORT:-587}
+      - LIBRAAUTH_SMTP_USER=${LIBRAAUTH_SMTP_USER:-}
+      - LIBRAAUTH_SMTP_PASSWORD=${LIBRAAUTH_SMTP_PASSWORD:-}
+      - LIBRAAUTH_SMTP_FROM_EMAIL=${LIBRAAUTH_SMTP_FROM_EMAIL:-}
+      - LIBRAAUTH_SMTP_FROM_NAME=${LIBRAAUTH_SMTP_FROM_NAME:-Restolibra}
     networks:
       - stack-net
 

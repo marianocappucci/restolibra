@@ -19,6 +19,8 @@ LibraCore declaran `usuario_id REFERENCES usuarios(id)` y esas FK resuelven
 contra el archivo donde esta la tabla; moverla rompe facturacion y caja (se
 probo y se revirtio el 2026-07-30, ver log.md del wiki).
 """
+import os
+
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -29,6 +31,11 @@ from libraauth.hashing import (  # noqa: F401  (re-exportados via database.py)
     verify_password as _verify_password,
 )
 from libraauth.models import Base as _AuthBase
+from libraauth.password_reset import (  # noqa: F401  (re-exportadas para el router)
+    EmailNotConfigured,
+    InvalidResetToken,
+    PasswordResetService,
+)
 from libraauth.repository import UserRepository
 
 from db_core import DB_PATH
@@ -39,8 +46,38 @@ from db_core import DB_PATH
 ROLES = ("admin", "operador", "cajero", "mozo")
 
 _engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
-_AuthBase.metadata.create_all(_engine)   # no-op: la tabla ya existe
-_repo = UserRepository(sessionmaker(bind=_engine), roles=ROLES)
+_AuthBase.metadata.create_all(_engine)
+_sessions = sessionmaker(bind=_engine)
+_repo = UserRepository(_sessions, roles=ROLES)
+
+# Recuperacion de contrasena por correo (libraauth v0.5.0). Mismo engine que el
+# repositorio a proposito: la tabla de tokens tiene FK a `usuarios`, que vive en
+# `restolibra.db` junto al resto del dominio.
+#
+# Sin SMTP configurado esto se construye igual y la app levanta; el que avisa es
+# el endpoint, con un 503, recien cuando alguien pide un reset.
+_password_reset = PasswordResetService(
+    _sessions,
+    product_name="Restolibra",
+    reset_url_base=os.environ.get(
+        "RESTOLIBRA_RESET_URL_BASE", "https://dev.restolibra.com.ar/reset-password"
+    ),
+)
+
+
+def solicitar_reset_password(identificador: str) -> int:
+    """Manda el mail de recuperacion. Devuelve cuantos salieron — **para el log,
+    no para la respuesta HTTP**: el endpoint responde igual exista o no el
+    usuario (ver web/api/auth.py)."""
+    return _password_reset.request_reset(identificador)
+
+
+def resetear_password_con_token(token: str, nueva_password: str) -> dict:
+    """Cambia la contrasena y quema el token. Lanza `InvalidResetToken` si el
+    enlace no sirve y `ValueError` si la contrasena es demasiado corta."""
+    return _password_reset.reset(token, nueva_password)
+
+
 
 
 def _a_forma_vieja(u: dict | None) -> dict | None:

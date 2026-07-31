@@ -25,6 +25,17 @@ class LoginPayload(BaseModel):
     password: str
 
 
+class ForgotPasswordPayload(BaseModel):
+    # Username o email: quien perdió la contraseña no tiene por qué recordar
+    # con cuál se dio de alta.
+    identificador: str
+
+
+class ResetPasswordPayload(BaseModel):
+    token: str
+    new_password: str
+
+
 def _serialize_user(user: dict) -> dict:
     modulos = db.get_modulos()
     cfg = config_manager.load()
@@ -71,6 +82,54 @@ def login(payload: LoginPayload, request: Request):
     response = JSONResponse(_serialize_user(user))
     create_session_cookie(response, payload.username)
     return response
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordPayload, request: Request):
+    """Pide el mail de recuperación (libraauth v0.5.0).
+
+    **Responde siempre lo mismo**, exista o no el usuario: es público y sin
+    sesión, y una respuesta distinta lo convertiría en un buscador de usuarios
+    y correos dados de alta.
+
+    El evento sí queda auditado con lo que se pidió, igual que los intentos de
+    login: eso se ve del lado de adentro, no del lado del que pregunta.
+    """
+    ip = _client_ip(request)
+    try:
+        enviados = db.solicitar_reset_password(payload.identificador)
+    except db.EmailNotConfigured:
+        db.registrar_auth_event("reset_sin_smtp", payload.identificador, ip)
+        # 503 y no 200: no depende de si el usuario existe, así que decirlo no
+        # filtra nada, y callarlo dejaría a la persona esperando un mail que
+        # nadie puede mandar.
+        return JSONResponse(
+            {"detail": "El envío de correo no está configurado."}, status_code=503
+        )
+    db.registrar_auth_event(
+        "reset_solicitado" if enviados else "reset_sin_destinatario",
+        payload.identificador, ip,
+    )
+    return {"ok": True}
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordPayload, request: Request):
+    ip = _client_ip(request)
+    try:
+        resultado = db.resetear_password_con_token(payload.token, payload.new_password)
+    except db.InvalidResetToken:
+        db.registrar_auth_event("reset_token_invalido", "", ip)
+        return JSONResponse(
+            {"detail": "El enlace no es válido o ya venció."}, status_code=400
+        )
+    except ValueError as exc:
+        return JSONResponse({"detail": str(exc)}, status_code=422)
+    db.registrar_auth_event("reset_completado", resultado["username"], ip)
+    # **No se crea sesión** a propósito: quien cambió la contraseña entra con
+    # ella, lo que además confirma que quedó bien.
+    user = db.get_usuario_by_username(resultado["username"])
+    return _serialize_user(user)
 
 
 @router.post("/logout")
