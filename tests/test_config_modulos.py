@@ -1,6 +1,6 @@
 """Configuracion, gating de modulos por plan y corte de servicio."""
-import config_manager
-import db_core
+from app import config_manager
+from app import db_core
 
 
 def test_get_config(admin_client):

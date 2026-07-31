@@ -43,10 +43,10 @@ if _ROOT not in sys.path:
 import pytest
 from fastapi.testclient import TestClient
 
-import db_core
-import db_usuarios
-import database as db  # noqa: F401  (re-exporta todo el dominio)
-from web.app import app
+from app import db_core
+from app import db_usuarios
+from app import database as db  # noqa: F401  (re-exporta todo el dominio)
+from app.web.app import app
 
 ADMIN_USER = "admin"
 ADMIN_PASS = os.environ["ADMIN_PASSWORD"]

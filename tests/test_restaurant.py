@@ -246,7 +246,7 @@ def test_medios_de_pago_del_pedido(admin_client):
 
 def test_modulo_restaurant_gateado(admin_client, salon_con_mesa):
     """El gate de modulos alcanza al modulo propio de este producto."""
-    import db_core
+    from app import db_core
     assert admin_client.get("/api/salon/mapa").status_code == 200
     with db_core.get_connection() as conn:
         conn.execute("UPDATE modulos SET habilitado = 0 WHERE modulo = 'restaurant'")

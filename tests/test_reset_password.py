@@ -10,7 +10,7 @@ import re
 
 import pytest
 
-import db_usuarios
+from app import db_usuarios
 from libraauth.email_sender import SmtpConfig
 from tests.conftest import ADMIN_USER
 

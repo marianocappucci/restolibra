@@ -78,27 +78,26 @@ jobs:
             esac
           done
 
-      # Este repo NO es un paquete instalable (43 modulos .py en la raiz,
-      # importados con el repo como cwd -- ver pyproject.toml), asi que no
-      # hay `pip install -e .` como en gestiolibra: se instalan las
-      # dependencias declaradas y la suite corre sobre el checkout.
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -r requirements-dev.txt
+      # Desde el re-empaquetado (2026-07-31) este repo es un paquete
+      # instalable como el resto de la familia: mismo comando que
+      # gestiolibra/medlibra/ventalibra.
+      - name: Install package + dev deps
+        run: pip install -e ".[dev]"
 
-      # Que el pin del requirements sea el que efectivamente quedo
-      # instalado. Un pip install que falla parcialmente ya dejo pasar
-      # suites en verde contra la version anterior de un motor.
+      # Que el pin declarado sea el que efectivamente quedo instalado. Un
+      # pip install que falla parcialmente ya dejo pasar suites en verde
+      # contra la version anterior de un motor.
       - name: Verify installed engine versions match the pins
         run: |
           python - <<'PY'
           import importlib.metadata as m, re, sys
-          pins = {}
-          for linea in open("requirements.txt"):
-              hit = re.match(r'^(libra\w+) @ .*\.git@v([\d.]+)', linea.strip())
-              if hit:
-                  pins[hit.group(1)] = hit.group(2)
+          pins = dict(re.findall(
+              r'(libra[\w-]+) @ git\+\S+\.git@v([\d.]+)',
+              open("pyproject.toml").read(),
+          ))
+          if not pins:
+              print("::error::No se encontro ningun pin de motor en pyproject.toml")
+              sys.exit(1)
           fallo = False
           for paquete, esperada in pins.items():
               real = m.version(paquete)

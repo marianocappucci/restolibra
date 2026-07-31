@@ -13,7 +13,7 @@ def test_login_ok_devuelve_usuario_y_cookie(client):
     # La forma que espera la SPA (ver _serialize_user).
     for clave in ("nombre", "modulos", "empresa_nombre", "mp_pending_count"):
         assert clave in data
-    from web.auth import COOKIE_NAME
+    from app.web.auth import COOKIE_NAME
     assert COOKIE_NAME in resp.cookies
 
 

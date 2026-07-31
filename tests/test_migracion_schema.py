@@ -11,8 +11,8 @@ import sqlite3
 
 import pytest
 
-import database as db
-import db_core
+from app import database as db
+from app import db_core
 
 
 def _schema_de(conn, tabla):
