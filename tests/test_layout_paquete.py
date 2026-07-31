@@ -12,6 +12,7 @@ produccion:
 2. Los scripts de cron tienen que poder importar el paquete.
 """
 import importlib
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -72,6 +73,28 @@ def test_los_scripts_de_cron_compilan(script):
         capture_output=True, text=True,
     )
     assert r.returncode == 0, f"{script} no compila:\n{r.stderr}"
+
+
+def test_el_backoffice_apunta_a_un_static_que_existe():
+    """`admin/app.py` monta /static por RUTA desde el checkout. El
+    re-empaquetado movio web/ a app/web/ y esa linea quedo apuntando a un
+    directorio inexistente -- el backoffice corre fuera de Docker con su
+    proceso viejo en memoria, asi que la rotura no se ve hasta el proximo
+    restart (o el proximo reboot del VPS). Lo encontro el pre-flight del
+    deploy a produccion, no la suite: aca queda cubierto."""
+    fuente = (RAIZ / "admin" / "app.py").read_text(encoding="utf-8")
+    m = re.search(r'STATIC_DIR = os\.path\.join\((.*?)\)', fuente, re.S)
+    if not m:
+        # Restolibra no le pasa `static_dir` a create_admin_app: su
+        # backoffice no monta /static y no depende de ninguna ruta del
+        # producto. Nada que verificar.
+        pytest.skip("este backoffice no monta /static")
+    partes = re.findall(r'"([^"]+)"', m.group(1))
+    destino = RAIZ.joinpath(*partes)
+    assert destino.is_dir(), (
+        f"admin/app.py monta /static desde {destino}, que no existe. "
+        "El backoffice no va a levantar en su proximo restart."
+    )
 
 
 def test_sync_mp_auto_puede_importar_el_paquete():
