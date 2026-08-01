@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  api, ApiError, IVA_CONDITIONS, MEDIOS_PAGO_LABELS,
+  api, ApiError, IVA_CONDITIONS, MEDIOS_PAGO_LABELS, opcionesCliente,
   type Cliente, type ListaPrecio, type ProductoBusqueda, type Venta,
 } from '../api'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -314,12 +315,14 @@ export function Ventas() {
                 <div className="grid gap-1.5">
                   <Label>Cliente</Label>
                   <div className="flex items-center gap-1">
-                    <Select value={clienteId} onValueChange={setClienteId}>
-                      <SelectTrigger className="w-52"><SelectValue placeholder="Consumidor Final" /></SelectTrigger>
-                      <SelectContent>
-                        {clientes.map((c) => <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SelectBuscable
+                      value={clienteId}
+                      onChange={setClienteId}
+                      opciones={opcionesCliente(clientes)}
+                      placeholder="Consumidor Final"
+                      ariaLabel="Cliente"
+                      className="w-52"
+                    />
                     <Button type="button" size="icon" variant="outline" title="Agregar nuevo cliente" onClick={() => setNuevoCliente((v) => !v)}>
                       <UserPlus />
                     </Button>

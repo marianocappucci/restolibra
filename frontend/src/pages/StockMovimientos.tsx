@@ -2,15 +2,14 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  api, ApiError, TIPO_MOVIMIENTO_LABELS, type MovimientoStock, type Producto,
+  api, ApiError, TIPO_MOVIMIENTO_LABELS, opcionesProducto,
+  type MovimientoStock, type Producto,
 } from '../api'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '@/components/ui/select'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import {
@@ -131,13 +130,16 @@ export function StockMovimientos() {
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-2 py-3">
-          <Select value={productoId || '__todos__'} onValueChange={(v) => actualizarFiltro('producto_id', v === '__todos__' ? '' : v)}>
-            <SelectTrigger className="w-56"><SelectValue placeholder="— Todos los productos —" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__todos__">— Todos los productos —</SelectItem>
-              {productos.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.nombre}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <SelectBuscable
+            value={productoId || '__todos__'}
+            onChange={(v) => actualizarFiltro('producto_id', v === '__todos__' ? '' : v)}
+            opciones={[
+              { value: '__todos__', label: '— Todos los productos —' },
+              ...opcionesProducto(productos),
+            ]}
+            ariaLabel="Filtrar por producto"
+            className="w-56"
+          />
           <Input type="date" value={desde} onChange={(e) => actualizarFiltro('desde', e.target.value)} className="w-40" />
           <Input type="date" value={hasta} onChange={(e) => actualizarFiltro('hasta', e.target.value)} className="w-40" />
           {(productoId || desde || hasta) && (
