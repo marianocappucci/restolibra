@@ -193,7 +193,10 @@ def _compras_cbte(egresos: list) -> str:
     for e in egresos:
         tc_raw  = e.get("tipo_comprobante") or "factura"
         tipo    = _TIPO_EGRESO_AFIP.get(tc_raw, "01")
-        neto    = float(e.get("monto_neto") or 0)
+        # El neto NO va en este archivo: el registro de COMPROBANTES lleva
+        # el importe total, y el neto gravado por alicuota va en el archivo
+        # de ALICUOTAS (_compras_alicuotas, mas abajo), que es donde ARCA lo
+        # espera. Se saco la variable, que quedaba calculada y sin usar.
         iva_m   = float(e.get("iva_monto") or 0)
         total   = float(e.get("total") or 0)
 

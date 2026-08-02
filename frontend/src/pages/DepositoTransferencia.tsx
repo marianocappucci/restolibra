@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  api, ApiError, type Deposito, type Producto, type StockPorDeposito,
+  api, ApiError, opcionesProducto,
+  type Deposito, type Producto, type StockPorDeposito,
 } from '../api'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,12 +91,13 @@ export function DepositoTransferencia() {
           <CardContent className="grid gap-4">
             <div className="grid gap-1.5">
               <Label>Producto <span className="text-destructive">*</span></Label>
-              <Select value={productoId} onValueChange={setProductoId}>
-                <SelectTrigger><SelectValue placeholder="— Seleccioná un producto —" /></SelectTrigger>
-                <SelectContent>
-                  {productos.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.nombre}{p.codigo ? ` (${p.codigo})` : ''}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SelectBuscable
+                value={productoId}
+                onChange={setProductoId}
+                opciones={opcionesProducto(productos)}
+                placeholder="— Seleccioná un producto —"
+                ariaLabel="Producto"
+              />
             </div>
 
             {stockOrigen.length > 0 && (

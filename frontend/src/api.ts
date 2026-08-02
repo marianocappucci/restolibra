@@ -12,6 +12,8 @@
 // dominio propios de Restolibra.
 export { ApiError, api } from 'libra-ui/api-client'
 
+import type { OpcionSelect } from 'libra-ui/SelectBuscable'
+
 // role incluye 'mozo' -- rol especifico de Restolibra sin equivalente en
 // Contalibra (ve solo la seccion Salon del sidebar, ver Layout.tsx).
 export type User = {
@@ -766,6 +768,52 @@ export type MpPago = {
   factura_id: number | null
   created_at: string
   cliente: Cliente | null
+}
+
+// --- opciones para los selects con busqueda (libra-ui/SelectBuscable) ------
+//
+// Viven aca, junto a los tipos, para que las cuatro pantallas que eligen un
+// cliente lo muestren y lo busquen igual. El `hint` no es decorativo: ademas
+// de desambiguar dos nombres parecidos, **entra en la busqueda**.
+//
+// Mismo criterio que Contalibra, del que este producto es fork: en
+// facturacion el CUIT/DNI es el mejor discriminador, porque es lo que se
+// tiene a mano del papel.
+
+export function opcionesCliente(clientes: Cliente[]): OpcionSelect[] {
+  return clientes.map((c) => ({
+    value: String(c.id),
+    label: c.name,
+    hint: [c.cuit_dni, c.activo ? null : 'inactivo'].filter(Boolean).join(' · ') || undefined,
+  }))
+}
+
+export function opcionesProveedor(proveedores: Proveedor[]): OpcionSelect[] {
+  return proveedores.map((p) => ({
+    value: String(p.id),
+    label: p.nombre,
+    hint: p.cuit_dni || undefined,
+  }))
+}
+
+export function opcionesProducto(productos: Producto[]): OpcionSelect[] {
+  return productos.map((p) => ({
+    value: String(p.id),
+    // El codigo es lo que se lee de la etiqueta cuando hay varios productos
+    // de nombre parecido; la categoria ubica en la carta.
+    label: p.nombre,
+    hint: [p.codigo, p.categoria, p.activo ? null : 'inactivo']
+      .filter(Boolean).join(' · ') || undefined,
+  }))
+}
+
+// Las categorias se eligen **por nombre, no por id** en las pantallas que las
+// usan (el filtro de Egresos y el alta de gasto guardan el nombre como texto).
+// Cambiar eso a id seria una migracion de datos, no un cambio de select.
+export function opcionesCategoriaPorNombre(
+  categorias: { id: number; nombre: string }[],
+): OpcionSelect[] {
+  return categorias.map((c) => ({ value: c.nombre, label: c.nombre }))
 }
 
 // --- KDS (Kitchen Display System) -- ver web/api/kds.py, exclusivo de

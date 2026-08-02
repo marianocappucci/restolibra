@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, Link } from 'react-router-dom'
-import { api, ApiError, type CategoriaProducto, type ItemListaPrecio, type ListaPrecio } from '../api'
+import { api, ApiError, opcionesCategoriaPorNombre, type CategoriaProducto, type ItemListaPrecio, type ListaPrecio } from '../api'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -314,13 +315,15 @@ export function ListaPrecioDetalle() {
                   </div>
                   <div className="grid gap-1.5">
                     <Label>Aplicar a</Label>
-                    <Select value={loteCategoria || '__todas__'} onValueChange={(v) => setLoteCategoria(v === '__todas__' ? '' : v)}>
-                      <SelectTrigger><SelectValue placeholder="Todos los productos" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__todas__">Todos los productos</SelectItem>
-                        {categorias.map((c) => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SelectBuscable
+                      value={loteCategoria || '__todas__'}
+                      onChange={(v) => setLoteCategoria(v === '__todas__' ? '' : v)}
+                      opciones={[
+                        { value: '__todas__', label: 'Todos los productos' },
+                        ...opcionesCategoriaPorNombre(categorias),
+                      ]}
+                      ariaLabel="Aplicar a"
+                    />
                   </div>
                   <p className="text-sm text-muted-foreground">
                     Esta acción reemplaza los precios calculados. Los precios que no estén en la lista se van a insertar.
@@ -428,13 +431,16 @@ export function ListaPrecioDetalle() {
             <CardHeader className="flex-row flex-wrap items-center justify-between gap-3 space-y-0">
               <CardTitle className="text-base">Precios</CardTitle>
               <div className="flex flex-wrap items-center gap-2">
-                <Select value={categoriaFiltro || '__todas__'} onValueChange={(v) => aplicarFiltroCategoria(v === '__todas__' ? '' : v)}>
-                  <SelectTrigger className="w-48"><SelectValue placeholder="Todas las categorías" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__todas__">Todas las categorías</SelectItem>
-                    {categorias.map((c) => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SelectBuscable
+                  value={categoriaFiltro || '__todas__'}
+                  onChange={(v) => aplicarFiltroCategoria(v === '__todas__' ? '' : v)}
+                  opciones={[
+                    { value: '__todas__', label: 'Todas las categorías' },
+                    ...opcionesCategoriaPorNombre(categorias),
+                  ]}
+                  ariaLabel="Filtrar por categoría"
+                  className="w-48"
+                />
                 <span className="text-sm text-muted-foreground">{items.length} producto{items.length !== 1 ? 's' : ''}</span>
                 <Button onClick={guardarPrecios} disabled={savingItems}>
                   <Check />{savingItems ? 'Guardando…' : 'Guardar precios'}

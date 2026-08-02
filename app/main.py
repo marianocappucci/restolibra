@@ -373,7 +373,7 @@ def nuevo_remito():
     pdf_path = pdf_gen.generate_pdf(remito_data)
     db.update_remito_pdf_path(remito_id, pdf_path)
 
-    console.print(f"\n[bold green]Remito guardado exitosamente.[/bold green]")
+    console.print("\n[bold green]Remito guardado exitosamente.[/bold green]")
     console.print(f"  PDF generado en:\n  [cyan]{pdf_path}[/cyan]")
     pause()
 
@@ -509,7 +509,7 @@ def nuevo_presupuesto():
     pdf_path = pdf_gen.generate_pdf_presupuesto(presupuesto_data)
     db.update_presupuesto_pdf_path(presupuesto_id, pdf_path)
 
-    console.print(f"\n[bold green]Presupuesto guardado exitosamente.[/bold green]")
+    console.print("\n[bold green]Presupuesto guardado exitosamente.[/bold green]")
     console.print(f"  PDF generado en:\n  [cyan]{pdf_path}[/cyan]")
     pause()
 
@@ -605,7 +605,7 @@ def convertir_presupuesto_a_remito(presupuesto):
     # Registrar la conversión en el presupuesto
     db.update_presupuesto_remito_id(presupuesto["id"], remito_id)
 
-    console.print(f"\n[bold green]Presupuesto convertido a remito.[/bold green]")
+    console.print("\n[bold green]Presupuesto convertido a remito.[/bold green]")
     console.print(f"  Remito N° {remito_number}")
     console.print(f"  PDF generado en:\n  [cyan]{pdf_path}[/cyan]")
 

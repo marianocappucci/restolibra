@@ -5,9 +5,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import {
-  api, ApiError, TIPOS_COMPROBANTE,
+  api, ApiError, TIPOS_COMPROBANTE, opcionesCategoriaPorNombre, opcionesProveedor,
   type CategoriaEgreso, type Egreso, type Proveedor, type ResumenEgresos,
 } from '../api'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { Card, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -244,13 +245,16 @@ export function Egresos() {
             </div>
             <div className="grid gap-1.5">
               <Label>Categoría</Label>
-              <Select value={categoriaFiltro || '__todas__'} onValueChange={(v) => setCategoriaFiltro(v === '__todas__' ? '' : v)}>
-                <SelectTrigger className="w-48"><SelectValue placeholder="Todas las categorías" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__todas__">Todas las categorías</SelectItem>
-                  {categorias.map((c) => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SelectBuscable
+                value={categoriaFiltro || '__todas__'}
+                onChange={(v) => setCategoriaFiltro(v === '__todas__' ? '' : v)}
+                opciones={[
+                  { value: '__todas__', label: 'Todas las categorías' },
+                  ...opcionesCategoriaPorNombre(categorias),
+                ]}
+                ariaLabel="Filtrar por categoría"
+                className="w-48"
+              />
             </div>
             <div className="grid gap-1.5">
               <Label>Estado</Label>
@@ -293,12 +297,21 @@ export function Egresos() {
               <FormField control={form.control} name="proveedor_id" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Proveedor</FormLabel>
-                  <Select value={field.value} onValueChange={field.onChange}>
-                    <FormControl><SelectTrigger className="w-48"><SelectValue placeholder="Sin proveedor / ocasional" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {proveedores.map((p) => <SelectItem key={p.id} value={String(p.id)}>{p.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    {/* `proveedor_id` es `z.string().optional()`: el Select de
+                        Radix toleraba `undefined` quedando no controlado, este
+                        pide un string. `''` es ademas el valor con el que el
+                        formulario arranca, y la linea que arma el payload ya lo
+                        mapea a `null` (sin proveedor / ocasional). */}
+                    <SelectBuscable
+                      value={field.value ?? ''}
+                      onChange={field.onChange}
+                      opciones={opcionesProveedor(proveedores)}
+                      placeholder="Sin proveedor / ocasional"
+                      ariaLabel="Proveedor"
+                      className="w-48"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
@@ -325,13 +338,19 @@ export function Egresos() {
               <FormField control={form.control} name="categoria" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Categoría</FormLabel>
-                  <Select value={field.value || '__sin__'} onValueChange={(v) => field.onChange(v === '__sin__' ? '' : v)}>
-                    <FormControl><SelectTrigger className="w-44"><SelectValue placeholder="Sin categoría" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      <SelectItem value="__sin__">— Sin categoría —</SelectItem>
-                      {categorias.map((c) => <SelectItem key={c.id} value={c.nombre}>{c.nombre}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SelectBuscable
+                      value={field.value || '__sin__'}
+                      onChange={(v) => field.onChange(v === '__sin__' ? '' : v)}
+                      opciones={[
+                        { value: '__sin__', label: '— Sin categoría —' },
+                        ...opcionesCategoriaPorNombre(categorias),
+                      ]}
+                      placeholder="Sin categoría"
+                      ariaLabel="Categoría"
+                      className="w-44"
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
