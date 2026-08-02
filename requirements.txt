@@ -2,7 +2,7 @@
 # `usuarios`. El auth SALIO de aca el 2026-07-30 y ahora lo da libraauth.
 libracore @ git+ssh://git@github.com/marianocappucci/libracore.git@v1.2.0
 libracommerce @ git+ssh://git@github.com/marianocappucci/libracommerce.git@v0.4.0
-libraauth @ git+ssh://git@github.com/marianocappucci/libraauth.git@v0.5.0
+libraauth @ git+ssh://git@github.com/marianocappucci/libraauth.git@v0.7.0
 # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
 # db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
 sqlalchemy>=2.0

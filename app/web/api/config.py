@@ -249,3 +249,76 @@ async def restaurar_db(backup_file: UploadFile = File(...)):
                 pass
 
     return {"ok": True}
+
+
+# ── SMTP (libraauth v0.6.0) ───────────────────────────────────────────────────
+#
+# La config del correo de autenticación (recuperación de contraseña) se guarda
+# en la base de este cliente, con la **contraseña cifrada en reposo** — la clave
+# de cifrado vive en el entorno, así que un backup de la base por sí solo no
+# alcanza para mandar correo en nombre del cliente. Ver
+# wiki/entities/libraauth.md.
+#
+# Este router entero es admin-only (gateado en web/app.py con
+# require_admin_json), que es el mismo nivel que exige el router del motor:
+# quien pueda escribir acá puede redirigir a dónde salen los enlaces de
+# recuperación de contraseña de todos los usuarios.
+
+
+class SmtpPayload(BaseModel):
+    host: str
+    port: int = 587
+    user: str = ""
+    # `None` explícito borra la contraseña; **omitir el campo** la deja como
+    # está. Son dos intenciones distintas: editar el remitente no tiene por qué
+    # obligar a tipear la contraseña de nuevo. Se distinguen con
+    # `model_fields_set`, no por el valor.
+    password: str | None = None
+    from_email: str = ""
+    from_name: str = ""
+
+
+# Router aparte, con el MISMO prefix. Mismo patrón que `me_router` en
+# web/api/usuarios.py, y por el mismo motivo: FastAPI evalúa las dependencias
+# del router antes que las de la ruta, así que no alcanza con ponerle un guard
+# distinto a cada endpoint.
+#
+# Se separa para que el token de servicio del backoffice de la suite abra
+# ÚNICAMENTE el correo saliente. El resto de este router —ARCA, ticket, datos
+# de empresa, MercadoPago— sigue admin-only: el backoffice no tiene por qué
+# poder tocar la configuración fiscal de un cliente.
+smtp_router = APIRouter(prefix="/api/config", tags=["config"])
+
+
+@smtp_router.get("/smtp")
+def obtener_smtp():
+    """**Nunca devuelve la contraseña**, ni enmascarada con su largo real —
+    solo si hay una cargada."""
+    return db.leer_config_smtp()
+
+
+@smtp_router.put("/smtp")
+def guardar_smtp(payload: SmtpPayload):
+    if "password" in payload.model_fields_set:
+        password = payload.password if payload.password is not None else ""
+    else:
+        password = db.SIN_CAMBIOS
+    try:
+        return db.guardar_config_smtp(
+            host=payload.host, port=payload.port, user=payload.user,
+            password=password,
+            from_email=payload.from_email, from_name=payload.from_name,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc))
+    except db.ClaveDeCifradoAusente as exc:
+        # 500 y no 422: no es un error de quien manda el formulario, es que a
+        # la instancia le falta el secreto del entorno. Y **no se guarda nada**
+        # — antes que persistir la contraseña en claro, falla.
+        raise HTTPException(500, str(exc))
+
+
+@smtp_router.delete("/smtp")
+def borrar_smtp():
+    """Vuelve a leer el SMTP de las variables de entorno."""
+    return db.borrar_config_smtp()

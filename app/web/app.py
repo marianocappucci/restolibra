@@ -49,7 +49,9 @@ from app.web.api import productos as api_productos_router
 from app.web.api import config as api_config_router
 from app.web.api import salon as api_salon_router
 from app.web.api import pedidos as api_pedidos_router
-from app.web.api_auth import get_current_user_json, require_admin_json, require_role_json  # noqa: F401
+from app.web.api_auth import (  # noqa: F401
+    get_current_user_json, require_admin_json, require_admin_o_servicio_json, require_role_json,
+)
 from app.web.modules_gate import require_module  # noqa: F401
 
 app = FastAPI(title="Restolibra")
@@ -298,8 +300,17 @@ app.include_router(
     dependencies=[Depends(require_admin_json), Depends(require_module("libros_iva"))],
 )
 app.include_router(
+    # Acepta ADEMÁS el token de servicio (libraauth v0.7.0): es lo que le
+    # permite al backoffice de la suite (admin.restolibra.com.ar) administrar
+    # los usuarios de esta instancia sin ser usuario de ella.
     api_usuarios_router.router,
-    dependencies=[Depends(require_admin_json)],
+    dependencies=[Depends(require_admin_o_servicio_json)],
+)
+app.include_router(
+    # Sólo el correo saliente, no todo `/api/config` — ver el comentario en
+    # web/api/config.py sobre por qué es un router aparte.
+    api_config_router.smtp_router,
+    dependencies=[Depends(require_admin_o_servicio_json)],
 )
 app.include_router(
     # "Mi Cuenta" (autoservicio de la propia contraseña) -- NO admin-only,

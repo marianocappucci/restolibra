@@ -9,6 +9,7 @@ conviven sobre la misma cookie hasta que las rutas HTML se borren en la
 etapa de corte de la migracion. Mismo patron que gestiolibra/app/auth.py.
 """
 from fastapi import Depends, HTTPException, Request
+from libraauth.session_auth import SERVICE_USER, token_de_servicio_valido
 
 from app import database as db
 from app.web.auth import get_current_user as _get_username_from_cookie
@@ -36,3 +37,27 @@ def require_role_json(*roles: str):
 
 
 require_admin_json = require_role_json("admin")
+
+
+def require_admin_o_servicio_json(request: Request) -> dict:
+    """Rol admin **o** token de servicio (libraauth v0.7.0).
+
+    Lo necesita el backoffice compartido de la suite
+    (`admin.restolibra.com.ar`), que administra las instancias y **no es
+    usuario de ninguna**: no tiene fila en la tabla `usuarios` de ningún
+    cliente, así que `require_admin_json` lo rechaza siempre.
+
+    El token se chequea antes que la sesión a propósito: una request del
+    backoffice no trae cookie, así que evaluar la sesión primero daría 401 y no
+    se llegaría a mirar el header nunca.
+
+    **Opt-in por ausencia**: sin `LIBRA_SERVICE_TOKEN` en el entorno,
+    `token_de_servicio_valido` devuelve False sin mirar el header y esto se
+    comporta igual que `require_admin_json`.
+    """
+    if token_de_servicio_valido(request):
+        return dict(SERVICE_USER)
+    usuario = get_current_user_json(request)
+    if usuario["role"] != "admin":
+        raise HTTPException(403, "No autorizado")
+    return usuario

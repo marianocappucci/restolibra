@@ -37,6 +37,12 @@ from libraauth.password_reset import (  # noqa: F401  (re-exportadas para el rou
     PasswordResetService,
 )
 from libraauth.repository import UserRepository
+from libraauth.crypto import ClaveDeCifradoAusente  # noqa: F401  (re-exportada)
+from libraauth.smtp_settings import (  # noqa: F401  (re-exportados para el router)
+    SIN_CAMBIOS,
+    SmtpSettingsRepository,
+    resolver_smtp_config,
+)
 
 from app.db_core import DB_PATH
 
@@ -56,13 +62,44 @@ _repo = UserRepository(_sessions, roles=ROLES)
 #
 # Sin SMTP configurado esto se construye igual y la app levanta; el que avisa es
 # el endpoint, con un 503, recien cuando alguien pide un reset.
+#
+# Config SMTP editable por backoffice (libraauth v0.6.0), con la contrasena
+# cifrada en reposo. Mismo `_sessions` que el resto del motor.
+_smtp_settings = SmtpSettingsRepository(_sessions)
+
 _password_reset = PasswordResetService(
     _sessions,
     product_name="Restolibra",
     reset_url_base=os.environ.get(
         "RESTOLIBRA_RESET_URL_BASE", "https://dev.restolibra.com.ar/reset-password"
     ),
+    # CALLABLE, no un valor: se resuelve en cada envio. Con un valor fijo,
+    # guardar el SMTP por pantalla no tendria efecto hasta recrear el
+    # contenedor. Sin nada guardado cae a las variables de entorno, asi que la
+    # instancia se comporta igual que antes hasta que se cargue algo.
+    smtp_config=lambda: resolver_smtp_config(_sessions),
 )
+
+
+def leer_config_smtp() -> dict:
+    """Estado de la config SMTP para la pantalla. **Nunca incluye la
+    contrasena** — solo si hay una cargada."""
+    return _smtp_settings.estado()
+
+
+def guardar_config_smtp(**campos) -> dict:
+    """Guarda la config. `password` omitida conserva la que estaba;
+    `password=""` la borra. Lanza `ValueError` si el host o el puerto no
+    sirven, y `ClaveDeCifradoAusente` si la instancia no tiene con que cifrar
+    (en ese caso **no escribe nada**)."""
+    _smtp_settings.save(**campos)
+    return _smtp_settings.estado()
+
+
+def borrar_config_smtp() -> dict:
+    """Vuelve a leer el SMTP de las variables de entorno."""
+    _smtp_settings.delete()
+    return _smtp_settings.estado()
 
 
 def solicitar_reset_password(identificador: str) -> int:
