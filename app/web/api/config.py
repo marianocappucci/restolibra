@@ -278,14 +278,26 @@ class SmtpPayload(BaseModel):
     from_name: str = ""
 
 
-@router.get("/smtp")
+# Router aparte, con el MISMO prefix. Mismo patrón que `me_router` en
+# web/api/usuarios.py, y por el mismo motivo: FastAPI evalúa las dependencias
+# del router antes que las de la ruta, así que no alcanza con ponerle un guard
+# distinto a cada endpoint.
+#
+# Se separa para que el token de servicio del backoffice de la suite abra
+# ÚNICAMENTE el correo saliente. El resto de este router —ARCA, ticket, datos
+# de empresa, MercadoPago— sigue admin-only: el backoffice no tiene por qué
+# poder tocar la configuración fiscal de un cliente.
+smtp_router = APIRouter(prefix="/api/config", tags=["config"])
+
+
+@smtp_router.get("/smtp")
 def obtener_smtp():
     """**Nunca devuelve la contraseña**, ni enmascarada con su largo real —
     solo si hay una cargada."""
     return db.leer_config_smtp()
 
 
-@router.put("/smtp")
+@smtp_router.put("/smtp")
 def guardar_smtp(payload: SmtpPayload):
     if "password" in payload.model_fields_set:
         password = payload.password if payload.password is not None else ""
@@ -306,7 +318,7 @@ def guardar_smtp(payload: SmtpPayload):
         raise HTTPException(500, str(exc))
 
 
-@router.delete("/smtp")
+@smtp_router.delete("/smtp")
 def borrar_smtp():
     """Vuelve a leer el SMTP de las variables de entorno."""
     return db.borrar_config_smtp()
