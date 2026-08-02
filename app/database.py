@@ -28,6 +28,12 @@ from app.db_usuarios import (  # noqa: F401
     resetear_password_con_token,
     EmailNotConfigured,
     InvalidResetToken,
+    # Config SMTP por backoffice, cifrada en reposo (libraauth v0.6.0).
+    leer_config_smtp,
+    guardar_config_smtp,
+    borrar_config_smtp,
+    ClaveDeCifradoAusente,
+    SIN_CAMBIOS,
 )
 from app.db_tesoreria import (  # noqa: F401
     get_all_cuentas_tesoreria,
