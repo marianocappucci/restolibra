@@ -56,6 +56,18 @@ function estaAutorizada(f: Factura): boolean {
   return Boolean(f.cae) && f.cae !== 'PENDIENTE'
 }
 
+// El periodo de servicio se guardaba y se imprimia en el PDF, pero el detalle
+// en pantalla no lo mostraba: quedaba visible solo abriendo el comprobante. El
+// gateo por concepto es el mismo que usa `libracore.pdf_generator` (2 =
+// Servicios, 3 = Productos y Servicios), para que la pantalla y el papel digan
+// lo mismo. El vencimiento de pago va aparte y sin gatear por concepto, porque
+// una factura de productos tambien puede tener plazo de pago.
+function periodoServicio(f: Factura): string | null {
+  if (f.concepto !== 2 && f.concepto !== 3) return null
+  if (!f.fch_serv_desde || !f.fch_serv_hasta) return null
+  return `${f.fch_serv_desde} al ${f.fch_serv_hasta}`
+}
+
 function notaLabel(kind: 'nota-credito' | 'nota-debito'): string {
   return kind === 'nota-credito' ? 'Nota de Crédito' : 'Nota de Débito'
 }
@@ -387,6 +399,12 @@ export function FacturaDetalle() {
                 <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{String(detalle.factura.punto_venta).padStart(4, '0')}-{String(detalle.factura.numero).padStart(8, '0')}</span></p>
                 <p><span className="text-muted-foreground">Fecha:</span> {detalle.factura.fecha}</p>
                 <p><span className="text-muted-foreground">Concepto:</span> {detalle.concepto_label}</p>
+                {periodoServicio(detalle.factura) && (
+                  <p><span className="text-muted-foreground">Per. facturado:</span> {periodoServicio(detalle.factura)}</p>
+                )}
+                {detalle.factura.fch_vto_pago && (
+                  <p><span className="text-muted-foreground">Vto. de pago:</span> {detalle.factura.fch_vto_pago}</p>
+                )}
                 <p><span className="text-muted-foreground">Cond. de venta:</span> {detalle.factura.condicion_venta || 'Contado'}</p>
                 {detalle.factura_original && (
                   <p>
