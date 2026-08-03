@@ -40,6 +40,7 @@ from pydantic import BaseModel
 from app import config_manager
 from app import database as db
 from app import pdf_generator as pdf_gen
+from libracore.cobros import MedioNoEsDeCobro, registrar_cobro_factura
 from libracore.facturas_borrador import armar_borrador
 from app.web.api_auth import get_current_user_json, require_role_json
 from app.web.helpers.arca_helper import get_next_numero_with_arca, solicitar_cae as _solicitar_cae
@@ -368,33 +369,19 @@ def cobrar(factura_id: int, payload: CobroPayload, user: dict = Depends(get_curr
     if not factura:
         raise HTTPException(404, "Factura no encontrada")
 
-    fecha = payload.fecha or datetime.date.today().isoformat()
-    from app.pdf_generator import _TIPO_LABELS
-    tipo_label = _TIPO_LABELS.get(factura["tipo"], "Factura")
-    pv = str(factura["punto_venta"]).zfill(4)
-    num = str(factura["numero"]).zfill(8)
-    concepto = f"Cobro {tipo_label} {pv}-{num} — {factura['cliente_razon']}"
-
-    total_cobrado_ahora = 0.0
-    for pago in payload.pagos:
-        monto = float(pago.get("monto") or 0)
-        if monto <= 0:
-            continue
-        db.create_caja_movimiento(
-            fecha=fecha, tipo="ingreso", concepto=concepto, monto=monto,
-            referencia=str(pago.get("referencia", "")).strip(), factura_id=factura_id,
-            caja_id=payload.caja_id, medio_pago=pago.get("medio_id", ""), usuario_id=user["id"],
+    # La logica vive en libracore.cobros: escribir el movimiento por pago,
+    # acreditar la cuenta corriente si el comprobante era a credito, y rechazar
+    # la cuenta corriente como medio. Estaba duplicada byte a byte con
+    # Restolibra, que es como los dos terminaron con el mismo bug.
+    try:
+        registrar_cobro_factura(
+            factura, payload.pagos,
+            fecha=payload.fecha or None,
+            caja_id=payload.caja_id,
+            usuario_id=user["id"],
         )
-        total_cobrado_ahora += monto
-
-    if total_cobrado_ahora > 0 and factura.get("condicion_venta") == "Cuenta Corriente":
-        cliente_cc = db.get_client_by_cuit(factura.get("cliente_cuit"))
-        if cliente_cc:
-            db.create_cc_pago(
-                cliente_id=cliente_cc["id"], monto=total_cobrado_ahora, fecha=fecha,
-                concepto=f"Cobro {tipo_label} {pv}-{num}", referencia="", medio_pago="",
-                caja_id=payload.caja_id, usuario_id=user["id"],
-            )
+    except MedioNoEsDeCobro as exc:
+        raise HTTPException(400, str(exc)) from exc
 
     return _detalle(db.get_factura(factura_id))
 

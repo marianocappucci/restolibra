@@ -42,8 +42,30 @@ function medioLabel(m: string): string {
   return (MEDIOS_PAGO_LABELS as Record<string, string>)[m] ?? m
 }
 
+// La caja habilita `cuenta_corriente` porque en el POS es un medio real ("se lo
+// lleva a cuenta"), pero cobrar una FACTURA con ese medio no significa nada: es
+// la marca de que se emitio a credito. libracore descarta esos movimientos de
+// todo calculo de lo cobrado y ademas los suma como deuda del cliente, asi que
+// el cobro quedaba registrado pero invisible -- la factura seguia "Sin cobrar"
+// y la cuenta corriente mostraba la misma deuda dos veces. El backend tambien
+// lo rechaza (ver app/web/api/facturas.py).
+const MEDIO_CUENTA_CORRIENTE = 'cuenta_corriente'
+const MEDIOS_COBRO = Object.keys(MEDIOS_PAGO_LABELS).filter((m) => m !== MEDIO_CUENTA_CORRIENTE)
+
 function estaAutorizada(f: Factura): boolean {
   return Boolean(f.cae) && f.cae !== 'PENDIENTE'
+}
+
+// El periodo de servicio se guardaba y se imprimia en el PDF, pero el detalle
+// en pantalla no lo mostraba: quedaba visible solo abriendo el comprobante. El
+// gateo por concepto es el mismo que usa `libracore.pdf_generator` (2 =
+// Servicios, 3 = Productos y Servicios), para que la pantalla y el papel digan
+// lo mismo. El vencimiento de pago va aparte y sin gatear por concepto, porque
+// una factura de productos tambien puede tener plazo de pago.
+function periodoServicio(f: Factura): string | null {
+  if (f.concepto !== 2 && f.concepto !== 3) return null
+  if (!f.fch_serv_desde || !f.fch_serv_hasta) return null
+  return `${f.fch_serv_desde} al ${f.fch_serv_hasta}`
 }
 
 function notaLabel(kind: 'nota-credito' | 'nota-debito'): string {
@@ -82,9 +104,8 @@ export function FacturaDetalle() {
   }, [])
 
   const cajaActual = cajas.find((c) => String(c.id) === cajaId)
-  const mediosDisponibles = cajaActual && cajaActual.medios_pago.length > 0
-    ? cajaActual.medios_pago
-    : Object.keys(MEDIOS_PAGO_LABELS)
+  const mediosDeCaja = (cajaActual?.medios_pago ?? []).filter((m) => m !== MEDIO_CUENTA_CORRIENTE)
+  const mediosDisponibles = mediosDeCaja.length > 0 ? mediosDeCaja : MEDIOS_COBRO
 
   useEffect(() => {
     if (mediosDisponibles.length === 0) return
@@ -378,6 +399,12 @@ export function FacturaDetalle() {
                 <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{String(detalle.factura.punto_venta).padStart(4, '0')}-{String(detalle.factura.numero).padStart(8, '0')}</span></p>
                 <p><span className="text-muted-foreground">Fecha:</span> {detalle.factura.fecha}</p>
                 <p><span className="text-muted-foreground">Concepto:</span> {detalle.concepto_label}</p>
+                {periodoServicio(detalle.factura) && (
+                  <p><span className="text-muted-foreground">Per. facturado:</span> {periodoServicio(detalle.factura)}</p>
+                )}
+                {detalle.factura.fch_vto_pago && (
+                  <p><span className="text-muted-foreground">Vto. de pago:</span> {detalle.factura.fch_vto_pago}</p>
+                )}
                 <p><span className="text-muted-foreground">Cond. de venta:</span> {detalle.factura.condicion_venta || 'Contado'}</p>
                 {detalle.factura_original && (
                   <p>
