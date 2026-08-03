@@ -7,7 +7,11 @@ function Card({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="card"
       className={cn(
-        "flex flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
+        // min-w-0: como grid/flex item el default es min-width:auto, que impide
+        // encogerse por debajo del contenido -- una tabla con ancho explicito
+        // (DataTable con resize) estiraba la card y con ella toda la pagina,
+        // empujando los botones del header fuera del viewport.
+        "flex min-w-0 flex-col gap-6 rounded-xl border bg-card py-6 text-card-foreground shadow-sm",
         className
       )}
       {...props}
