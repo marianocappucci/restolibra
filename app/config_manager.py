@@ -1,5 +1,5 @@
 """Shim de compatibilidad — la implementación real vive en libracore (paquete
-interno, ver requirements.txt y wiki/entities/libracore.md). No editar el
+interno, ver pyproject.toml y wiki/entities/libracore.md). No editar el
 comportamiento genérico acá; los cambios van en el repo libracore.
 
 Los defaults propios del módulo restaurant (cargos automáticos de cubierto/

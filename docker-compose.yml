@@ -2,7 +2,7 @@ services:
   restolibra-dev:
     build:
       context: .
-      # requirements.txt depende de libracore Y libracommerce (P8), paquetes
+      # pyproject.toml depende de libracore Y libracommerce (P8), paquetes
       # privados distintos via git+ssh, cada uno con su propia deploy key —
       # el Dockerfile monta dos ids separados (libracore/libracommerce) para
       # que GitHub no autentique con la key equivocada (ver Dockerfile y
