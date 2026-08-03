@@ -1,6 +1,17 @@
+# ATENCION: este archivo YA NO INSTALA NADA. Desde el re-empaquetado, la
+# imagen se construye con `pip install .` sobre pyproject.toml, y el Dockerfile
+# no menciona este archivo ni una vez. La fuente de verdad de los pines es
+# **pyproject.toml**.
+#
+# Se conserva sincronizado porque `check_venv_sync()` de libracore lo lee para
+# avisar si el venv del host quedo desfasado. Con el pin viejo, ese aviso
+# MIENTE: el 2026-08-03, con pyproject en v1.4.0 y este archivo en v1.2.0, el
+# deploy sugirio DEGRADAR el venv a v1.2.0 -- lo que habria roto el fix recien
+# instalado. Si se bumpea un motor en pyproject.toml, bumpearlo tambien aca.
+#
 # libracore sigue proveyendo facturacion/caja/ARCA -- y la base donde vive
 # `usuarios`. El auth SALIO de aca el 2026-07-30 y ahora lo da libraauth.
-libracore @ git+ssh://git@github.com/marianocappucci/libracore.git@v1.2.0
+libracore @ git+ssh://git@github.com/marianocappucci/libracore.git@v1.4.0
 libracommerce @ git+ssh://git@github.com/marianocappucci/libracommerce.git@v0.4.0
 libraauth @ git+ssh://git@github.com/marianocappucci/libraauth.git@v0.7.0
 # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
