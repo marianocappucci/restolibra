@@ -1,5 +1,5 @@
 """Shim de compatibilidad — la implementación real vive en libraauth (paquete
-interno, ver requirements.txt y wiki/entities/libraauth.md). No editar el
+interno, ver pyproject.toml y wiki/entities/libraauth.md). No editar el
 comportamiento acá; los cambios van en el repo libraauth.
 
 Migrado el 2026-07-30 de `libracore.auth`: el auth salió de LibraCore y pasó a

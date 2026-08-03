@@ -113,7 +113,7 @@ VPS
 volumen en `/app` dentro de cada contenedor. Esto significa que **los cambios
 de código se aplican sin reconstruir la imagen** — solo se necesita reiniciar
 el contenedor. La imagen Docker solo necesita reconstruirse cuando cambian las
-dependencias Python (`requirements.txt`).
+dependencias Python (`pyproject.toml`).
 
 Cada cliente tiene su propia base de datos SQLite aislada, sin ningún
 componente compartido entre instancias.
@@ -274,7 +274,7 @@ El directorio `/root/contalibra` está montado como volumen en `/app` dentro
 de cada contenedor. Al reiniciar, uvicorn levanta con el código nuevo que
 ya está en disco.
 
-### Si cambiaron las dependencias (requirements.txt)
+### Si cambiaron las dependencias (pyproject.toml)
 
 Cuando agregaste o actualizaste paquetes Python:
 
@@ -319,7 +319,7 @@ python3 scripts/panel_admin.py logs mitienda
 | Código Python (`.py`) | No | Sí |
 | Templates HTML (`.html`) | No | Sí |
 | CSS / JS | No | Sí |
-| `requirements.txt` (nuevas dependencias) | **Sí** | Sí (después del build) |
+| `pyproject.toml` (nuevas dependencias) | **Sí** | Sí (después del build) |
 | `Dockerfile` | **Sí** | Sí (después del build) |
 | Variables de entorno en `docker-compose.yml` | No | Sí |
 
@@ -574,7 +574,7 @@ docker logs contalibra-web --tail 50
 ├── pdf_generator.py            ← PDFs A4 (facturas, remitos, etc.)
 ├── ticket_generator.py         ← PDFs angostos para ticketeadoras
 ├── Dockerfile
-├── requirements.txt
+├── pyproject.toml             ← dependencias y metadata del paquete
 ├── OPERACIONES.md              ← este archivo
 └── website/                    ← website de marketing (contalibra.com.ar)
     ├── Dockerfile
