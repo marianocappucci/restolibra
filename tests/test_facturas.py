@@ -83,6 +83,26 @@ def test_cobrar_factura(admin_client):
     assert detalle["pendiente"] == 0.0
 
 
+def test_el_cobro_escribe_el_concepto_con_el_formato_de_siempre(admin_client):
+    """Lo unico que el paso del cobro a libracore.cobros podia cambiar en
+    silencio: el texto del movimiento de caja, que el usuario ve en la caja y
+    en la cuenta corriente, y del que hay movimientos historicos. El label
+    ("FACTURA C", en mayusculas) lo resuelve ahora el motor; este test fija
+    que sigue siendo el mismo que ponia este producto."""
+    from app import database as db
+
+    factura = _factura(admin_client)
+    f = factura.get("factura", factura)
+    admin_client.post(f"/api/facturas/{f['id']}/cobrar", json={
+        "fecha": HOY, "pagos": [{"medio_id": "efectivo", "monto": 1000.0}]})
+
+    movimientos = [m for m in db.get_caja_movimientos() if m["factura_id"] == f["id"]]
+    conceptos = [m["concepto"] for m in movimientos if m["concepto"].startswith("Cobro")]
+    assert conceptos, "el cobro no dejo movimiento de caja"
+    pv, num = str(f["punto_venta"]).zfill(4), str(f["numero"]).zfill(8)
+    assert conceptos[0] == f"Cobro FACTURA C {pv}-{num} — Consumidor Final"
+
+
 def test_cobrar_con_cuenta_corriente_es_rechazado(admin_client):
     """"Cuenta corriente" no es un medio de cobro sino la marca de que el
     comprobante se emitio a credito. libracore descarta esos movimientos de
