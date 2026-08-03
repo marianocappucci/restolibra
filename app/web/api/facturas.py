@@ -63,6 +63,17 @@ _TIPO_LABEL = {
     2: "Nota de Débito A", 7: "Nota de Débito B", 12: "Nota de Débito C",
 }
 
+# "Cuenta corriente" no es un medio de cobro: es la marca de que el comprobante
+# se emitio a credito. libracore excluye esos movimientos de todo calculo de lo
+# cobrado (`get_cobros_factura`, `get_facturas_filtradas`, `get_caja_resumen`) y
+# ademas los cuenta como DEUDA en `get_cc_saldo`. Aceptar uno aca registraba un
+# cobro que el sistema despues ignoraba: la factura seguia "Sin cobrar" y la
+# cuenta corriente sumaba la misma deuda dos veces. Sigue siendo un medio valido
+# en el POS (`/api/ventas`), que es donde significa "se lo lleva a cuenta".
+# Las dos grafias son las que conviven en la base (ver el `LOWER(...) IN (...)`
+# de libracore): la vieja con espacio y la del selector actual.
+_MEDIOS_CUENTA_CORRIENTE = {"cuenta corriente", "cuenta_corriente"}
+
 CONCEPTOS = [{"value": 1, "label": "Productos"}, {"value": 2, "label": "Servicios"}, {"value": 3, "label": "Productos y Servicios"}]
 
 CONDICIONES_VENTA = [
@@ -375,11 +386,23 @@ def cobrar(factura_id: int, payload: CobroPayload, user: dict = Depends(get_curr
     num = str(factura["numero"]).zfill(8)
     concepto = f"Cobro {tipo_label} {pv}-{num} — {factura['cliente_razon']}"
 
+    # Validar TODOS los pagos antes de escribir el primero: si el rechazo
+    # ocurriera dentro del loop, un cobro de dos medios con la cuenta corriente
+    # en segundo lugar ya habria dejado el movimiento del primero.
+    a_registrar = [p for p in payload.pagos if float(p.get("monto") or 0) > 0]
+    for pago in a_registrar:
+        if str(pago.get("medio_id", "")).strip().lower() in _MEDIOS_CUENTA_CORRIENTE:
+            raise HTTPException(
+                400,
+                "\"Cuenta corriente\" no es un medio de cobro: es la marca de que el "
+                "comprobante se emitio a credito. Elegi el medio con el que entro la "
+                "plata (efectivo, transferencia, etc.); si la factura es de cuenta "
+                "corriente, el cobro descuenta el saldo del cliente solo.",
+            )
+
     total_cobrado_ahora = 0.0
-    for pago in payload.pagos:
+    for pago in a_registrar:
         monto = float(pago.get("monto") or 0)
-        if monto <= 0:
-            continue
         db.create_caja_movimiento(
             fecha=fecha, tipo="ingreso", concepto=concepto, monto=monto,
             referencia=str(pago.get("referencia", "")).strip(), factura_id=factura_id,

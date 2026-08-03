@@ -42,6 +42,16 @@ function medioLabel(m: string): string {
   return (MEDIOS_PAGO_LABELS as Record<string, string>)[m] ?? m
 }
 
+// La caja habilita `cuenta_corriente` porque en el POS es un medio real ("se lo
+// lleva a cuenta"), pero cobrar una FACTURA con ese medio no significa nada: es
+// la marca de que se emitio a credito. libracore descarta esos movimientos de
+// todo calculo de lo cobrado y ademas los suma como deuda del cliente, asi que
+// el cobro quedaba registrado pero invisible -- la factura seguia "Sin cobrar"
+// y la cuenta corriente mostraba la misma deuda dos veces. El backend tambien
+// lo rechaza (ver app/web/api/facturas.py).
+const MEDIO_CUENTA_CORRIENTE = 'cuenta_corriente'
+const MEDIOS_COBRO = Object.keys(MEDIOS_PAGO_LABELS).filter((m) => m !== MEDIO_CUENTA_CORRIENTE)
+
 function estaAutorizada(f: Factura): boolean {
   return Boolean(f.cae) && f.cae !== 'PENDIENTE'
 }
@@ -82,9 +92,8 @@ export function FacturaDetalle() {
   }, [])
 
   const cajaActual = cajas.find((c) => String(c.id) === cajaId)
-  const mediosDisponibles = cajaActual && cajaActual.medios_pago.length > 0
-    ? cajaActual.medios_pago
-    : Object.keys(MEDIOS_PAGO_LABELS)
+  const mediosDeCaja = (cajaActual?.medios_pago ?? []).filter((m) => m !== MEDIO_CUENTA_CORRIENTE)
+  const mediosDisponibles = mediosDeCaja.length > 0 ? mediosDeCaja : MEDIOS_COBRO
 
   useEffect(() => {
     if (mediosDisponibles.length === 0) return

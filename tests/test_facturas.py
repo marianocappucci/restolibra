@@ -83,6 +83,73 @@ def test_cobrar_factura(admin_client):
     assert detalle["pendiente"] == 0.0
 
 
+def test_cobrar_con_cuenta_corriente_es_rechazado(admin_client):
+    """"Cuenta corriente" no es un medio de cobro sino la marca de que el
+    comprobante se emitio a credito. libracore descarta esos movimientos de
+    todo calculo de lo cobrado y ademas los suma como deuda, asi que aceptarlo
+    dejaba la factura "Sin cobrar" con la deuda del cliente duplicada.
+
+    Llega espejado desde Contalibra, el main contable del motor: ahi lo encontro
+    un cliente real (compulibra, FC 0005-00000005, 2026-08-03) y ahi se probo y
+    se promovio primero. Este repo tenia el mismo bug porque el flujo de cobro
+    esta copiado byte a byte."""
+    factura = _factura(admin_client, condicion_venta="Cuenta Corriente")
+    fid = factura.get("factura", factura)["id"]
+    resp = admin_client.post(f"/api/facturas/{fid}/cobrar", json={
+        "fecha": HOY, "pagos": [{"medio_id": "cuenta_corriente", "monto": 1000.0, "referencia": ""}]})
+    assert resp.status_code == 400, resp.text
+    detalle = admin_client.get(f"/api/facturas/{fid}").json()
+    assert detalle["total_cobrado"] == 0.0
+    assert detalle["pendiente"] == 1000.0
+
+
+def test_cobrar_con_la_grafia_vieja_tambien_es_rechazado(admin_client):
+    """En la base conviven las dos grafias del medio ("Cuenta Corriente" con
+    espacio, de los movimientos que crea la emision, y "cuenta_corriente" del
+    selector). El rechazo mira las dos, sin importar mayusculas."""
+    factura = _factura(admin_client, condicion_venta="Cuenta Corriente")
+    fid = factura.get("factura", factura)["id"]
+    resp = admin_client.post(f"/api/facturas/{fid}/cobrar", json={
+        "fecha": HOY, "pagos": [{"medio_id": "Cuenta Corriente", "monto": 1000.0}]})
+    assert resp.status_code == 400, resp.text
+
+
+def test_cobro_rechazado_no_registra_los_otros_medios(admin_client):
+    """El rechazo ocurre antes de escribir nada: un cobro mixto con la cuenta
+    corriente en segundo lugar no deja registrado el primer medio."""
+    factura = _factura(admin_client)
+    fid = factura.get("factura", factura)["id"]
+    resp = admin_client.post(f"/api/facturas/{fid}/cobrar", json={
+        "fecha": HOY, "pagos": [
+            {"medio_id": "efectivo", "monto": 400.0},
+            {"medio_id": "cuenta_corriente", "monto": 600.0},
+        ]})
+    assert resp.status_code == 400, resp.text
+    detalle = admin_client.get(f"/api/facturas/{fid}").json()
+    assert detalle["total_cobrado"] == 0.0, "quedo registrado el medio valido del cobro rechazado"
+    assert detalle["cobros"] == []
+
+
+def test_cobro_de_factura_en_cuenta_corriente_descuenta_el_saldo(admin_client):
+    """La contraparte del rechazo: con un medio real, el cobro de una factura
+    a credito marca la factura cobrada Y baja el saldo del cliente."""
+    cliente = admin_client.post("/api/clientes", json={
+        "name": "Municipio de Prueba", "cuit_dni": "30111111118"}).json()
+    factura = _factura(admin_client, condicion_venta="Cuenta Corriente",
+                       client_id=cliente["id"])
+    fid = factura.get("factura", factura)["id"]
+    saldo_previo = admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"]
+    assert saldo_previo == 1000.0, "la emision a credito no genero la deuda"
+
+    resp = admin_client.post(f"/api/facturas/{fid}/cobrar", json={
+        "fecha": HOY, "pagos": [{"medio_id": "transferencia", "monto": 1000.0}]})
+    assert resp.status_code == 200, resp.text
+    detalle = admin_client.get(f"/api/facturas/{fid}").json()
+    assert detalle["total_cobrado"] == 1000.0
+    assert detalle["pendiente"] == 0.0
+    assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 0.0
+
+
 def test_nota_de_credito(admin_client):
     factura = _factura(admin_client)
     fid = factura.get("factura", factura)["id"]
