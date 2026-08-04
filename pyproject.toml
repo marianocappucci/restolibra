@@ -16,7 +16,20 @@ license = { text = "Proprietary" }
 dependencies = [
     # libracore provee facturacion/caja/ARCA y la base donde vive `usuarios`.
     # El auth SALIO de aca el 2026-07-30 y ahora lo da libraauth.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.6.0",
+    #
+    # v1.6.0 -> v1.8.0 (2026-08-04). De los productos que quedaban atras, este
+    # es el que mas superficie comparte con el motor: usa `pdf_generator` (via
+    # el shim de `app/pdf_generator.py`, 12 archivos) y `ticket_generator` (4).
+    # Le llegan las dos cosas:
+    #
+    # - v1.7.0: un caracter fuera de latin-1 -un guion largo o unas comillas
+    #   curvas en el nombre de empresa, en un item o en las observaciones-
+    #   devolvia **500 al descargar el comprobante**. Es un bug vivo.
+    # - v1.8.0: la maqueta compacta. **Cambia el aspecto** de facturas, remitos
+    #   y presupuestos: membrete 51,5 -> 40,3 mm y tarjetas Emisor/Cliente
+    #   65 -> 50,6 mm, con lo que entran ~10 items en la primera carilla en vez
+    #   de 6. Sin eliminar ningun campo ni achicar ninguna tipografia.
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.8.0",
     "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.4.0",
     "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.7.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
