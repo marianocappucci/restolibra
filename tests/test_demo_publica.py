@@ -161,6 +161,40 @@ def test_el_login_normal_sigue_andando_con_la_demo_encendida(client, demo_encend
 
 # ── 🔴 Que lo siembre el ARRANQUE, no el test ─────────────────────────────
 
+def test_la_sonda_dice_que_es_una_demo(client, demo_encendida):
+    """`GET /api/demo` es lo que mira la pantalla de login para decidir si
+    pinta el botón. El contrato es el mismo que el de libraauth porque la
+    pantalla es la misma (`libra-ui/Login`)."""
+    r = client.get("/api/demo")
+
+    assert r.status_code == 200, r.text
+    assert r.json() == {"enabled": True, "username": USUARIO_DEMO}
+
+
+def test_la_sonda_da_404_en_la_instancia_de_un_cliente(client, demo_apagada):
+    """🔴 Y **tiene que ser un 404 de verdad, con JSON**: si devolviera 200 con
+    cualquier cosa, el botón "Entrar a la demo" aparecería en
+    sistema.restolibra.com.ar. Esta ruta la sirve FastAPI, así que el 404 llega
+    tal cual; en cambio una ruta que NO existiera caería en el catch-all de la
+    SPA y devolvería 200 con el index.html — que es exactamente por lo que la
+    pantalla valida la forma del JSON y no el código."""
+    r = client.get("/api/demo")
+
+    assert r.status_code == 404
+    assert r.json() == {"detail": "Not Found"}
+
+
+def test_la_sonda_no_filtra_la_contrasena(client, demo_encendida, monkeypatch):
+    """`DEMO_PASSWORD` es pública por diseño, pero un endpoint sin autenticar
+    que reparte contraseñas es un patrón que después alguien copia a donde no
+    da lo mismo."""
+    monkeypatch.setenv("DEMO_PASSWORD", "una-clave-muy-reconocible")
+
+    r = client.get("/api/demo")
+
+    assert "una-clave-muy-reconocible" not in r.text
+
+
 def test_el_arranque_del_contenedor_siembra_solo(demo_encendida, client):
     """🔴 Los demás tests llaman al bootstrap a mano, así que ninguno probaba
     que el hook de startup lo llame — sacarlo de `app/web/app.py` dejaba la

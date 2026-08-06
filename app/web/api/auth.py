@@ -64,6 +64,26 @@ def me(user: dict = Depends(get_current_user_json)):
     return _serialize_user(user)
 
 
+@router.get("/demo")
+def demo_info():
+    """Le dice al frontend si esta instancia es una demo publica.
+
+    Mismo contrato que `GET /auth/demo` de libraauth v0.17.0, porque la
+    pantalla de login es la misma (`libra-ui/Login`): si no devolviera
+    exactamente `{"enabled": true, "username": ...}`, el boton no aparece.
+
+    🔴 **El frontend valida la forma, no el codigo de estado**, y por eso esto
+    devuelve JSON tanto para si como para no. Un GET a una ruta inexistente en
+    estos productos cae en el catch-all de la SPA y devuelve **200 con el
+    index.html**: un boton condicionado a "me contestaron 200" aparecería en
+    la instancia de cada cliente.
+    """
+    username = demo_username()
+    if not username:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return {"enabled": True, "username": username}
+
+
 @router.post("/demo")
 def demo(request: Request):
     """Entra a la demo publica sin credenciales.
