@@ -23,6 +23,7 @@ from app.db_usuarios import (  # noqa: F401
     delete_usuario,
     check_usuario_credentials,
     ensure_admin_user,
+    ensure_demo_user,
     # Recuperacion de contrasena por correo (libraauth v0.5.0).
     solicitar_reset_password,
     resetear_password_con_token,

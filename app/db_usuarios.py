@@ -25,6 +25,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from libraauth.bootstrap import ensure_admin_user as _ensure_admin_user
+from libraauth.bootstrap import ensure_demo_user as _ensure_demo_user
 from libraauth.hashing import (  # noqa: F401  (re-exportados via database.py)
     DUMMY_PASSWORD_HASH as _DUMMY_PASSWORD_HASH,
     hash_password as _hash_password,
@@ -166,6 +167,18 @@ def delete_usuario(uid):
 
 def check_usuario_credentials(username: str, password: str) -> dict | None:
     return _a_forma_vieja(_repo.check_credentials(username, password))
+
+
+def ensure_demo_user():
+    """Crea el usuario del auto-login **solo si esta instancia es una demo**.
+
+    No decide nada por su cuenta: mira las mismas dos variables de entorno que
+    registran `POST /api/demo`. En la instancia de un cliente devuelve
+    None y no toca la base. Ver `libraauth.bootstrap.ensure_demo_user`."""
+    # `operador` y no el default `staff`: este producto usa otro vocabulario
+    # de roles (ver ROLES arriba). Y no `cajero`, que esta acotado a la caja —
+    # la demo tiene que mostrar el sistema, no una parte.
+    return _ensure_demo_user(_repo, rol="operador")
 
 
 def ensure_admin_user():
