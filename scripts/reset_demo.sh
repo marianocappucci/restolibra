@@ -53,6 +53,11 @@ if [ "$estado" != "healthy" ]; then
   exit 4
 fi
 
+# ⚠️ Este producto usa `ADMIN_USER`/`ADMIN_PASSWORD`, **sin prefijo**: es la
+# variante `ensure_admin_user` de libraauth, la de los server-rendered. Los
+# otros cuatro productos usan `<PRODUCTO>_ADMIN_*`. Las dos variables existen en
+# el compose de la demo con contrasenas distintas, asi que usar la equivocada da
+# un 401 que no dice por que.
 # --- 2. Sembrar -----------------------------------------------------------
 # Por la API y desde adentro del contenedor: la contrasena sale de su propio
 # entorno y nunca pasa por la linea de comandos del host, donde quedaria en el
@@ -61,8 +66,8 @@ docker cp "/root/restolibra/scripts/seed_demo.py" "$CONTENEDOR:/tmp/seed.py"
 docker exec -i "$CONTENEDOR" sh -c '
   python3 /tmp/seed.py \
     --url https://demo.restolibra.com.ar \
-    --usuario "${RESTOLIBRA_ADMIN_USERNAME:-admin}" \
-    --password "$RESTOLIBRA_ADMIN_PASSWORD"
+    --usuario "${ADMIN_USER:-admin}" \
+    --password "$ADMIN_PASSWORD"
 '
 docker exec "$CONTENEDOR" rm -f /tmp/seed.py
 
