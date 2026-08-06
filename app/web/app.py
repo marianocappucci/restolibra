@@ -356,6 +356,8 @@ app.include_router(
 def startup():
     db.init_db()
     db.ensure_admin_user()
+    # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
+    db.ensure_demo_user()
 
 
 @app.get("/", include_in_schema=False)
