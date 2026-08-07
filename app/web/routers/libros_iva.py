@@ -84,6 +84,28 @@ def _get_iva_rate(factura: dict) -> float:
     return 0.0
 
 
+def _alicuota_de_egreso(neto: float, iva_monto: float) -> float:
+    """Alícuota de una compra, en puntos porcentuales (21.0, no 0.21).
+
+    🔴 **No se lee `iva_pct` de la fila.** En egresos ese campo guarda una
+    *fracción* — el alta hace `monto_neto * iva_pct` sin dividir por 100 y el
+    detalle lo muestra con `iva_pct * 100` — mientras que `_ALIC_CODE` y
+    `_ALIC_PCT` están indexados en puntos. Usarlo directo no matcheaba nunca y
+    el export caía siempre al default: una compra al 10,5% salía declarada
+    como 21% (código 5) con el neto y el IVA reales al lado, o sea un archivo
+    que ARCA rechaza.
+
+    Se deriva del importe, igual que en el lado de ventas (`_get_iva_rate`):
+    es independiente de en qué unidad haya quedado guardado el campo, así que
+    también acierta sobre las filas viejas. Mismo fix que en Contalibra, que
+    comparte este módulo por copia.
+    """
+    if neto <= 0 or iva_monto <= 0:
+        return 0.0
+    raw = round(iva_monto / neto * 100, 1)
+    return min(_ALIC_CODE, key=lambda x: abs(x - raw))
+
+
 def _parse_num_egreso(numero: str):
     """'0001-00001234' → (1, 1234). Retorna (1, 0) si no parsea."""
     numero = (numero or "").strip()
@@ -250,7 +272,7 @@ def _compras_alicuotas(egresos: list) -> str:
         tc_raw = e.get("tipo_comprobante") or "factura"
         tipo   = _TIPO_EGRESO_AFIP.get(tc_raw, "01")
         neto   = float(e.get("monto_neto") or 0)
-        pct    = float(e.get("iva_pct") or 21.0)
+        pct    = _alicuota_de_egreso(neto, iva_m)
         pv_raw, nro_raw = _parse_num_egreso(e.get("numero") or "")
         pv  = str(pv_raw).zfill(5)
         nro = str(nro_raw).zfill(8)
@@ -307,9 +329,12 @@ def _resumen_compras(egresos: list) -> dict:
     por_tasa    = {}
 
     for e in egresos:
-        pct = float(e.get("iva_pct") or 0)
         iva = float(e.get("iva_monto") or 0)
         neto = float(e.get("monto_neto") or 0)
+        # En puntos, igual que el resumen de ventas: agrupar por el campo crudo
+        # partía el resumen en una tasa "0.21" que la tarjeta muestra como
+        # "0.21%", y separaba las filas viejas de las nuevas.
+        pct = _alicuota_de_egreso(neto, iva)
         if pct not in por_tasa:
             por_tasa[pct] = {"neto": 0.0, "iva": 0.0, "cbtes": 0}
         por_tasa[pct]["neto"]  += neto

@@ -711,16 +711,36 @@ def _sembrar_operacion(api: Api, clientes: dict, productos: dict, contar) -> Non
             except RuntimeError as e:
                 print(f"  -- caja {tipo}: {e}")
 
+    # 🔴 Dos cosas medidas contra la demo, iguales que en Contalibra (mismo
+    # motor de Libros de IVA):
+    #
+    # 1. **El libro de compras sólo toma `tipo_comprobante = 'factura'`** (el
+    #    filtro está en el SQL de `get_egresos_para_iva`). Con egresos sueltos
+    #    el lado de compras salía vacío y el export bajaba 0 bytes.
+    # 2. **`iva_pct` es una fracción**, no puntos: el alta hace
+    #    `monto_neto * iva_pct` sin dividir por 100. Con `21` el IVA de un gasto
+    #    de $38.000 salía $798.000.
+    proveedores = {p["nombre"]: p["id"] for p in _lista(api.get("/api/proveedores"))}
     if not _lista(api.get("/api/egresos")):
-        for concepto, categoria, neto in (
-            ("Alquiler del local", "Alquiler", 450000),
-            ("Gas envasado", "Servicios", 62000),
-            ("Servilletas y descartables", "Insumos", 38000),
+        for concepto, categoria, neto, prov, numero in (
+            ("Bebidas para el salón", "Mercadería / Materias primas", 168000,
+             "Distribuidora de bebidas del Centro", "0002-00004417"),
+            ("Carne y achuras de la semana", "Mercadería / Materias primas", 284000,
+             "Carnicería El Novillo", "0001-00000926"),
+            ("Alquiler del local", "Alquiler", 450000, None, ""),
+            ("Gas envasado", "Servicios", 62000, None, ""),
+            ("Servilletas y descartables", "Insumos", 38000, None, ""),
         ):
             try:
                 api.post("/api/egresos", {
                     "fecha": HOY.isoformat(), "concepto": concepto,
-                    "categoria": categoria, "monto_neto": neto, "iva_pct": 21,
+                    "categoria": categoria, "monto_neto": neto, "iva_pct": 0.21,
+                    # Con proveedor y número es una factura de compra y entra al
+                    # libro; sin ellos es un gasto interno. Los dos casos están
+                    # a propósito: la pantalla muestra la diferencia.
+                    "tipo_comprobante": "factura" if prov else "otro",
+                    "numero": numero,
+                    "proveedor_id": proveedores.get(prov),
                     "observaciones": "Gasto de ejemplo de la demo",
                 })
                 contar("egresos", True)
@@ -786,6 +806,14 @@ def _cargar_logo(api, nombre: str, inicial: str, color: tuple, contar) -> None:
     dibujo.text((52, 60), inicial, fill=(255, 255, 255))
     dibujo.text((150, 55), nombre, fill=(30, 30, 30))
     dibujo.line((150, 95, 150 + min(340, len(nombre) * 11), 95), fill=color, width=4)
+
+    # 🔴 La subida es multipart a mano, así que necesita la URL y el opener del
+    # `Api` real. La suite corre el seed contra un doble que habla directo con
+    # la app y no tiene ninguno de los dos: sin esta guarda, `api.base`
+    # reventaba con AttributeError y se llevaba puestos **11 tests** del seed
+    # entero, no sólo el del logo.
+    if not getattr(api, "base", None) or not getattr(api, "opener", None):
+        return
 
     import io
     buffer = io.BytesIO()
