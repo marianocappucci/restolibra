@@ -10,6 +10,8 @@ from pydantic import BaseModel
 
 from app import config_manager
 from app import database as db
+from libraauth.session_auth import ROLES_PROHIBIDOS_EN_DEMO, demo_username
+
 from app.web.api_auth import get_current_user_json
 from app.web.auth import check_credentials, clear_session_cookie, create_session_cookie, get_current_user
 
@@ -60,6 +62,59 @@ def _client_ip(request: Request) -> str:
 @router.get("/me")
 def me(user: dict = Depends(get_current_user_json)):
     return _serialize_user(user)
+
+
+@router.get("/demo")
+def demo_info():
+    """Le dice al frontend si esta instancia es una demo publica.
+
+    Mismo contrato que `GET /auth/demo` de libraauth v0.17.0, porque la
+    pantalla de login es la misma (`libra-ui/Login`): si no devolviera
+    exactamente `{"enabled": true, "username": ...}`, el boton no aparece.
+
+    🔴 **El frontend valida la forma, no el codigo de estado**, y por eso esto
+    devuelve JSON tanto para si como para no. Un GET a una ruta inexistente en
+    estos productos cae en el catch-all de la SPA y devuelve **200 con el
+    index.html**: un boton condicionado a "me contestaron 200" aparecería en
+    la instancia de cada cliente.
+    """
+    username = demo_username()
+    if not username:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+    return {"enabled": True, "username": username}
+
+
+@router.post("/demo")
+def demo(request: Request):
+    """Entra a la demo publica sin credenciales.
+
+    **Solo existe si esta instancia es una demo**: si `demo_username()` no
+    devuelve nada, la ruta responde 404 — el mismo 404 que daria si no
+    estuviera escrita. No un 403, que le confirmaria a quien barre que el
+    endpoint esta ahi y que la instancia lo soporta.
+
+    🔴 La regla de con que rol entra **no se reescribe aca**: sale de
+    `ROLES_PROHIBIDOS_EN_DEMO` de libraauth, la misma que usan los otros cuatro
+    productos de la familia. Si se duplicara, agregar un rol prohibido
+    cambiaria cuatro productos y no estos dos.
+    """
+    username = demo_username()
+    if not username:
+        return JSONResponse({"detail": "Not Found"}, status_code=404)
+
+    user = db.get_usuario_by_username(username)
+    if not user:
+        # 503 y no 404: la ruta esta bien configurada, lo que falta es sembrar
+        # la instancia. Un 404 diria "no hay demo aca" y mandaria a mirar el
+        # lugar equivocado.
+        return JSONResponse({"detail": "demo user not provisioned"}, status_code=503)
+    if user["role"] in ROLES_PROHIBIDOS_EN_DEMO:
+        return JSONResponse({"detail": "demo user has a forbidden role"}, status_code=503)
+
+    db.registrar_auth_event("login", username, _client_ip(request))
+    response = JSONResponse(_serialize_user(user))
+    create_session_cookie(response, username)
+    return response
 
 
 @router.post("/login")

@@ -297,3 +297,75 @@ def reenviar_email(factura_id: int):
         logger.error("Error reenvío email factura %s: %s", factura_id, e)
         raise HTTPException(502, f"Error al enviar: {e}")
     return {"ok": True}
+
+
+# ── Siembra de la bandeja, SÓLO en demos ──────────────────────────────────
+#
+# 🔴 La bandeja se llena sincronizando contra MercadoPago de verdad
+# (`/sincronizar` exige el Access Token de la cuenta). Una demo pública no tiene
+# cuenta de MP ni puede tenerla, así que esta pantalla —una de las que mejor
+# muestran el producto: el cobro entra y se factura solo— se abría vacía.
+#
+# **La ruta no existe fuera de una demo**, y eso no se resuelve con un `if`
+# adentro del endpoint: el router se arma al importar, mirando `DEMO_MODE`. En
+# la instancia de un cliente la ruta da 404 y ni siquiera figura en el openapi.
+# Misma garantía que `POST /auth/demo` de libraauth.
+
+def _es_demo() -> bool:
+    return os.environ.get("DEMO_MODE", "").strip() in ("1", "true", "True")
+
+
+class PagoDeDemoPayload(BaseModel):
+    """Un cobro como los que devolvería MercadoPago, escrito a mano."""
+
+    mp_payment_id: str
+    monto: float
+    payer_name: str = ""
+    payer_email: str = ""
+    payer_id_number: str = ""
+    payment_type: str = "account_money"
+    payment_method: str = "account_money"
+    descripcion: str = ""
+    #: `pago` va a la lista de cobros; `transferencia` a la de movimientos
+    #: bancarios entrantes. La pantalla tiene las dos solapas y con una sola
+    #: llena queda a medias.
+    clase: str = "pago"
+
+
+if _es_demo():
+
+    @router.post("/demo/sembrar")
+    def sembrar_bandeja_de_demo(items: list[PagoDeDemoPayload]):
+        """Carga cobros de ejemplo en la bandeja. Idempotente por
+        `mp_payment_id`: correrla de nuevo no duplica nada, que es lo que
+        necesita el reset diario."""
+        creados = 0
+        for it in items:
+            pid = it.mp_payment_id.strip()
+            if not pid:
+                continue
+            if db.get_mp_pago(pid) or db.get_mp_movimiento_by_mp_id(pid):
+                continue
+
+            if it.clase == "transferencia":
+                db.create_mp_movimiento(
+                    mp_movement_id=pid, tipo=it.payment_type, monto=it.monto,
+                    fecha=datetime.date.today().isoformat(),
+                    descripcion=it.descripcion, origen_nombre=it.payer_name,
+                    origen_banco=it.payment_method, origen_cbu="",
+                    payer_email=it.payer_email, payer_name=it.payer_name,
+                    payer_id_type="CUIT" if it.payer_id_number else "",
+                    payer_id_number=it.payer_id_number,
+                    estado_factura="pendiente",
+                )
+            else:
+                db.create_mp_pago(
+                    mp_payment_id=pid, status="approved", monto=it.monto,
+                    payer_email=it.payer_email, payer_name=it.payer_name,
+                    estado_factura="pendiente", payment_type=it.payment_type,
+                    payment_method=it.payment_method, descripcion_mp=it.descripcion,
+                    payer_id_type="CUIT" if it.payer_id_number else "",
+                    payer_id_number=it.payer_id_number,
+                )
+            creados += 1
+        return {"creados": creados}
