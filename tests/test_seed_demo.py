@@ -90,13 +90,31 @@ def test_la_carta_se_reparte_entre_estaciones(api):
     assert {"cocina", "barra"} <= estaciones, f"faltan estaciones: {estaciones}"
 
 
-# ── 🔴 Sin facturas ───────────────────────────────────────────────────────
+# ── 🔴 Facturas sí, pero sin ARCA configurado ────────────────────────────
 
-def test_no_emite_facturas(api):
-    """🔴 El módulo de facturación habla con ARCA de verdad."""
+def test_emite_facturas_pero_no_configura_ARCA(api):
+    """Cambió el 2026-08-06, a pedido del humano: la pantalla de facturación
+    estaba vacía y un interesado no podía ver ni el comprobante ni su PDF.
+
+    🔴 **Lo que NO cambió es lo que este test protegía.** El módulo habla con
+    ARCA de verdad, y pedir CAE contra el padrón por cada visita a una demo
+    pública sigue sin ser algo que se pueda dejar corriendo. Lo que hace que
+    sea seguro es que la instancia **no tiene certificado configurado**: sin
+    él, el motor ni siquiera intenta autenticar contra ARCA.
+
+    Por eso la aserción no es sobre el CAE —en `ENV=development` el motor
+    genera uno simulado, sin salir a la red— sino sobre la configuración. Si
+    alguien configurara ARCA en una demo, este test se pone en rojo, que es
+    exactamente cuando hay que enterarse.
+    """
     sembrar(api)
 
-    assert _lista(api.get("/api/facturas")) == []
+    facturas = _lista(api.get("/api/facturas"))
+    assert facturas, "la pantalla de facturación no puede quedar vacía"
+    assert not api.get("/api/config")["arca"], (
+        "el seed dejó ARCA configurado: una demo pública con certificado "
+        "emitiría comprobantes fiscales de verdad"
+    )
 
 
 def test_si_deja_pedidos(api):

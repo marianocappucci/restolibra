@@ -34,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -207,8 +208,10 @@ def sembrar(api: Api) -> None:
         contar("stock", True)
 
     print("Clientes…")
+    clientes = {}
     for c in CLIENTES:
-        _, nuevo = obtener_o_crear(api, "/api/clientes", "name", c["name"], c)
+        registro, nuevo = obtener_o_crear(api, "/api/clientes", "name", c["name"], c)
+        clientes[c["name"]] = registro["id"]
         contar("clientes", nuevo)
 
     print("Salones y mesas…")
@@ -216,6 +219,21 @@ def sembrar(api: Api) -> None:
 
     print("Pedidos…")
     _sembrar_pedidos(api, productos, mesas, contar)
+
+    print("Operación del día (turno, ventas, facturas, caja, cobranzas)…")
+    _sembrar_operacion(api, clientes, productos, contar)
+
+    # 🔴 El stock se vuelve a fijar DESPUÉS de las ventas, y no es redundante:
+    # las ventas descuentan, así que sin esto la primera corrida termina en un
+    # número y la segunda —que saltea las ventas ya creadas— en otro. Modo
+    # `absoluto`: correrlo de nuevo no cambia nada.
+    for codigo, cantidad in STOCK.items():
+        if cantidad == 0:
+            continue
+        api.post(f"/api/stock/{productos[codigo]}/ajuste", {
+            "modo": "absoluto", "cantidad": cantidad,
+            "referencia": "Ajuste de inventario",
+        })
 
     print()
     for clave, (creados, existentes) in sorted(hechos.items()):
@@ -374,6 +392,191 @@ def _total(pedido) -> float:
         if isinstance(pedido, dict) and pedido.get(clave) is not None:
             return float(pedido[clave])
     return 0.0
+
+
+
+def _tiene_modulo(api, ruta: str) -> bool:
+    """Si la instancia expone esa ruta.
+
+    🔴 Restolibra pinea una version de libracore anterior a los recibos
+    numerados, asi que `/api/recibos` **no existe** y pedirlo mata el seed
+    entero. Lo que no esta se saltea con un aviso; asumir que dos productos de
+    la misma familia tienen los mismos modulos es exactamente el error que
+    esto evita.
+    """
+    try:
+        api.get(ruta)
+        return True
+    except RuntimeError as e:
+        if "404" in str(e):
+            return False
+        raise
+
+
+def _sesion_del_visitante(api):
+    """Una sesión con el usuario de la demo, si la instancia es una demo.
+
+    Existe para lo que el producto ordena **por usuario**: un turno de caja
+    abierto por el admin no aparece en la pantalla del visitante, aunque esté
+    ahí. Las credenciales salen del entorno del contenedor.
+    """
+    usuario = os.environ.get("DEMO_USERNAME", "").strip()
+    clave = os.environ.get("DEMO_PASSWORD", "")
+    if not usuario or not clave:
+        return None
+    base = getattr(api, "base", None)
+    if not base:
+        return None
+    sesion = Api(base)
+    try:
+        sesion.post("/api/login", {"username": usuario, "password": clave})
+    except RuntimeError as e:
+        print(f"  -- no se pudo entrar como {usuario}: {e}")
+        return None
+    return sesion
+
+
+def _sembrar_operacion(api: Api, clientes: dict, productos: dict, contar) -> None:
+    """Turno de caja, ventas, facturas internas, recibos, cobranza, caja y
+    egresos: diez pantallas del menú que se abrían vacías.
+
+    🔴 **Las facturas se emiten SIN CAE, y es a propósito.** El módulo habla
+    con ARCA de verdad, pero sin certificado configurado —y una demo no lo
+    tiene— el comprobante nace como documento interno: se ve la pantalla, el
+    detalle y el PDF con su maqueta real, sin pedir CAE contra el padrón ni
+    emitir nada fiscal desde una demo pública.
+    """
+    visitante = _sesion_del_visitante(api)
+    quien = visitante or api
+    if not _lista(quien.get("/api/turnos")):
+        try:
+            quien.post("/api/turnos/abrir", {
+                "monto_inicial": 30000, "notas": "Apertura de caja de la demo",
+            })
+            contar("turno", True)
+        except RuntimeError as e:
+            print(f"  -- turno: {e}")
+
+    print("Proveedores…")
+    for p in (
+        {"nombre": "Distribuidora de bebidas del Centro", "cuit_dni": "30-71234567-9",
+         "email": "ventas@bebidascentro.com.ar", "iva_condition": "Responsable Inscripto"},
+        {"nombre": "Carnicería El Novillo", "cuit_dni": "20-24567890-1",
+         "email": "pedidos@elnovillo.com.ar", "iva_condition": "Monotributista"},
+    ):
+        _, nuevo = obtener_o_crear(api, "/api/proveedores", "nombre", p["nombre"], p)
+        contar("proveedores", nuevo)
+
+    if not _lista(api.get("/api/listas-precio")):
+        try:
+            api.post("/api/listas-precio", {
+                "nombre": "Delivery",
+                "descripcion": "Recargo del 10% sobre la carta del salón",
+            })
+            contar("listas", True)
+        except RuntimeError as e:
+            print(f"  -- lista de precios: {e}")
+
+    medios = _lista(api.get("/api/ventas/medios-pago")) or ["Efectivo"]
+    def medio(preferido):
+        planos = [m if isinstance(m, str) else (m.get("nombre") or m.get("id"))
+                  for m in medios]
+        return next((m for m in planos if preferido.lower() in str(m).lower()), planos[0])
+
+    def item(codigo, nombre, qty, precio):
+        return {"nombre": nombre, "qty": qty, "precio": precio,
+                "producto_id": productos.get(codigo)}
+
+    ventas_hechas = {v.get("observaciones") for v in _lista(api.get("/api/ventas"))}
+    primera = None
+    for cliente, items, pagos, obs in _VENTAS_DEL_DIA(item, medio):
+        if obs in ventas_hechas:
+            continue
+        try:
+            venta = api.post("/api/ventas", {
+                "fecha": HOY.isoformat(),
+                "cliente_id": clientes.get(cliente),
+                "items": [i for i in items if i["producto_id"]],
+                "pagos": [{"medio": m, "monto": mo, "referencia": ""} for m, mo in pagos],
+                "observaciones": obs,
+            })
+            contar("ventas", True)
+            primera = primera or venta
+        except RuntimeError as e:
+            print(f"  -- venta ({obs}): {e}")
+
+    if primera and _tiene_modulo(api, "/api/recibos"):
+        if not _lista(api.get("/api/recibos")):
+            try:
+                api.post(f"/api/recibos/venta/{primera['id']}", {})
+                contar("recibos", True)
+            except RuntimeError as e:
+                print(f"  -- recibo: {e}")
+    elif primera:
+        print("  (esta instancia no tiene recibos numerados: libracore < 1.9.0)")
+
+    if not _lista(api.get("/api/facturas")):
+        for tipo, cliente, items in (
+            (6, "Hotel Los Álamos", [("Servicio de catering para evento", 1, 185000)]),
+            (11, "Gustavo Peralta", [("Cena para dos", 1, 42000)]),
+        ):
+            try:
+                api.post("/api/facturas", {
+                    "tipo": tipo, "fecha": HOY.isoformat(),
+                    "client_id": clientes.get(cliente),
+                    "client_name": cliente,
+                    "items": [{"description": d, "qty": c, "unit_price": p}
+                              for d, c, p in items],
+                    "tax_rate": 0.21, "condicion_venta": "Contado",
+                    "observations": "Comprobante interno de la demo (sin CAE).",
+                })
+                contar("facturas", True)
+            except RuntimeError as e:
+                print(f"  -- factura tipo {tipo}: {e}")
+
+    if not _lista(api.get("/api/caja")):
+        for tipo, concepto, monto in (
+            ("ingreso", "Aporte del socio", 40000),
+            ("egreso", "Compra de hielo y carbón", 18500),
+        ):
+            try:
+                api.post("/api/caja", {
+                    "fecha": HOY.isoformat(), "tipo": tipo, "concepto": concepto,
+                    "monto": monto, "medio_pago": medio("efectivo"),
+                    "referencia": "Movimiento de ejemplo",
+                })
+                contar("caja", True)
+            except RuntimeError as e:
+                print(f"  -- caja {tipo}: {e}")
+
+    if not _lista(api.get("/api/egresos")):
+        for concepto, categoria, neto in (
+            ("Alquiler del local", "Alquiler", 450000),
+            ("Gas envasado", "Servicios", 62000),
+            ("Servilletas y descartables", "Insumos", 38000),
+        ):
+            try:
+                api.post("/api/egresos", {
+                    "fecha": HOY.isoformat(), "concepto": concepto,
+                    "categoria": categoria, "monto_neto": neto, "iva_pct": 21,
+                    "observaciones": "Gasto de ejemplo de la demo",
+                })
+                contar("egresos", True)
+            except RuntimeError as e:
+                print(f"  -- egreso {concepto}: {e}")
+
+
+def _VENTAS_DEL_DIA(item, medio):
+    """El plan de ventas, como función para poder usar los helpers de arriba."""
+    return [
+        ("Consumidor final",
+         [item("PAR-01", "Bife de chorizo", 2, 26000),
+          item("GUA-01", "Papas fritas", 2, 7500)],
+         [(medio("efectivo"), 67000)], "Venta de mostrador"),
+        ("Hotel Los Álamos",
+         [item("PAR-03", "Vacío", 4, 22000)],
+         [(medio("tarjeta"), 88000)], "Pedido de oficina"),
+    ]
 
 
 def main() -> int:
