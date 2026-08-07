@@ -125,7 +125,13 @@ def test_si_deja_pedidos(api):
     # ⚠️ Se cuentan los dos lados: `/api/pedidos` es el board de
     # mostrador y **excluye los de salón**, que viven en el mapa de
     # mesas. Contar sólo ahí da 1 donde hay 3.
-    assert _pedidos_activos(api) >= 3
+    #
+    # 🔴 Y se exige además una venta: el pedido de delivery **se cobra**, así
+    # que sale del board de activos. Antes quedaba abierto sólo porque el
+    # cobro fallaba con un 422 que el seed salteaba — contar únicamente
+    # activos daba verde con el defecto puesto.
+    assert _pedidos_activos(api) >= 2
+    assert _lista(api.get("/api/ventas")), "el pedido cobrado no generó venta"
 
 
 # ── El salón ──────────────────────────────────────────────────────────────
