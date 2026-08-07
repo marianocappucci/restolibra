@@ -220,6 +220,9 @@ def sembrar(api: Api) -> None:
     print("Pedidos…")
     _sembrar_pedidos(api, productos, mesas, contar)
 
+    print("Presupuestos de eventos…")
+    _sembrar_presupuestos(api, clientes, contar)
+
     print("Operación del día (turno, ventas, facturas, caja, cobranzas)…")
     _sembrar_operacion(api, clientes, productos, contar)
 
@@ -411,6 +414,64 @@ def _tiene_modulo(api, ruta: str) -> bool:
         if "404" in str(e):
             return False
         raise
+
+
+
+def _sembrar_presupuestos(api: Api, clientes: dict, contar) -> None:
+    """Presupuestos de eventos, en los estados que la pantalla distingue, y el
+    remito que sale del aceptado.
+
+    En una parrilla el presupuesto es el de un evento —un cumpleaños, una cena
+    de empresa—, no el de un mostrador. El aceptado genera su remito, que es el
+    flujo natural del producto: uno aceptado sin remito se lee como algo a
+    medio hacer.
+    """
+    if _lista(api.get("/api/presupuestos")):
+        contar("presupuestos", False)
+        print("  (ya hay presupuestos cargados)")
+        return
+
+    PLAN = [
+        ("Hotel Los Álamos", 10, [
+            ("Servicio de catering para 40 personas", 1, 680000),
+            ("Mozos adicionales (2)", 2, 45000),
+        ], "aceptado"),
+        ("Gustavo Peralta", 5, [
+            ("Cumpleaños 25 personas — menú parrilla", 1, 390000),
+        ], "enviado"),
+        ("Hotel Los Álamos", 2, [
+            ("Coffee break para reunión (15)", 1, 96000),
+        ], "rechazado"),
+        # En borrador: el estado inicial, y el que la pantalla usa para saber
+        # qué se puede seguir editando.
+        ("Gustavo Peralta", 0, [
+            ("Menú degustación para 8", 1, 210000),
+        ], None),
+    ]
+
+    for cliente, dias, items, estado in PLAN:
+        fecha = HOY - timedelta(days=dias)
+        try:
+            presupuesto = api.post("/api/presupuestos", {
+                "date": fecha.isoformat(),
+                "valid_until": (fecha + timedelta(days=30)).isoformat(),
+                "client_id": clientes.get(cliente),
+                "items": [{"description": d, "qty": c, "unit_price": p}
+                          for d, c, p in items],
+                "observations": "Presupuesto de ejemplo de la demo.",
+            })
+        except RuntimeError as e:
+            print(f"  -- presupuesto de {cliente}: {e}")
+            continue
+        contar("presupuestos", True)
+        if estado:
+            try:
+                api.post(f"/api/presupuestos/{presupuesto['id']}/estado", {
+                    "estado": estado,
+                    "convertir_remito": estado == "aceptado",
+                })
+            except RuntimeError as e:
+                print(f"  -- estado {estado}: {e}")
 
 
 def _sesion_del_visitante(api):
