@@ -72,8 +72,47 @@ def test_el_seed_corre_entero_sobre_una_base_vacia(api, capsys):
 def test_deja_la_carta_completa(api):
     sembrar(api)
 
-    assert len(_lista(api.get("/api/productos"))) == 13
+    productos = _lista(api.get("/api/productos"))
+    # 🔴 Se cuentan por separado y no en total: son dos cosas distintas. Los
+    # vendibles son la carta —lo que se vende y lo que va al KDS—; los insumos
+    # existen para que los platos tengan receta, que es lo que alimenta la
+    # pantalla de costos. Un total suelto no distingue perder uno de agregar
+    # otro.
+    assert len([p for p in productos if p.get("vendible")]) == 13
+    assert len([p for p in productos if not p.get("vendible")]) == 7
     assert len(_lista(api.get("/api/clientes"))) == 3
+
+
+# ── 🔴 La pantalla de costos ──────────────────────────────────────────────
+
+def test_hay_platos_con_receta(api):
+    """🔴 `get_reporte_food_cost()` recorre los vendibles **con receta** y se
+    saltea el resto. Con trece productos cargados y ninguna receta, la pantalla
+    de costos salía vacía — y con la carta llena, esa pantalla vacía no se
+    explicaba sola. Medido contra la demo el 2026-08-07.
+    """
+    sembrar(api)
+
+    con_receta = [p for p in _lista(api.get("/api/productos"))
+                  if p.get("vendible")
+                  and (api.get(f"/api/productos/{p['id']}/receta") or {}).get("receta")]
+
+    assert len(con_receta) >= 5
+
+
+def test_el_reporte_de_costos_trae_filas(api):
+    """La verificación que importa: lo que devuelve la pantalla, no lo que hay
+    cargado. El reporte se arma en otro lado que la receta."""
+    sembrar(api)
+
+    reporte = (api.get("/api/productos/reportes-costos") or {}).get("reporte") or []
+
+    assert len(reporte) >= 5
+    # Y con números que se puedan leer: un food cost de 0 o de None deja la
+    # columna que da sentido a la pantalla en blanco.
+    for fila in reporte:
+        assert fila["costo"] > 0, f"{fila['nombre']} sin costo"
+        assert 0 < fila["food_cost_pct"] < 100, f"{fila['nombre']}: {fila['food_cost_pct']}%"
 
 
 # ── 🔴 Las estaciones del KDS ─────────────────────────────────────────────
@@ -180,7 +219,8 @@ def test_correrlo_dos_veces_no_duplica(api, capsys):
 
     salida = capsys.readouterr().out
     assert "carta        0 creados, 13 ya estaban" in salida
-    assert len(_lista(api.get("/api/productos"))) == 13
+    assert "insumos      0 creados, 7 ya estaban" in salida
+    assert len(_lista(api.get("/api/productos"))) == 20
 
 
 def test_la_segunda_corrida_no_agrega_mesas_ni_pedidos(api):
