@@ -108,11 +108,33 @@ def test_el_reporte_de_costos_trae_filas(api):
     reporte = (api.get("/api/productos/reportes-costos") or {}).get("reporte") or []
 
     assert len(reporte) >= 5
-    # Y con números que se puedan leer: un food cost de 0 o de None deja la
-    # columna que da sentido a la pantalla en blanco.
     for fila in reporte:
         assert fila["costo"] > 0, f"{fila['nombre']} sin costo"
-        assert 0 < fila["food_cost_pct"] < 100, f"{fila['nombre']}: {fila['food_cost_pct']}%"
+
+
+def test_el_food_cost_es_creible(api):
+    """🔴 Que la pantalla tenga filas no alcanza: los números tienen que ser de
+    un restaurante.
+
+    La primera versión de las recetas dejó el food cost entre **6% y 16%** —
+    aritmética correcta con insumos demasiado baratos contra la carta. La
+    pantalla se llenaba y mostraba un negocio que no existe, que es peor que
+    mostrarla vacía: el interesado que sabe del rubro deja de creerle al resto.
+
+    La banda 20–50% es la de una parrilla real. Se testea porque los precios de
+    los insumos y los de la carta viven en listas separadas: tocar una sin la
+    otra rompe esto sin que nada falle.
+    """
+    sembrar(api)
+
+    reporte = (api.get("/api/productos/reportes-costos") or {}).get("reporte") or []
+
+    assert reporte
+    for fila in reporte:
+        assert 20 <= fila["food_cost_pct"] <= 50, (
+            f"{fila['nombre']}: food cost {fila['food_cost_pct']}% "
+            f"(venta {fila['precio_venta']}, costo {fila['costo']})"
+        )
 
 
 # ── 🔴 Las estaciones del KDS ─────────────────────────────────────────────
