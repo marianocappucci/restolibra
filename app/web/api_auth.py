@@ -9,7 +9,11 @@ conviven sobre la misma cookie hasta que las rutas HTML se borren en la
 etapa de corte de la migracion. Mismo patron que gestiolibra/app/auth.py.
 """
 from fastapi import Depends, HTTPException, Request
-from libraauth.session_auth import SERVICE_USER, token_de_servicio_valido
+from libraauth.session_auth import (
+    SERVICE_USER,
+    permite_lectura_de_demo,
+    token_de_servicio_valido,
+)
 
 from app import database as db
 from app.web.auth import get_current_user as _get_username_from_cookie
@@ -26,12 +30,21 @@ def get_current_user_json(request: Request) -> dict:
 
 
 def require_role_json(*roles: str):
-    """Factory de dependencia: 403 si el usuario logueado no tiene uno de roles."""
+    """Factory de dependencia: 403 si el usuario logueado no tiene uno de roles.
 
-    def _dep(user: dict = Depends(get_current_user_json)) -> dict:
-        if user["role"] not in roles:
-            raise HTTPException(403, "No autorizado")
-        return user
+    **Excepcion: el visitante de la demo publica pasa, pero solo para leer.**
+    La regla no se escribe aca: sale de `libraauth.permite_lectura_de_demo`,
+    la misma que usan los otros cuatro productos. Si se duplicara, cambiar que
+    puede ver un visitante seria tocar dos lugares — y el que se olvide queda
+    distinto sin que nadie lo note.
+    """
+
+    def _dep(request: Request, user: dict = Depends(get_current_user_json)) -> dict:
+        if user["role"] in roles:
+            return user
+        if permite_lectura_de_demo(request, user):
+            return user
+        raise HTTPException(403, "No autorizado")
 
     return _dep
 
@@ -58,6 +71,10 @@ def require_admin_o_servicio_json(request: Request) -> dict:
     if token_de_servicio_valido(request):
         return dict(SERVICE_USER)
     usuario = get_current_user_json(request)
-    if usuario["role"] != "admin":
-        raise HTTPException(403, "No autorizado")
-    return usuario
+    if usuario["role"] == "admin":
+        return usuario
+    # Misma excepción de lectura, y hace falta acá aparte: éste no pasa por
+    # `require_role_json`, y de él cuelga la pantalla de Usuarios.
+    if permite_lectura_de_demo(request, usuario):
+        return usuario
+    raise HTTPException(403, "No autorizado")

@@ -107,13 +107,22 @@ def test_el_boton_entra_y_deja_sesion(client, demo_encendida):
     assert client.get("/api/me").json()["username"] == USUARIO_DEMO
 
 
-def test_el_visitante_no_puede_lo_que_es_de_admin(client, demo_encendida):
-    """El motivo de que entre como staff: no tiene que poder tocar
-    Configuración ni el ABM de usuarios."""
+def test_el_visitante_ve_el_abm_de_usuarios_pero_no_lo_toca(client, demo_encendida):
+    """Cambió el 2026-08-06 con libraauth v0.19.0, a pedido del humano: la demo
+    tiene que **mostrarse entera**, así que el visitante ve las pantallas de
+    administración… y sigue sin poder escribirlas.
+
+    🔴 Este test decía antes `GET → 403`. La mitad que importa —y que no
+    cambió— es la segunda: **ver la lista de usuarios de una demo es inocuo;
+    poder darse de alta uno, no.**
+    """
     _sembrar(client)
     client.post("/api/demo")
 
-    assert client.get("/api/usuarios").status_code == 403
+    assert client.get("/api/usuarios").status_code == 200
+    assert client.post("/api/usuarios", json={
+        "username": "intruso", "name": "Intruso", "password": "x", "role": "admin",
+    }).status_code == 403
 
 
 def test_el_ingreso_queda_auditado(client, demo_encendida):
