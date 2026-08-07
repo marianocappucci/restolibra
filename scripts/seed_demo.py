@@ -145,6 +145,10 @@ STOCK = {
     "BEB-02": 48,
     "BEB-03": 0,       # se acabó
     "BEB-04": 30,
+    # Las guarniciones se venden en casi todos los pedidos y no estaban acá:
+    # quedaban en negativo, y peor, un poco mas negativo en cada corrida.
+    "GUA-01": 40,
+    "GUA-02": 25,
 }
 
 SALONES = [
@@ -226,13 +230,18 @@ def sembrar(api: Api) -> None:
     print("Operación del día (turno, ventas, facturas, caja, cobranzas)…")
     _sembrar_operacion(api, clientes, productos, contar)
 
+    print("Tesorería…")
+    _sembrar_tesoreria(api, contar)
+
     # 🔴 El stock se vuelve a fijar DESPUÉS de las ventas, y no es redundante:
     # las ventas descuentan, así que sin esto la primera corrida termina en un
     # número y la segunda —que saltea las ventas ya creadas— en otro. Modo
     # `absoluto`: correrlo de nuevo no cambia nada.
+    # 🔴 Acá NO se saltea el cero, a diferencia de la carga inicial. Allá 0
+    # significa "no toques, dejalo sin abastecer"; acá significa "volvé a
+    # cero". Salteándolo, cada corrida empujaba ese ítem un poco más abajo
+    # —negativo— y el seed dejaba de ser idempotente.
     for codigo, cantidad in STOCK.items():
-        if cantidad == 0:
-            continue
         api.post(f"/api/stock/{productos[codigo]}/ajuste", {
             "modo": "absoluto", "cantidad": cantidad,
             "referencia": "Ajuste de inventario",
@@ -486,6 +495,67 @@ def _sembrar_presupuestos(api: Api, clientes: dict, contar) -> None:
                 print(f"  -- estado {estado}: {e}")
 
 
+
+def _sembrar_tesoreria(api: Api, contar) -> None:
+    """Cuentas de tesorería, sus movimientos y una transferencia entre las dos.
+
+    Tesorería es la plata que **no** está en la caja del día: la cuenta del
+    banco, el efectivo guardado. Por eso son cuentas propias y no movimientos
+    de caja — y por eso la transferencia entre las dos es el ejemplo que hace
+    entender la pantalla: mostrar sólo ingresos deja la mitad sin verse.
+    """
+    resumen = api.get("/api/tesoreria") or {}
+    if resumen.get("cuentas"):
+        contar("tesoreria", False)
+        print("  (ya hay cuentas de tesorería)")
+        return
+
+    cuentas = {}
+    for nombre, tipo, banco, saldo in (
+        ("Cuenta corriente Banco Nación", "banco", "Banco Nación", 850000),
+        ("Efectivo en caja fuerte", "efectivo", "", 220000),
+    ):
+        try:
+            creada = api.post("/api/tesoreria/cuentas", {
+                "nombre": nombre, "tipo": tipo, "banco": banco,
+                "saldo_inicial": saldo,
+                "descripcion": "Cuenta de ejemplo de la demo",
+            })
+            cuentas[nombre] = creada.get("id") or creada.get("cuenta", {}).get("id")
+            contar("tesoreria", True)
+        except RuntimeError as e:
+            print(f"  -- cuenta {nombre}: {e}")
+
+    banco = cuentas.get("Cuenta corriente Banco Nación")
+    caja_fuerte = cuentas.get("Efectivo en caja fuerte")
+
+    if banco:
+        for tipo, concepto, monto in (
+            ("ingreso", "Depósito de la recaudación del fin de semana", 380000),
+            ("egreso", "Pago a proveedor de bebidas", 145000),
+        ):
+            try:
+                api.post(f"/api/tesoreria/cuentas/{banco}/movimiento", {
+                    "fecha": HOY.isoformat(), "tipo": tipo,
+                    "monto": monto, "concepto": concepto,
+                    "referencia": "Movimiento de ejemplo",
+                })
+                contar("tesoreria_mov", True)
+            except RuntimeError as e:
+                print(f"  -- movimiento de tesorería: {e}")
+
+    if banco and caja_fuerte:
+        try:
+            api.post("/api/tesoreria/transferencia", {
+                "cuenta_origen_id": caja_fuerte, "cuenta_destino_id": banco,
+                "monto": 100000, "fecha": HOY.isoformat(),
+                "concepto": "Depósito del efectivo de la semana",
+            })
+            contar("transferencia", True)
+        except RuntimeError as e:
+            print(f"  -- transferencia: {e}")
+
+
 def _sesion_del_visitante(api):
     """Una sesión con el usuario de la demo, si la instancia es una demo.
 
@@ -606,6 +676,21 @@ def _sembrar_operacion(api: Api, clientes: dict, productos: dict, contar) -> Non
                 contar("facturas", True)
             except RuntimeError as e:
                 print(f"  -- factura tipo {tipo}: {e}")
+
+    # Cuenta corriente: un pago a cuenta del cliente que compra fiado. La
+    # deuda nace de las ventas, así que esto sólo tiene sentido si el cliente
+    # ya tiene saldo — y si no lo tiene, el producto lo dice y se saltea.
+    cliente_cc = clientes.get("Hotel Los Álamos")
+    if cliente_cc and not _lista(api.get("/api/cuenta-corriente")):
+        try:
+            api.post(f"/api/cuenta-corriente/{cliente_cc}/pagar", {
+                "monto": 50000, "fecha": HOY.isoformat(),
+                "concepto": "Pago a cuenta", "medio_pago": medio("efectivo"),
+                "referencia": "Recibo de la demo",
+            })
+            contar("cobranzas", True)
+        except RuntimeError as e:
+            print(f"  -- cobranza: {e}")
 
     if not _lista(api.get("/api/caja")):
         for tipo, concepto, monto in (
