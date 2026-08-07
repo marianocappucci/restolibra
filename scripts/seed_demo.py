@@ -144,14 +144,19 @@ CARTA = [
 #:
 #: Y sin insumos tampoco se puede mostrar de qué habla el producto: el food cost
 #: es la razón por la que un restaurante carga recetas.
+#: 🔴 **Los precios están calibrados contra la carta, no elegidos sueltos.** La
+#: primera versión los puso "baratos" y el food cost salió entre 6% y 16% — un
+#: restaurante con esos números no existe, y la pantalla que se quería mostrar
+#: quedaba mostrando algo increíble. Los de acá dejan la banda en **24%–42%**,
+#: que es donde vive una parrilla de verdad. Ver `test_el_food_cost_es_creible`.
 INSUMOS = [
-    ("Bife de chorizo crudo (kg)", "INS-01", "Insumos", 11800, "kg"),
-    ("Entraña cruda (kg)", "INS-02", "Insumos", 11200, "kg"),
-    ("Papa (kg)", "INS-03", "Insumos", 900, "kg"),
-    ("Aceite de girasol (l)", "INS-04", "Insumos", 2600, "l"),
-    ("Provolone (kg)", "INS-05", "Insumos", 12500, "kg"),
-    ("Lechuga (kg)", "INS-06", "Insumos", 1800, "kg"),
-    ("Tomate (kg)", "INS-07", "Insumos", 2200, "kg"),
+    ("Bife de chorizo crudo (kg)", "INS-01", "Insumos", 29700, "kg"),
+    ("Entraña cruda (kg)", "INS-02", "Insumos", 31500, "kg"),
+    ("Papa (kg)", "INS-03", "Insumos", 5200, "kg"),
+    ("Aceite de girasol (l)", "INS-04", "Insumos", 6500, "l"),
+    ("Provolone (kg)", "INS-05", "Insumos", 18500, "kg"),
+    ("Lechuga (kg)", "INS-06", "Insumos", 6000, "kg"),
+    ("Tomate (kg)", "INS-07", "Insumos", 9500, "kg"),
 ]
 
 #: código del plato → [(código del insumo, cantidad por porción)]
