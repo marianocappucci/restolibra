@@ -134,6 +134,39 @@ CARTA = [
     ("Vino Malbec copa", "BEB-04", "Bebidas", 5800, 2900, "barra"),
 ]
 
+#: (nombre, código, categoría, costo por unidad, unidad)
+#:
+#: 🔴 **Los insumos son la mitad que faltaba.** Hasta el 2026-08-07 los trece
+#: productos de la carta eran `vendible`, ninguno era insumo y ninguno tenía
+#: receta — así que la pantalla de **costos** (`/api/productos/reportes-costos`)
+#: salía vacía: el reporte recorre los vendibles **con receta** y se saltea el
+#: resto. Con 13 productos cargados, la pantalla vacía no se explicaba sola.
+#:
+#: Y sin insumos tampoco se puede mostrar de qué habla el producto: el food cost
+#: es la razón por la que un restaurante carga recetas.
+INSUMOS = [
+    ("Bife de chorizo crudo (kg)", "INS-01", "Insumos", 11800, "kg"),
+    ("Entraña cruda (kg)", "INS-02", "Insumos", 11200, "kg"),
+    ("Papa (kg)", "INS-03", "Insumos", 900, "kg"),
+    ("Aceite de girasol (l)", "INS-04", "Insumos", 2600, "l"),
+    ("Provolone (kg)", "INS-05", "Insumos", 12500, "kg"),
+    ("Lechuga (kg)", "INS-06", "Insumos", 1800, "kg"),
+    ("Tomate (kg)", "INS-07", "Insumos", 2200, "kg"),
+]
+
+#: código del plato → [(código del insumo, cantidad por porción)]
+#:
+#: Las cantidades son de una porción real, no simbólicas: el food cost que sale
+#: en pantalla tiene que ser creíble (un bife al ~45%, las papas al ~13%), que
+#: es de lo que habla la pantalla.
+RECETAS = {
+    "PAR-01": [("INS-01", 0.35)],
+    "PAR-02": [("INS-02", 0.32)],
+    "GUA-01": [("INS-03", 0.30), ("INS-04", 0.08)],
+    "ENT-01": [("INS-05", 0.18)],
+    "GUA-02": [("INS-06", 0.12), ("INS-07", 0.10)],
+}
+
 STOCK = {
     "ENT-01": 24,
     "ENT-02": 80,
@@ -149,6 +182,16 @@ STOCK = {
     # quedaban en negativo, y peor, un poco mas negativo en cada corrida.
     "GUA-01": 40,
     "GUA-02": 25,
+    # 🔴 Los insumos van acá **porque las recetas los consumen**: vender un bife
+    # descuenta su insumo. Dejarlos afuera repite exactamente el bug de GUA-01
+    # —cada corrida un poco más negativo— sólo que en la pantalla de insumos.
+    "INS-01": 18,
+    "INS-02": 14,
+    "INS-03": 40,
+    "INS-04": 12,
+    "INS-05": 6,
+    "INS-06": 8,
+    "INS-07": 9,
 }
 
 SALONES = [
@@ -199,6 +242,33 @@ def sembrar(api: Api) -> None:
         })
         productos[codigo] = registro["id"]
         contar("carta", nuevo)
+
+    print("Insumos y recetas…")
+    for nombre, codigo, categoria, costo, unidad in INSUMOS:
+        registro, nuevo = obtener_o_crear(api, "/api/productos", "codigo", codigo, {
+            "nombre": nombre, "codigo": codigo, "categoria": categoria,
+            "precio_venta": 0, "precio_costo": costo,
+            "unidad": unidad, "stock_minimo": 2,
+            # 🔴 Lo que lo hace insumo y no plato. Un insumo vendible aparecería
+            # en la carta y en el KDS, que no es lo que se quiere mostrar.
+            "vendible": False,
+        })
+        productos[codigo] = registro["id"]
+        contar("insumos", nuevo)
+
+    for plato, ingredientes in RECETAS.items():
+        # La receta se guarda con PUT, o sea que reescribe: correr el seed de
+        # nuevo deja exactamente la misma receta, no una duplicada.
+        try:
+            api.put(f"/api/productos/{productos[plato]}/receta", {
+                "items": [{"ingrediente_id": productos[ins], "cantidad": cant}
+                          for ins, cant in ingredientes],
+                "rinde": 1, "rinde_unidad": "porción",
+                "notas": "Receta de ejemplo de la demo",
+            })
+            contar("recetas", True)
+        except (RuntimeError, AttributeError) as e:
+            print(f"  -- receta de {plato}: {e}")
 
     print("Stock…")
     for codigo, cantidad in STOCK.items():
