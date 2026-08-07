@@ -336,9 +336,14 @@ def _sembrar_pedidos(api: Api, productos: dict, mesas: dict, contar) -> None:
                 "producto_id": productos[codigo], "qty": cantidad,
             })
         api.post(f"/api/pedidos/{pedido_id}/enviar", {})
+        # ⚠️ `cobrar` espera **`pagos`**, una lista: este producto admite cobro
+        # mixto y por eso no hay un `medio`/`monto` suelto. Acá había una copia
+        # con la forma vieja —el otro cobro del mismo archivo ya lo hacía
+        # bien—, así que el pedido de delivery se quedaba sin cobrar en cada
+        # corrida con un 422 que el seed avisaba y salteaba.
         api.post(f"/api/pedidos/{pedido_id}/cobrar", {
-            "medio": "efectivo",
-            "monto": _total(api.get(f"/api/pedidos/{pedido_id}")),
+            "pagos": [{"medio": "efectivo",
+                       "monto": _total(api.get(f"/api/pedidos/{pedido_id}"))}],
         })
         contar("pedidos", True)
     except RuntimeError as e:
