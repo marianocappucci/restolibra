@@ -414,6 +414,13 @@ def _tiene_modulo(api, ruta: str) -> bool:
         if "404" in str(e):
             return False
         raise
+    except json.JSONDecodeError:
+        # 🔴 Este producto sirve la SPA con un catch-all: una ruta que no
+        # existe contesta **200 con el index.html**, no un 404. Sin esto, el
+        # helper no decía "no está" sino que reventaba y se llevaba puesto el
+        # seed entero. Misma trampa que ya obligó a que el botón de la demo
+        # validara la forma de la respuesta y no el código.
+        return False
 
 
 
