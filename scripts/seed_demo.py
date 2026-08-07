@@ -303,6 +303,9 @@ def sembrar(api: Api) -> None:
     print("Tesorería…")
     _sembrar_tesoreria(api, contar)
 
+    print("Bandeja de MercadoPago…")
+    _sembrar_bandeja_mp(api, contar)
+
     # 🔴 El stock se vuelve a fijar DESPUÉS de las ventas, y no es redundante:
     # las ventas descuentan, así que sin esto la primera corrida termina en un
     # número y la segunda —que saltea las ventas ya creadas— en otro. Modo
@@ -568,6 +571,52 @@ def _sembrar_presupuestos(api: Api, clientes: dict, contar) -> None:
             except RuntimeError as e:
                 print(f"  -- estado {estado}: {e}")
 
+
+
+def _sembrar_bandeja_mp(api: Api, contar) -> None:
+    """Cobros de MercadoPago esperando factura.
+
+    🔴 **Por qué hace falta una ruta aparte y no alcanza con la API normal.**
+    La bandeja se llena **sincronizando contra MercadoPago de verdad**:
+    `/api/mp-bandeja/sincronizar` exige el Access Token de la cuenta y sale a
+    la red. Una demo pública no tiene cuenta de MP ni puede tenerla, así que
+    esta pantalla era la única que seguía abriéndose vacía. Por eso el producto
+    expone `/api/mp-bandeja/demo/sembrar`, que **existe sólo con `DEMO_MODE`**.
+
+    Se siembran las **dos** solapas —cobros y transferencias bancarias
+    entrantes—, porque con una sola llena la pantalla queda a medias, y quedan
+    **pendientes**: lo que hay que mostrar es la acción disponible, no un
+    historial cerrado. Montos de consumo de restaurante, no de mayorista.
+    """
+    bandeja = api.get("/api/mp-bandeja") or {}
+    if bandeja.get("pendientes") or bandeja.get("transferencias"):
+        contar("mp_bandeja", False)
+        return
+
+    items = [
+        {"mp_payment_id": "demo-204411001", "monto": 47800,
+         "payer_name": "Lucía Ferreyra", "payer_email": "lucia.ferreyra@example.com.ar",
+         "payer_id_number": "27331245678", "payment_type": "credit_card",
+         "payment_method": "visa", "descripcion": "Mesa 3 — cena",
+         "clase": "pago"},
+        {"mp_payment_id": "demo-204411002", "monto": 23500,
+         "payer_name": "Consumidor final", "payer_email": "",
+         "payer_id_number": "", "payment_type": "account_money",
+         "payment_method": "account_money", "descripcion": "Pedido de delivery",
+         "clase": "pago"},
+        {"mp_payment_id": "demo-204411003", "monto": 96200,
+         "payer_name": "Eventos del Sur SRL", "payer_email": "pagos@eventosdelsur.com.ar",
+         "payer_id_number": "30712233449", "payment_type": "bank_transfer",
+         "payment_method": "cvu", "descripcion": "Seña de reserva para 12 personas",
+         "clase": "transferencia"},
+    ]
+    try:
+        r = api.post("/api/mp-bandeja/demo/sembrar", items)
+        for _ in range(int((r or {}).get("creados", 0))):
+            contar("mp_bandeja", True)
+    except RuntimeError as e:
+        # Fuera de una demo la ruta no existe: es lo esperado, no un error.
+        print(f"  (bandeja de MP: {e})")
 
 
 def _sembrar_tesoreria(api: Api, contar) -> None:
