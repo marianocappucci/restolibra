@@ -29,9 +29,9 @@ dependencies = [
     #   y presupuestos: membrete 51,5 -> 40,3 mm y tarjetas Emisor/Cliente
     #   65 -> 50,6 mm, con lo que entran ~10 items en la primera carilla en vez
     #   de 6. Sin eliminar ningun campo ni achicar ninguna tipografia.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.8.3",
-    "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.4.0",
-    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.20.0",
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.21.0",
+    "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.5.0",
+    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.23.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
