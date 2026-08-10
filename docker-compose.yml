@@ -1,4 +1,39 @@
 services:
+  # El backend de la instancia de dev desde el corte a PostgreSQL.
+  #
+  # 🔴 La clave del servicio lleva el nombre del producto y no es `db` ni
+  # `postgres`: `stack-net` es una red COMPARTIDA por todo el VPS y Compose
+  # convierte la clave en un alias de red. Dos composes con la misma clave se
+  # turnan por round-robin del DNS interno — ya pasó en esta familia.
+  #
+  # 🔴 Imagen Debian (`postgres:16`), la misma del CI: el collation viene de la
+  # imagen y la alpine ordena por bytes, como SQLite.
+  #
+  # Una sola base, a diferencia de Gestiolibra y MedLibra: acá el core y el
+  # dominio comparten schema, que es como ya convivían en el mismo archivo.
+  #
+  # Sin `ports:` a propósito: sólo se llega desde la red interna.
+  restolibra-postgres:
+    image: postgres:16
+    container_name: restolibra-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: restolibra
+      POSTGRES_USER: restolibra
+      # Sin default a propósito: `:?` aborta el `up` si falta, en vez de
+      # levantar la base con una clave escrita en git.
+      POSTGRES_PASSWORD: ${RESTOLIBRA_POSTGRES_PASSWORD:?hay que definirla en el .env del VPS}
+    volumes:
+      - restolibra-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restolibra -d restolibra"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - stack-net
+
   restolibra-dev:
     build:
       context: .
@@ -21,6 +56,9 @@ services:
         - libraauth=${LIBRAAUTH_SSH_KEY:-~/.ssh/id_ed25519_libraauth}
         - libra-ui=${LIBRA_UI_SSH_KEY:-~/.ssh/id_ed25519_libra_ui}
     container_name: restolibra-dev
+    depends_on:
+      restolibra-postgres:
+        condition: service_healthy
     restart: unless-stopped
     # Límites agregados en la auditoría 2026-07-12 (ver
     # wiki/analyses/restolibra-auditoria-produccion): sin esto, un contenedor
@@ -46,6 +84,13 @@ services:
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - ADMIN_NOMBRE=${ADMIN_NOMBRE:-Administrador}
       - DATA_DIR=/app/dev-data
+      # 🔴 El corte a PostgreSQL. Esta variable gana sobre la ruta derivada de
+      # DATA_DIR (ver app/db_core.py) y es lo único que mueve la instancia de
+      # motor.
+      #
+      # Rollback: comentar esta línea y reiniciar. El `.db` sigue en
+      # `dev-data/` sin tocar — la migración copia, no mueve.
+      - RESTOLIBRA_DATABASE_URL=postgresql://restolibra:${RESTOLIBRA_POSTGRES_PASSWORD:?hay que definirla en el .env del VPS}@restolibra-postgres:5432/restolibra
       - ENV=development
       - DOCS_AUTH_SECRET=${DOCS_AUTH_SECRET:-}
       # Recuperacion de contrasena (libraauth v0.5.0). Sin SMTP la app
@@ -60,6 +105,9 @@ services:
       - LIBRAAUTH_SMTP_FROM_NAME=${LIBRAAUTH_SMTP_FROM_NAME:-Restolibra}
     networks:
       - stack-net
+
+volumes:
+  restolibra-postgres-data:
 
 networks:
   stack-net:
