@@ -139,8 +139,12 @@ def get_stock_por_deposito(deposito_id: int) -> list[dict]:
             LEFT JOIN item_codes ic ON ic.item_id = ci.id AND ic.is_primary = 1
             LEFT JOIN stock_movements sm ON sm.item_id = ci.id AND sm.location_id = ?
             WHERE ci.active = 1 AND ci.item_type = 'product'
-            GROUP BY ci.id
-            HAVING stock_actual != 0 OR ci.min_stock > 0
+            -- Ver db_stock.get_stock_todos: las columnas de tablas unidas
+            -- tienen que estar en el GROUP BY.
+            GROUP BY ci.id, cat.name, ic.code
+            -- Y la expresion repetida en vez del alias: PostgreSQL no acepta
+            -- alias de la SELECT en el HAVING (SQLite si).
+            HAVING COALESCE(SUM(sm.quantity_delta), 0) != 0 OR ci.min_stock > 0
             ORDER BY ci.name
         """, (deposito_id,)).fetchall()
     return [

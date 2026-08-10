@@ -90,9 +90,11 @@ def get_reporte_stock_bajo() -> list[dict]:
         FROM catalog_items ci
         LEFT JOIN item_codes ic ON ic.item_id = ci.id AND ic.is_primary = 1
         LEFT JOIN stock_movements sm ON sm.item_id = ci.id
-        GROUP BY ci.id
-        HAVING stock_actual < ci.min_stock
-        ORDER BY (ci.min_stock - stock_actual) DESC
+        GROUP BY ci.id, ic.code
+        -- La expresion repetida en vez del alias: PostgreSQL no acepta alias de
+        -- la SELECT ni en el HAVING ni dentro de una expresion del ORDER BY.
+        HAVING ROUND(COALESCE(SUM(sm.quantity_delta), 0), 3) < ci.min_stock
+        ORDER BY (ci.min_stock - ROUND(COALESCE(SUM(sm.quantity_delta), 0), 3)) DESC
     """
     with get_connection() as conn:
         return [dict(r) for r in conn.execute(sql).fetchall()]

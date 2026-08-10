@@ -16,6 +16,22 @@ from app import db_core
 
 
 def _schema_de(conn, tabla):
+    """El DDL de una tabla, como texto donde buscar una FK.
+
+    Los dos motores lo cuentan distinto y ninguno es "el raro": SQLite guarda el
+    `CREATE TABLE` tal como se escribio, y PostgreSQL no guarda texto -- lo
+    re-genera desde el catalogo. Se devuelve algo comparable en los dos casos,
+    que es lo unico que estos tests necesitan.
+    """
+    if db_core.ES_POSTGRES:
+        filas = conn.execute(
+            "SELECT pg_get_constraintdef(con.oid) FROM pg_constraint con "
+            "JOIN pg_class c ON c.oid = con.conrelid "
+            "WHERE c.relname = ?",
+            (tabla,),
+        ).fetchall()
+        return " ".join(f[0] for f in filas)
+
     row = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name=?", (tabla,)
     ).fetchone()
@@ -50,7 +66,10 @@ def test_migracion_repunta_la_fk_vieja_conservando_las_filas(client):
     migracion las conserva. Los pagos son registros de dinero: una
     migracion que los pierda es peor que la FK mal apuntada."""
     with db_core.get_connection() as conn:
-        conn.execute("PRAGMA foreign_keys=OFF")
+        if not db_core.ES_POSTGRES:
+            # En PostgreSQL no existe, y el adaptador lo rechaza a
+            # proposito. Tampoco hace falta para rehacer esta tabla.
+            conn.execute("PRAGMA foreign_keys=OFF")
         conn.execute("DROP TABLE ventas_pagos")
         conn.execute("""
             CREATE TABLE ventas_pagos (
@@ -62,6 +81,13 @@ def test_migracion_repunta_la_fk_vieja_conservando_las_filas(client):
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        # La fila padre va en las DOS tablas: con la FK vieja apuntando a
+        # `ventas`, PostgreSQL exige que exista ahi para aceptar el INSERT
+        # de abajo. En SQLite da igual porque el pragma esta apagado.
+        conn.execute(
+            "INSERT INTO ventas (id, numero, fecha, items, total) "
+            "VALUES (7, 'V-7', '2026-08-10', '[]', 100)"
+        )
         conn.execute("INSERT INTO sales (id, number, total) VALUES (7, 'V-7', 100)")
         conn.execute(
             "INSERT INTO ventas_pagos (id, venta_id, medio, monto) VALUES (1, 7, 'efectivo', 100)"
@@ -76,7 +102,10 @@ def test_migracion_repunta_la_fk_vieja_conservando_las_filas(client):
         fila = conn.execute("SELECT id, venta_id, medio, monto FROM ventas_pagos").fetchone()
         assert tuple(fila) == (1, 7, "efectivo", 100.0)
         # Y la FK quedo realmente operativa, no solo declarada.
-        assert conn.execute("PRAGMA foreign_key_check(ventas_pagos)").fetchall() == []
+        # En PostgreSQL no hay equivalente porque no hace falta: la
+        # integridad se aplica siempre.
+        if not db_core.ES_POSTGRES:
+            assert conn.execute("PRAGMA foreign_key_check(ventas_pagos)").fetchall() == []
 
 
 def test_migracion_conserva_las_filas_sin_venta_y_avisa(client, capfd):
@@ -84,7 +113,10 @@ def test_migracion_conserva_las_filas_sin_venta_y_avisa(client, capfd):
     migrar de P8 (datos en la tabla vieja `ventas`, `sales` vacia). Esas
     filas quedan colgadas -- se conservan igual y la migracion lo dice."""
     with db_core.get_connection() as conn:
-        conn.execute("PRAGMA foreign_keys=OFF")
+        if not db_core.ES_POSTGRES:
+            # En PostgreSQL no existe, y el adaptador lo rechaza a
+            # proposito. Tampoco hace falta para rehacer esta tabla.
+            conn.execute("PRAGMA foreign_keys=OFF")
         conn.execute("DROP TABLE ventas_pagos")
         conn.execute("""
             CREATE TABLE ventas_pagos (
@@ -96,6 +128,13 @@ def test_migracion_conserva_las_filas_sin_venta_y_avisa(client, capfd):
                 created_at TEXT DEFAULT (datetime('now'))
             )
         """)
+        # venta_id 99 existe en la vieja `ventas` y NO en `sales`: es el
+        # estado "a medio migrar". Sembrarlo alla es lo que hace que
+        # PostgreSQL acepte el INSERT con la FK vieja.
+        conn.execute(
+            "INSERT INTO ventas (id, numero, fecha, items, total) "
+            "VALUES (99, 'V-99', '2026-08-10', '[]', 500)"
+        )
         # venta_id 99 no existe en `sales` (existiria en la vieja `ventas`).
         conn.execute(
             "INSERT INTO ventas_pagos (id, venta_id, medio, monto) VALUES (1, 99, 'efectivo', 500)"
@@ -119,10 +158,13 @@ def test_migracion_es_idempotente(client):
     with db_core.get_connection() as conn:
         assert "REFERENCES sales(" in _schema_de(conn, "ventas_pagos")
         # Y no quedo ninguna tabla `_old` colgada de un rebuild previo.
-        viejas = conn.execute(
-            "SELECT name FROM sqlite_master WHERE name LIKE '%_old'"
-        ).fetchall()
-        assert viejas == []
+        # Solo aplica a SQLite: en PostgreSQL la migracion cambia la
+        # constraint con dos ALTER y nunca renombra la tabla.
+        if not db_core.ES_POSTGRES:
+            viejas = conn.execute(
+                "SELECT name FROM sqlite_master WHERE name LIKE '%_old'"
+            ).fetchall()
+            assert viejas == []
 
 
 def test_backfill_de_parties_repara_una_base_a_medio_migrar(client, admin_client):

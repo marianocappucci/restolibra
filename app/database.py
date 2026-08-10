@@ -357,9 +357,17 @@ def _repuntar_fk_ventas_pagos_postgres(conn):
     for nombre, definicion in definiciones:
         if "venta_id" in definicion:
             conn.execute(f"ALTER TABLE ventas_pagos DROP CONSTRAINT {nombre}")
+
+    # `NOT VALID` cuando hay filas colgadas: es el equivalente exacto de lo que
+    # hace el camino de SQLite, donde el rebuild las copia con el pragma
+    # apagado y la FK queda declarada pero sin verificar sobre ellas. Es
+    # deliberado -- son registros de dinero. PostgreSQL no acepta agregar una FK
+    # que las filas violan, y `NOT VALID` dice lo mismo: no revises lo que ya
+    # esta, aplica la regla de aca en adelante. Se valida a mano despues.
+    sufijo = " NOT VALID" if huerfanas else ""
     conn.execute(
         "ALTER TABLE ventas_pagos ADD CONSTRAINT ventas_pagos_venta_id_fkey "
-        "FOREIGN KEY (venta_id) REFERENCES sales(id) ON DELETE CASCADE"
+        f"FOREIGN KEY (venta_id) REFERENCES sales(id) ON DELETE CASCADE{sufijo}"
     )
     conn.commit()
 

@@ -200,7 +200,12 @@ def get_consumo_insumos(desde: str = "", hasta: str = "") -> list[dict]:
         JOIN catalog_items p ON p.id = m.item_id
         WHERE {' AND '.join(where)}
         GROUP BY p.id
-        ORDER BY (consumido_venta + consumido_merma) DESC
+        -- Las expresiones repetidas en vez de los alias: PostgreSQL acepta un
+        -- alias SUELTO en el ORDER BY, pero no adentro de una expresion.
+        ORDER BY (SUM(CASE WHEN m.reason_code='venta'
+                           THEN -CAST(m.quantity_delta AS REAL) ELSE 0 END)
+                  + SUM(CASE WHEN m.reason_code='merma'
+                             THEN -CAST(m.quantity_delta AS REAL) ELSE 0 END)) DESC
     """
     with get_connection() as conn:
         rows = conn.execute(sql, params).fetchall()
