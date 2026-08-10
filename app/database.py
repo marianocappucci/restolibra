@@ -9,7 +9,7 @@ import os
 from libracore.db.schema import init_core_schema
 from libracore.db.clients import sincronizar_parties_de_clientes
 from libracommerce.db.schema import init_schema as init_commerce_schema
-from app.db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, get_connection, minutos_desde  # noqa: F401
+from app.db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, ES_POSTGRES, get_connection, minutos_desde  # noqa: F401
 from app.db_usuarios import (  # noqa: F401
     _hash_password,
     _verify_password,
@@ -326,6 +326,52 @@ from app.db_reportes_gastronomicos import reporte_gastronomia  # noqa: F401
 # directo — el hook ya no se usa y LibraCore no se toca.
 
 
+def _repuntar_fk_ventas_pagos_postgres(conn):
+    """Lo mismo que el rebuild de SQLite, pero en dos `ALTER TABLE`.
+
+    PostgreSQL si sabe cambiar una constraint, asi que no hay que reconstruir
+    la tabla ni copiar filas. Sin `PRAGMA`, sin `sqlite_master` y sin mover un
+    solo dato. Mismo criterio que en Contalibra.
+    """
+    definiciones = conn.execute("""
+        SELECT conname, pg_get_constraintdef(oid)
+        FROM pg_constraint
+        WHERE conrelid = 'ventas_pagos'::regclass AND contype = 'f'
+    """).fetchall()
+
+    if any("REFERENCES sales(" in d[1] for d in definiciones):
+        return
+
+    huerfanas = conn.execute("""
+        SELECT COUNT(*) FROM ventas_pagos vp
+        LEFT JOIN sales s ON s.id = vp.venta_id
+        WHERE s.id IS NULL
+    """).fetchone()[0]
+    if huerfanas:
+        print(
+            f"[ADVERTENCIA] ventas_pagos: {huerfanas} fila(s) referencian una venta "
+            "que no esta en `sales`. Se conservan tal cual: revisar a mano.",
+            flush=True,
+        )
+
+    for nombre, definicion in definiciones:
+        if "venta_id" in definicion:
+            conn.execute(f"ALTER TABLE ventas_pagos DROP CONSTRAINT {nombre}")
+
+    # `NOT VALID` cuando hay filas colgadas: es el equivalente exacto de lo que
+    # hace el camino de SQLite, donde el rebuild las copia con el pragma
+    # apagado y la FK queda declarada pero sin verificar sobre ellas. Es
+    # deliberado -- son registros de dinero. PostgreSQL no acepta agregar una FK
+    # que las filas violan, y `NOT VALID` dice lo mismo: no revises lo que ya
+    # esta, aplica la regla de aca en adelante. Se valida a mano despues.
+    sufijo = " NOT VALID" if huerfanas else ""
+    conn.execute(
+        "ALTER TABLE ventas_pagos ADD CONSTRAINT ventas_pagos_venta_id_fkey "
+        f"FOREIGN KEY (venta_id) REFERENCES sales(id) ON DELETE CASCADE{sufijo}"
+    )
+    conn.commit()
+
+
 def _migrar_ventas_pagos_a_sales(conn):
     """Repunta la FK de `ventas_pagos` de `ventas(id)` (schema de LibraCore)
     a `sales(id)` (LibraCommerce), que es donde viven las ventas de
@@ -340,6 +386,12 @@ def _migrar_ventas_pagos_a_sales(conn):
     trampa del RENAME de SQLite que reescribe las FK de las hijas — la
     misma que sí apareció en P8 con `pedidos`/`comandas`.
     """
+    if ES_POSTGRES:
+        # Contra PostgreSQL no existen ni `sqlite_master` ni el PRAGMA, y el
+        # rebuild de 12 pasos no hace falta: la constraint se cambia y listo.
+        _repuntar_fk_ventas_pagos_postgres(conn)
+        return
+
     row = conn.execute(
         "SELECT sql FROM sqlite_master WHERE type='table' AND name='ventas_pagos'"
     ).fetchone()

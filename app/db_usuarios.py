@@ -45,14 +45,22 @@ from libraauth.smtp_settings import (  # noqa: F401  (re-exportados para el rout
     resolver_smtp_config,
 )
 
-from app.db_core import DB_PATH
+from app.db_core import DB_PATH, ES_POSTGRES
 
 # Roles reales de Restolibra (VALID_ROLES de web/api/usuarios.py y ROLES de
 # frontend/src/api.ts). El default de libraauth es ("admin","staff") y no sirve
 # aca: rechazaria `cajero` y `mozo`, que existen en los datos.
 ROLES = ("admin", "operador", "cajero", "mozo")
 
-_engine = create_engine(f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False})
+# La URL salia siempre como `sqlite:///...`, aunque el destino fuera una URL
+# PostgreSQL. `postgresql://` va tal cual, con el driver psycopg de la familia,
+# y `connect_args` es de SQLite.
+if ES_POSTGRES:
+    _engine = create_engine(DB_PATH.replace("postgresql://", "postgresql+psycopg://", 1))
+else:
+    _engine = create_engine(
+        f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False}
+    )
 _AuthBase.metadata.create_all(_engine)
 _sessions = sessionmaker(bind=_engine)
 _repo = UserRepository(_sessions, roles=ROLES)

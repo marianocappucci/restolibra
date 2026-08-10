@@ -52,6 +52,30 @@ ADMIN_USER = "admin"
 ADMIN_PASS = os.environ["ADMIN_PASSWORD"]
 
 
+def _vaciar_postgres():
+    """El equivalente de borrar el .db, cuando no hay .db.
+
+    Se borra el SCHEMA y no la base: DROP DATABASE exige que no quede ninguna
+    conexion abierta. Antes se termina a las que dejo el test anterior: una
+    conexion "idle in transaction" sostiene locks sobre `public` y el DROP se
+    queda esperandola SIN FALLAR -- 20 minutos de cuelgue silencioso, medido en
+    VentaLibra. Y `IF EXISTS` porque una corrida interrumpida a mitad de este
+    bloque deja la base sin `public` y envenena todas las siguientes.
+    """
+    import psycopg
+
+    with psycopg.connect(
+        db_core.DB_PATH.replace("postgresql+psycopg://", "postgresql://", 1),
+        autocommit=True,
+    ) as conexion:
+        conexion.execute(
+            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+            "WHERE datname = current_database() AND pid <> pg_backend_pid()"
+        )
+        conexion.execute("DROP SCHEMA IF EXISTS public CASCADE")
+        conexion.execute("CREATE SCHEMA public")
+
+
 def _reset_data_dir():
     """Base y config de cero, misma ruta.
 
@@ -61,6 +85,10 @@ def _reset_data_dir():
     tests "ven" datos que ya no existen en disco.
     """
     db_usuarios._engine.dispose()
+    if db_core.ES_POSTGRES:
+        _vaciar_postgres()
+        db_usuarios._AuthBase.metadata.create_all(db_usuarios._engine)
+        return
     for suffix in ("", "-wal", "-shm"):
         path = db_core.DB_PATH + suffix
         if os.path.exists(path):

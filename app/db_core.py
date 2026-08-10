@@ -12,9 +12,20 @@ import os
 from libracore.db import core as _lc_core
 
 _DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
-DB_PATH = os.path.join(_DATA_DIR, "restolibra.db")
+
+# `RESTOLIBRA_DATABASE_URL` gana sobre la ruta derivada de DATA_DIR. Es como
+# este producto puede correr contra PostgreSQL: `libracore.db.core.configure()`
+# acepta una URL desde `v1.16.0` y decide el backend por el destino, asi que
+# aca no hay que elegir motor — solo dejar de imponer una ruta.
+DB_PATH = os.environ.get("RESTOLIBRA_DATABASE_URL") or os.path.join(
+    _DATA_DIR, "restolibra.db"
+)
 
 _lc_core.configure(db_path=DB_PATH, timeout=15)
+
+#: Si el destino es PostgreSQL. Lo consultan `db_usuarios` —que arma su propio
+#: engine de SQLAlchemy— y la suite, para no repetir el criterio.
+ES_POSTGRES = _lc_core.es_url_postgres(DB_PATH)
 
 _AR_TZ = _lc_core._AR_TZ
 _ar_now = _lc_core._ar_now

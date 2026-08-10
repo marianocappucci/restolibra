@@ -117,7 +117,11 @@ def get_stock_todos() -> list[dict]:
             LEFT JOIN item_codes ic ON ic.item_id = ci.id AND ic.is_primary = 1
             LEFT JOIN stock_movements sm ON sm.item_id = ci.id
             WHERE ci.active = 1
-            GROUP BY ci.id
+            -- `ic.code` y `cat.name` van en el GROUP BY porque son de OTRAS
+            -- tablas: PostgreSQL solo deja omitir del grupo las columnas de la
+            -- tabla cuya clave primaria se agrupa. SQLite lo aceptaba y elegia
+            -- una fila cualquiera.
+            GROUP BY ci.id, ic.code, cat.name
             ORDER BY ci.name
         """).fetchall()
     return [
