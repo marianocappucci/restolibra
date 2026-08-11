@@ -37,9 +37,21 @@ router = APIRouter(dependencies=[Depends(require_role("admin"))])
 
 Auth = Annotated[str, Depends(require_auth)]
 
-LOGO_DIR    = os.path.join(os.path.dirname(db.DB_PATH), "logos")
-CERTS_DIR   = os.path.join(os.path.dirname(db.DB_PATH), "arca_certs")
-BACKUPS_DIR = os.path.join(os.path.dirname(db.DB_PATH), "backups")
+# 🔴 De `DATA_DIR` y NO de `os.path.dirname(db.DB_PATH)`, que es como estaba.
+# Con la base en PostgreSQL `db.DB_PATH` es una URL, y `dirname()` de
+# `postgresql://usuario:clave@host:5432/base` devuelve
+# `postgresql://usuario:clave@host:5432`: las tres carpetas quedaban colgando de
+# una ruta inventada **con la contrasena en el nombre**. Y no son carpetas
+# cualquiera -- ahi viven el logo de la empresa y los **certificados de ARCA**,
+# que son los que dejan facturar.
+#
+# La carpeta de datos siempre fue esta; la ruta de la base era una forma
+# indirecta de llegar que funcionaba solo mientras la base fuera un archivo.
+_DATA_DIR = os.environ.get("DATA_DIR") or os.path.dirname(os.path.abspath(db.__file__))
+
+LOGO_DIR    = os.path.join(_DATA_DIR, "logos")
+CERTS_DIR   = os.path.join(_DATA_DIR, "arca_certs")
+BACKUPS_DIR = os.path.join(_DATA_DIR, "backups")
 
 
 def _listar_backups() -> list[dict]:
@@ -48,7 +60,10 @@ def _listar_backups() -> list[dict]:
         return []
     result = []
     for f in sorted(os.listdir(BACKUPS_DIR), reverse=True):
-        if not f.endswith(".db"):
+        # `.dump` ademas de `.db`: una instancia en PostgreSQL guarda dumps de
+        # `pg_dump`, no copias de archivo. Sin esto la pantalla de Backups se
+        # ve vacia aunque los backups existan.
+        if not f.endswith((".db", ".dump")):
             continue
         path = os.path.join(BACKUPS_DIR, f)
         stat = os.stat(path)
@@ -65,7 +80,7 @@ def _hacer_backup_automatico(motivo: str = "auto") -> str:
     os.makedirs(BACKUPS_DIR, exist_ok=True)
     # Eliminar backups automáticos que superen los 10 más recientes
     backups = sorted(
-        [f for f in os.listdir(BACKUPS_DIR) if f.endswith(".db")],
+        [f for f in os.listdir(BACKUPS_DIR) if f.endswith((".db", ".dump"))],
         reverse=True,
     )
     for old in backups[9:]:
@@ -79,7 +94,20 @@ def _hacer_backup_automatico(motivo: str = "auto") -> str:
             conn.execute("PRAGMA wal_checkpoint(FULL)")
     except Exception:
         pass
-    ts   = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+
+    # 🔴 Con la base en PostgreSQL no hay archivo que copiar. `shutil.copy2()`
+    # sobre una URL tira `FileNotFoundError` con la URL entera -- contrasena
+    # incluida-- en el mensaje. El equivalente es `pg_dump`, que ademas da una
+    # foto coherente sin bloquear a quien escribe, igual que el checkpoint de
+    # arriba en SQLite.
+    if db.ES_POSTGRES:
+        from libracore.respaldo import _dump_postgres
+
+        dest = os.path.join(BACKUPS_DIR, f"backup_{motivo}_{ts}.dump")
+        _dump_postgres(db.DB_PATH, dest)
+        return dest
+
     dest = os.path.join(BACKUPS_DIR, f"backup_{motivo}_{ts}.db")
     shutil.copy2(db.DB_PATH, dest)
     return dest
