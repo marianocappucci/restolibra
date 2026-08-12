@@ -29,7 +29,22 @@ dependencies = [
     #   y presupuestos: membrete 51,5 -> 40,3 mm y tarjetas Emisor/Cliente
     #   65 -> 50,6 mm, con lo que entran ~10 items en la primera carilla en vez
     #   de 6. Sin eliminar ningun campo ni achicar ninguna tipografia.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.28.4",
+    #
+    # v1.28.4 -> v1.31.0 (2026-08-12). Son dos:
+    #
+    # - v1.30.0: un comprobante se fecha con SU fecha y no con el reloj, asi que
+    #   reimprimirlo da byte a byte el mismo archivo. Toca todo lo que este
+    #   producto emite: los tickets, factura, remito, presupuesto, los recibos y
+    #   el resumen de cuenta corriente. La comanda de cocina NO: la arma este
+    #   repo sobre `TicketPDF` (app/ticket_generator.py) y se sigue fechando con
+    #   el reloj.
+    # - v1.31.0: `pinear_image` escribia la imagen de la app en el primer
+    #   `image:` del compose. **Aca eso es el sidecar**: en docker-compose.yml
+    #   `restolibra-postgres` (con `image: postgres:16`) va declarado ANTES que
+    #   `restolibra-dev`, o sea el layout exacto donde el bug le pone la imagen
+    #   de la aplicacion al contenedor de la base. Ahora el servicio se elige
+    #   por `container_name`.
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.31.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
