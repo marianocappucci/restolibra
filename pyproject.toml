@@ -44,7 +44,7 @@ dependencies = [
     #   `restolibra-dev`, o sea el layout exacto donde el bug le pone la imagen
     #   de la aplicacion al contenedor de la base. Ahora el servicio se elige
     #   por `container_name`.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.32.0",
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.33.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
