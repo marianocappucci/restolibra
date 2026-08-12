@@ -19,16 +19,13 @@ como tab "Categorías" dentro de /config). Quedan fuera del alcance de este
 módulo; portarlas es tarea de los módulos Productos/Egresos, no de Config.
 """
 import os
-import shutil
-import sqlite3
-import tempfile
 
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app import config_manager
 from app import database as db
-from app.web.routers.config import BACKUPS_DIR, CERTS_DIR, LOGO_DIR, _hacer_backup_automatico, _listar_backups
+from app.web.routers.config import CERTS_DIR, LOGO_DIR
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -207,48 +204,19 @@ def actualizar_ticket(payload: TicketPayload):
     return config_manager.load()
 
 
-@router.get("/backups")
-def listar_backups():
-    return _listar_backups()
-
-
-@router.post("/restore-db")
-async def restaurar_db(backup_file: UploadFile = File(...)):
-    content = await backup_file.read()
-    if not content.startswith(b"SQLite format 3\x00"):
-        raise HTTPException(422, "El archivo no es una base de datos SQLite válida.")
-
-    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".db")
-    try:
-        os.write(tmp_fd, content)
-        os.close(tmp_fd)
-        test = sqlite3.connect(tmp_path)
-        result = test.execute("PRAGMA integrity_check").fetchone()[0]
-        test.close()
-        if result != "ok":
-            raise HTTPException(422, f"La base de datos tiene errores de integridad: {result}")
-    except sqlite3.Error as e:
-        try:
-            os.unlink(tmp_path)
-        except OSError:
-            pass
-        raise HTTPException(422, f"No se pudo validar el archivo: {e}")
-
-    try:
-        _hacer_backup_automatico("antes_restore")
-    except Exception:
-        pass
-
-    shutil.move(tmp_path, db.DB_PATH)
-    for ext in ("-wal", "-shm"):
-        wal = db.DB_PATH + ext
-        if os.path.exists(wal):
-            try:
-                os.unlink(wal)
-            except OSError:
-                pass
-
-    return {"ok": True}
+# 🔴 `GET /backups` y `POST /restore-db` vivian aca y se removieron el
+# 2026-08-12: los reemplaza `build_backup_router` de LibraCore, montado en
+# `web/app.py` sobre el mismo prefijo `/api/config`. Ver ahi el detalle.
+#
+# Resumen: los dos estaban rotos desde el corte a PostgreSQL y las dos formas de
+# fallar escribian la contrasena de la base en el mensaje de error. El restore,
+# ademas, exigia un archivo `SQLite format 3` -- o sea que rechazaba el `.dump`
+# que el propio producto generaba-- y su "backup de seguridad previo" iba dentro
+# de un `try/except: pass`.
+#
+# Las rutas nuevas: `GET/POST /api/config/backups`,
+# `GET /api/config/backups/{filename}`, `GET /api/config/backup-ahora` y
+# `POST /api/config/restore`.
 
 
 # ── SMTP (libraauth v0.6.0) ───────────────────────────────────────────────────

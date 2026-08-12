@@ -175,7 +175,7 @@ export function Config() {
           </TabsList>
         </Tabs>
         <Button asChild size="sm" variant="outline">
-          <a href="/config/backup-db" download><Download />Backup rápido</a>
+          <a href="/api/config/backup-ahora" download><Download />Backup rápido</a>
         </Button>
       </div>
 
@@ -736,8 +736,8 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
     try {
       const form = new FormData()
       form.append('backup_file', restoreFile)
-      await api.postForm('/api/config/restore-db', form)
-      setRestoreMsg('Base de datos restaurada correctamente. Se guardó un backup automático antes de reemplazar.')
+      await api.postForm('/api/config/restore', form)
+      setRestoreMsg('Backup restaurado correctamente. Se guardó una copia del estado anterior antes de reemplazar.')
       await cargar()
     } catch (err) {
       setError(describeError(err))
@@ -753,13 +753,13 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base"><Download className="size-4" />Backup manual</CardTitle>
-          <CardDescription>Descargá una copia completa de la base de datos en este momento.</CardDescription>
+          <CardDescription>Descargá una copia completa de tu instancia en este momento.</CardDescription>
         </CardHeader>
         <CardContent>
           <Button asChild className="w-full">
-            <a href="/config/backup-db" download><Download />Descargar backup ahora</a>
+            <a href="/api/config/backup-ahora" download><Download />Descargar backup ahora</a>
           </Button>
-          <p className="mt-2 text-xs text-muted-foreground">El archivo .db contiene todos tus datos: clientes, facturas, ventas, caja, etc.</p>
+          <p className="mt-2 text-xs text-muted-foreground">El archivo .zip contiene todos tus datos —clientes, facturas, ventas, caja— más tu logo y tus certificados de ARCA.</p>
         </CardContent>
       </Card>
 
@@ -770,8 +770,8 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
         </CardHeader>
         <CardContent className="grid gap-3">
           <div className="grid gap-1.5">
-            <Label>Archivo de backup (.db)</Label>
-            <Input ref={fileInputRef} type="file" accept=".db" disabled={saving} onChange={seleccionarArchivo} />
+            <Label>Archivo de backup (.zip)</Label>
+            <Input ref={fileInputRef} type="file" accept=".zip" disabled={saving} onChange={seleccionarArchivo} />
           </div>
           {restoreMsg && <p className="text-sm text-emerald-600 dark:text-emerald-400">{restoreMsg}</p>}
         </CardContent>
@@ -781,7 +781,7 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
         <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Database className="size-4" />Backups automáticos guardados en el servidor</CardTitle></CardHeader>
         <CardContent>
           {backups.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">Sin backups automáticos todavía. Se generan automáticamente antes de cada restauración.</p>
+            <p className="py-4 text-center text-sm text-muted-foreground">Sin backups automáticos todavía. Se generan todas las noches y también antes de cada restauración.</p>
           ) : (
             <>
               <ul className="divide-y">
@@ -792,7 +792,7 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
                       <p className="text-muted-foreground">{b.mtime} — {b.size_mb} MB</p>
                     </div>
                     <Button asChild size="sm" variant="outline">
-                      <a href={`/config/backup-db/${b.filename}`} download><Download />Descargar</a>
+                      <a href={`/api/config/backups/${b.filename}`} download><Download />Descargar</a>
                     </Button>
                   </li>
                 ))}

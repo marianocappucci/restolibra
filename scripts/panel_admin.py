@@ -26,6 +26,14 @@ from libracore.provisioning.panel_admin import (
 REPO_ROOT = Path(__file__).parent.parent.resolve()
 
 configure(
+    # El backup del cron arma el MISMO ZIP que la pantalla de Backups, en
+    # `data/backups/`, en vez de un `tar.gz` aparte que la pantalla no lista y
+    # el cliente no puede restaurar. Requiere libracore >= v1.29.0.
+    #
+    # Se prende recien ahora porque este producto tenia implementacion propia
+    # del backup: hasta el 2026-08-12 su pantalla filtraba por `.db`/`.dump` y
+    # un ZIP le habria quedado invisible.
+    backup_zip=True,
     postgres=True,
     product_name="RESTOLIBRA",
     image_name="restolibra:latest",
