@@ -180,14 +180,26 @@ docker exec -i "$CONTENEDOR" sh -c '
 docker exec "$CONTENEDOR" rm -f /tmp/seed.py
 
 # --- Un backup, para que esa pantalla no se abra vacia --------------------
-# La demo se borra todas las noches, asi que nunca acumula backups sola. Se usa
-# la funcion del propio producto: con la base en PostgreSQL eso hace un
-# `pg_dump` (libracore.respaldo desde v1.17.0), no una copia de archivo.
+# La demo se borra todas las noches, asi que nunca acumula backups sola.
+#
+# Desde el 2026-08-12 sale del motor (`libracore.respaldo`), igual que la
+# pantalla: los helpers propios `_hacer_backup_automatico`/`_listar_backups`
+# se removieron. El ZIP que deja aca es el mismo que el cliente puede bajar y
+# restaurar, y lleva tambien el logo y los certificados de ARCA.
 log "backup de cortesia para la pantalla de backups"
 docker exec "$CONTENEDOR" python -c "
-from app.web.routers.config import _hacer_backup_automatico, _listar_backups
-_hacer_backup_automatico(motivo=\"demo\")
-print(\"  backups en la pantalla:\", len(_listar_backups()))
+from app import database as db
+from app.web.routers.config import BACKUPS_DIR, CERTS_DIR, LOGO_DIR
+from libracore.respaldo import Instancia, crear_backup, listar_backups
+
+instancia = Instancia(
+    nombre=\"restolibra\",
+    bases=([] if db.ES_POSTGRES else [db.DB_PATH]),
+    postgres_url=(db.DB_PATH if db.ES_POSTGRES else None),
+    directorios=[LOGO_DIR, CERTS_DIR],
+)
+crear_backup(instancia, BACKUPS_DIR, motivo=\"demo\")
+print(\"  backups en la pantalla:\", len(listar_backups(BACKUPS_DIR)))
 " 2>&1 | tail -2
 
 log "=== listo ==="
