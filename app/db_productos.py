@@ -32,6 +32,7 @@ from decimal import Decimal
 from libracommerce.db.repository import SqliteCommerceRepository
 from libracommerce.domain.catalog import CatalogItem, CatalogItemType, ItemCode, ItemCodeType, Unit
 from libracommerce.domain.inventory import Location
+from libracommerce.usecases.inventory import StockInsuficienteError, transfer_stock
 
 from app.db_core import get_connection
 
@@ -179,32 +180,59 @@ def get_stock_producto_todos_depositos(producto_id: int) -> list[dict]:
 def transferir_stock(producto_id: int, origen_id: int, destino_id: int,
                      cantidad: float, usuario_id: int | None = None,
                      fecha: str = "", observaciones: str = ""):
-    from datetime import date as _date
-    _fecha = fecha or _date.today().isoformat()
-    with get_connection() as conn:
-        row = conn.execute(
-            "SELECT COALESCE(SUM(quantity_delta),0) FROM stock_movements "
-            "WHERE item_id=? AND location_id=?",
-            (producto_id, origen_id),
-        ).fetchone()
-        stock_origen = float(row[0])
-    if cantidad > stock_origen:
-        raise ValueError(f"Stock insuficiente en depósito origen (disponible: {stock_origen}).")
-    ref = observaciones or "Transferencia entre depósitos"
-    # Import local: `db_stock` importa `get_default_deposito_id` de este
-    # módulo, así que a nivel de módulo sería circular. Se delega en vez de
-    # armar el INSERT a mano para no duplicar el mapeo tipo -> movement_type/
-    # reason_code ni volver a olvidarse de `note`/`created_by`.
-    from app.db_stock import add_movimiento_stock
-    for tipo, deposito, delta in (
-        ("transferencia_salida", origen_id, -cantidad),
-        ("transferencia_entrada", destino_id, cantidad),
-    ):
-        add_movimiento_stock(
-            producto_id=producto_id, tipo=tipo, cantidad=delta, referencia=ref,
-            fecha=_fecha, usuario_id=usuario_id, deposito_id=deposito,
-        )
+    """Mueve stock entre depósitos. Delega en LibraCommerce desde `v0.7.1`.
 
+    **Esta función tenía dos defectos y los dos los arregla la delegación**, no
+    un cambio de esta capa:
+
+    1. **No era atómica.** Llamaba dos veces a `add_movimiento_stock` y cada
+       llamada abría su propia conexión: si la segunda fallaba, la mercadería
+       salía del origen y no llegaba al destino, sin ningún error visible.
+    2. **El chequeo de disponibilidad corría en otra conexión, antes de
+       escribir.** Entre el SELECT y los INSERT entraba otra transferencia y
+       las dos pasaban la validación sobre el mismo stock.
+
+    `transfer_stock` hace las dos escrituras y la lectura que las autoriza
+    dentro de un solo `repo.transaction()`.
+
+    Lo que **no** cambia, a propósito:
+
+    - La firma, para no tocar el único call site (`web/api/depositos.py`).
+    - El `reason_code` de cada pata (`transferencia_salida` /
+      `transferencia_entrada`), que es el vocabulario que
+      `db_logs.get_actividad_log` muestra con un `COALESCE(reason_code,
+      movement_type)` **sin mapa**. El motor lo acepta desde `v0.7.1`
+      justamente para esto.
+    - **El texto del error**, que el endpoint devuelve tal cual en un 422 y ve
+      el usuario. El mensaje del motor nombra ids (`el deposito 3`), que no le
+      dicen nada a quien está mirando una pantalla con nombres.
+    """
+    from datetime import date as _date, datetime as _datetime
+    # `fecha` viene como 'YYYY-MM-DD' y el motor espera un datetime. La forma
+    # canónica completa es la misma que ya usaba `add_movimiento_stock`, así
+    # que los movimientos nuevos siguen ordenando igual que los viejos.
+    _fecha = _datetime.fromisoformat(fecha or _date.today().isoformat())
+    ref = observaciones or "Transferencia entre depósitos"
+    with get_connection() as conn:
+        try:
+            transfer_stock(
+                SqliteCommerceRepository(conn),
+                item_id=producto_id,
+                from_location_id=origen_id,
+                to_location_id=destino_id,
+                # `cantidad` es float en toda esta capa; vía `str` para no
+                # arrastrar el binario del float al Decimal.
+                quantity=Decimal(str(cantidad)),
+                occurred_at=_fecha,
+                note=ref,
+                created_by=usuario_id,
+                reason_code_salida="transferencia_salida",
+                reason_code_entrada="transferencia_entrada",
+            )
+        except StockInsuficienteError as e:
+            raise ValueError(
+                f"Stock insuficiente en depósito origen (disponible: {float(e.disponible)})."
+            ) from e
 
 # ── Categorías de producto ───────────────────────────────────────────────
 
