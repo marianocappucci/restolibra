@@ -19,8 +19,18 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS', maximumFractionDigits: 0 }).format(value)
 }
 
+// El formato visible del ecosistema es dd-mm-aaaa (regla del 2026-08-12).
+//
+// Se arma por partes y no con `toLocaleDateString('es-AR')`, que devuelve
+// `12/8/2026`: barra en vez de guion, y sin cero a la izquierda ni en el dia
+// ni en el mes.
 function formatDate(value: string): string {
-  return new Date(value).toLocaleDateString('es-AR')
+  const partes = new Intl.DateTimeFormat('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+  }).formatToParts(new Date(value))
+  const p: Record<string, string> = {}
+  for (const parte of partes) p[parte.type] = parte.value
+  return `${p.day}-${p.month}-${p.year}`
 }
 
 export function Dashboard() {
