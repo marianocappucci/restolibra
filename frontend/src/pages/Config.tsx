@@ -3,7 +3,6 @@ import { api, ApiError, type ArcaConfig, type Backup, type ConfigCfg } from '../
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -13,9 +12,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PasswordInput } from 'libra-ui/PasswordInput'
 import {
-  Ban, Building2, Check, CheckCircle2, ChevronDown, Copy, Database, Download,
-  ExternalLink, Info, Mail, Pause, Phone, Power, Printer, Save, Send,
-  Settings, ShieldCheck, ToggleRight, Upload,
+  Building2, Check, CheckCircle2, ChevronDown, Copy, Database, Download,
+  ExternalLink, Info, Mail, Phone, Power, Printer, Save, Send,
+  Settings, ShieldCheck, Upload,
 } from 'lucide-react'
 
 // Portado desde Contalibra (frontend/src/pages/Config.tsx), mismo backend
@@ -31,10 +30,16 @@ import {
 // (/config/categorias-producto, /config/categorias-egreso) linkeadas
 // directo desde el sidebar (ver Layout.tsx, sección Productos) -- no forman
 // parte de /config. Portarlas queda para los módulos Productos/Egresos.
+//
+// 🔴 **"Servicio" ya no está**, y es la única desviación deliberada de esa
+// estructura. Era activo / pausado / suspendido: el corte comercial, editable
+// por el propio cliente al que se le corta. Un cliente pausado se despausaba
+// solo, y uno que se suspendía por error quedaba afuera sin forma de volver
+// desde el navegador. Vive en el backoffice de superadmin
+// (`admin.restolibra.com.ar`), que administra las instancias de todos.
 const TABS = [
   { id: 'empresa', label: 'Empresa', icon: Building2 },
   { id: 'integraciones', label: 'Integraciones', icon: Power },
-  { id: 'servicio', label: 'Servicio', icon: ToggleRight },
   { id: 'ticket', label: 'Ticket / Impresora', icon: Printer },
   { id: 'datos', label: 'Datos / Backup', icon: Database },
 ] as const
@@ -186,7 +191,6 @@ export function Config() {
       {tab === 'integraciones' && (
         <IntegracionesTab cfg={cfg} setCfg={setCfg} arca={arca} setArca={setArca} saving={saving} guardar={guardar} subirArchivo={subirArchivo} />
       )}
-      {tab === 'servicio' && <ServicioTab cfg={cfg} setCfg={setCfg} saving={saving} guardar={guardar} />}
       {tab === 'ticket' && <TicketTab cfg={cfg} setCfg={setCfg} saving={saving} guardar={guardar} />}
       {tab === 'datos' && <DatosTab saving={saving} setSaving={setSaving} setError={setError} describeError={describeError} />}
     </div>
@@ -580,57 +584,6 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
             </Button>
           )}
           {resultado && <span className="text-sm text-muted-foreground">{resultado}</span>}
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function ServicioTab({ cfg, setCfg, saving, guardar }: {
-  cfg: ConfigCfg; setCfg: (c: ConfigCfg) => void; saving: boolean; guardar: GuardarFn
-}) {
-  const ESTADOS: { value: ConfigCfg['servicio_estado']; icon: typeof CheckCircle2; color: string; border: string; label: string; desc: string }[] = [
-    { value: 'activo', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-600/40 bg-emerald-500/5', label: 'Activo', desc: 'Operación normal. Todos los usuarios tienen acceso completo.' },
-    { value: 'pausado', icon: Pause, color: 'text-amber-600 dark:text-amber-400', border: 'border-amber-500/40 bg-amber-500/5', label: 'Pausado', desc: 'Los usuarios pueden ingresar pero ven un banner de aviso. Útil para avisar antes de un corte.' },
-    { value: 'suspendido', icon: Ban, color: 'text-destructive', border: 'border-destructive/40 bg-destructive/5', label: 'Suspendido', desc: 'Acceso bloqueado por completo. Se muestra la página de suspensión. Reactivar desde el panel admin del servidor o cambiando a Activo antes de guardar.' },
-  ]
-
-  return (
-    <Card className="max-w-xl">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base"><ToggleRight className="size-4" />Estado del servicio</CardTitle>
-        <CardDescription>Controlá el acceso al sistema para esta instancia. Este ajuste también puede cambiarse desde <code>panel_admin.py</code> en el servidor.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="grid gap-2">
-          <Label>Estado actual</Label>
-          {ESTADOS.map((e) => (
-            <label
-              key={e.value}
-              className={`flex cursor-pointer items-start gap-2 rounded-md border p-3 text-sm ${cfg.servicio_estado === e.value ? e.border : ''}`}
-            >
-              <input
-                type="radio" name="servicio_estado" className="mt-1" checked={cfg.servicio_estado === e.value}
-                onChange={() => setCfg({ ...cfg, servicio_estado: e.value })}
-              />
-              <span>
-                <span className={`flex items-center gap-1.5 font-semibold ${e.color}`}><e.icon className="size-4" />{e.label}</span>
-                <span className="mt-0.5 block text-muted-foreground">{e.desc}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <div className="grid gap-1.5">
-          <Label>Mensaje personalizado <span className="font-normal text-muted-foreground">(opcional)</span></Label>
-          <Textarea rows={2} value={cfg.servicio_mensaje} onChange={(e) => setCfg({ ...cfg, servicio_mensaje: e.target.value })}
-            placeholder="Ej: Servicio suspendido por falta de pago. Contactar a soporte@restolibra.com.ar" />
-        </div>
-        <div>
-          <Button disabled={saving} onClick={() => guardar('/api/config/servicio', {
-            servicio_estado: cfg.servicio_estado, servicio_mensaje: cfg.servicio_mensaje,
-          })}>
-            <Check />{saving ? 'Guardando…' : 'Guardar estado'}
-          </Button>
         </div>
       </CardContent>
     </Card>

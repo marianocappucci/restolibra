@@ -15,6 +15,71 @@ def test_actualizar_empresa_persiste(admin_client):
     assert config_manager.load()["empresa_nombre"] == "Suite SA"
 
 
+def test_guardar_la_empresa_no_toca_el_resto_de_la_config(admin_client):
+    """Guardar la razon social no puede reactivar un servicio suspendido.
+
+    `config_manager.save()` mergea contra los DEFAULTS, no contra el archivo:
+    toda clave que no venga en el dict vuelve a su default. Como este endpoint
+    mandaba solo los campos de empresa, guardar el nombre resetaba
+    `servicio_estado` a "activo" y borraba el token de MercadoPago.
+
+    Es la puerta de atras del corte comercial: sin esto, el cliente al que se
+    le suspende el servicio se reactiva desde su propia pantalla de
+    Configuracion, sin tocar nada que parezca relacionado.
+    """
+    cfg = config_manager.load()
+    cfg["servicio_estado"] = "pausado"
+    cfg["servicio_mensaje"] = "Falta de pago"
+    cfg["mp_access_token"] = "TOKEN-DEL-CLIENTE"
+    cfg["ticket_pie"] = "Gracias por su compra"
+    config_manager.save(cfg)
+
+    try:
+        resp = admin_client.put("/api/config/empresa", json={"empresa_nombre": "Suite SA"})
+        assert resp.status_code == 200, resp.text
+
+        despues = config_manager.load()
+        assert despues["empresa_nombre"] == "Suite SA"
+        assert despues["servicio_estado"] == "pausado"
+        assert despues["servicio_mensaje"] == "Falta de pago"
+        assert despues["mp_access_token"] == "TOKEN-DEL-CLIENTE"
+        assert despues["ticket_pie"] == "Gracias por su compra"
+    finally:
+        cfg = config_manager.load()
+        cfg["servicio_estado"] = "activo"
+        cfg["servicio_mensaje"] = ""
+        cfg["mp_access_token"] = ""
+        config_manager.save(cfg)
+
+
+def test_el_cliente_no_puede_cambiar_su_estado_de_servicio(admin_client):
+    """`PUT /api/config/servicio` se removio: la palanca es del backoffice.
+
+    Con la ruta viva, el admin de la instancia se despausaba solo. Se chequea
+    con un admin logueado —el rol mas alto que existe dentro del producto—
+    porque el punto no es el permiso sino que la ruta ya no este.
+
+    🔴 **No se asierta el 404.** Con el `dist/` del frontend construido, el
+    catch-all del SPA matchea la ruta y devuelve **405**; sin construir,
+    devuelve 404. O sea que el codigo de estado depende de si alguien corrio
+    `npm run build` antes de la suite. Lo que se mide es lo que importa: que la
+    ruta no este en el esquema de la app, y que la llamada no cambie el estado.
+    """
+    assert "/api/config/servicio" not in admin_client.app.openapi()["paths"]
+
+    cfg = config_manager.load()
+    cfg["servicio_estado"] = "pausado"
+    config_manager.save(cfg)
+    try:
+        admin_client.put("/api/config/servicio", json={
+            "servicio_estado": "activo", "servicio_mensaje": ""})
+        assert config_manager.load()["servicio_estado"] == "pausado"
+    finally:
+        cfg = config_manager.load()
+        cfg["servicio_estado"] = "activo"
+        config_manager.save(cfg)
+
+
 def test_modulo_deshabilitado_da_403(admin_client):
     """El gating es real (modules_gate), no solo de UI: con el modulo
     fuera del plan, el endpoint responde 403 aunque la sesion sea admin."""
@@ -42,18 +107,21 @@ def test_modulo_gate_no_alcanza_a_otros_modulos(admin_client):
 
 
 def test_servicio_suspendido_corta_la_api(admin_client):
-    resp = admin_client.put("/api/config/servicio", json={
-        "servicio_estado": "suspendido", "servicio_mensaje": "Falta de pago"})
-    assert resp.status_code == 200
+    # El corte se escribe como lo escribe el backoffice: sobre el `config.json`
+    # de la instancia. Ya no hay endpoint para hacerlo desde adentro.
+    cfg = config_manager.load()
+    cfg["servicio_estado"] = "suspendido"
+    cfg["servicio_mensaje"] = "Falta de pago"
+    config_manager.save(cfg)
     try:
         cortado = admin_client.get("/api/me")
         assert cortado.status_code == 503
         assert cortado.json()["error"] == "servicio_suspendido"
+        assert cortado.json()["mensaje"] == "Falta de pago"
     finally:
-        # La reactivacion no puede ir por la API (esta cortada): se hace
-        # como el backoffice, directo sobre el config.
         cfg = config_manager.load()
         cfg["servicio_estado"] = "activo"
+        cfg["servicio_mensaje"] = ""
         config_manager.save(cfg)
     assert admin_client.get("/api/me").status_code == 200
 
