@@ -53,8 +53,22 @@ class EmpresaPayload(BaseModel):
 
 @router.put("/empresa")
 def actualizar_empresa(payload: EmpresaPayload):
-    existing = config_manager.load()
-    cfg = {**payload.model_dump(), "logo_path": existing.get("logo_path", "")}
+    # 🔴 Se guarda SOBRE la config existente, no un dict armado de cero.
+    #
+    # `config_manager.save()` mergea contra los DEFAULTS, no contra el archivo:
+    # toda clave que no venga en `data` vuelve a su valor por defecto. Esta
+    # funcion mandaba solo los campos de empresa (mas `logo_path`), asi que
+    # guardar la razon social resetaba `servicio_estado` a "activo" y borraba
+    # `servicio_mensaje`, `mp_access_token`, la config de ticket y el SMTP.
+    #
+    # O sea: **un cliente suspendido se reactivaba solo guardando el nombre de
+    # su empresa**, y de paso perdia el token de MercadoPago. Verificado
+    # ejecutando el caso, no leyendo el codigo.
+    #
+    # `/ticket` y el resto ya hacian el `load()` + pisar claves; esta era la
+    # unica que no.
+    cfg = config_manager.load()
+    cfg.update(payload.model_dump())
     config_manager.save(cfg)
     return config_manager.load()
 
@@ -169,19 +183,17 @@ async def subir_certificados_arca(
     return _arca_cfg()
 
 
-class ServicioPayload(BaseModel):
-    servicio_estado: str = "activo"
-    servicio_mensaje: str = ""
-
-
-@router.put("/servicio")
-def actualizar_servicio(payload: ServicioPayload):
-    estado = payload.servicio_estado if payload.servicio_estado in ("activo", "pausado", "suspendido") else "activo"
-    cfg = config_manager.load()
-    cfg["servicio_estado"] = estado
-    cfg["servicio_mensaje"] = payload.servicio_mensaje
-    config_manager.save(cfg)
-    return config_manager.load()
+# 🔴 `PUT /servicio` vivia aca y se removio el 2026-08-12.
+#
+# El corte de servicio (activo / pausado / suspendido) es la palanca comercial,
+# y estaba expuesta al admin de la instancia a la que se le corta: un cliente
+# pausado se despausaba solo, y uno que se suspendia por error quedaba afuera
+# sin forma de volver desde el navegador. Se administra desde el backoffice de
+# superadmin (`admin.restolibra.com.ar`), que escribe el `config.json` de la
+# instancia por el filesystem del host, no por esta API.
+#
+# La instancia sigue LEYENDO `servicio_estado` en cada request (`web/app.py`) y
+# sirviendo `/suspendido`. Lo que se fue es la escritura.
 
 
 class TicketPayload(BaseModel):
