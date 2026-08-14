@@ -44,7 +44,29 @@ dependencies = [
     #   `restolibra-dev`, o sea el layout exacto donde el bug le pone la imagen
     #   de la aplicacion al contenedor de la base. Ahora el servicio se elige
     #   por `container_name`.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.33.0",
+    #
+    # v1.33.0 -> v1.37.0 (2026-08-14): los PDF no se salen del marco del papel.
+    # De los cuatro modulos que cambiaron en el salto, este producto consume
+    # UNO: `pdf_generator`. `admin/` y `provisioning/` no se importan aca --se
+    # verifico con un grep de los imports-- asi que el bump es, en la practica,
+    # el arreglo de los comprobantes:
+    #
+    # - `_wrap_text` parte por caracter la palabra que no entra en el renglon.
+    #   Un texto sin espacios --un codigo de orden de compra, una URL, un
+    #   serial pegado-- volvia entero y `cell` lo dibujaba: medido, 435 mm de
+    #   borde derecho en una hoja de 210, en remito, presupuesto, factura y
+    #   resumen de cuenta corriente.
+    # - `_recortar` mete en su celda, con elipsis, la condicion de venta y las
+    #   filas del detalle de cobros del recibo. Estos dos desbordaban **con
+    #   datos normales**, sin necesidad de un caso extremo.
+    # - El margen del marco lo pone ahora `_TextoSeguroPDF`, la base de todos
+    #   los documentos, en vez de depender de que cada uno llame a
+    #   `set_margins`. El recibo era el que no lo llamaba.
+    #
+    # Los cinco comprobantes salen byte por byte identicos a como salian
+    # (sha256 comparado con datos reales), asi que el bump no cambia nada de lo
+    # ya emitido.
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.37.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
