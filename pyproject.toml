@@ -66,7 +66,16 @@ dependencies = [
     # Los cinco comprobantes salen byte por byte identicos a como salian
     # (sha256 comparado con datos reales), asi que el bump no cambia nada de lo
     # ya emitido.
-    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.37.0",
+    #
+    # v1.37.0 -> v1.38.0 (2026-08-14): las filas meta del membrete tambien se
+    # recortan. La caja del valor mide ~31 mm --unos 25 caracteres a 7 pt-- y
+    # `cell` no recorta: lo que se pasa se dibujaba afuera del papel. El unico
+    # documento que mete texto libre ahi es el RECIBO, que pone el concepto en
+    # ("Comprobante:", ref_line). Medido en la demo de VentaLibra: "Pago a
+    # cuenta en cuenta corriente" terminaba en 202,2 mm en una hoja de 210.
+    #
+    # Es anterior a v1.37.0 y aquel arreglo no lo cubria.
+    "libracore @ git+https://github.com/marianocappucci/libracore.git@v1.38.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
