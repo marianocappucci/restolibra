@@ -125,7 +125,9 @@ export const Layout = createLayout<User>({
   icon: ChefHat,
   homeTo: '/dashboard',
   accountTo: '/mi-cuenta',
-  topbar: false,
+  // Ya no se pasa `topbar`: desde libra-ui v0.19.0 la barra no existe para
+  // ningún producto, así que la opción se fue. El render de acá no cambia --
+  // Restolibra venía pasando `topbar: false` desde que la barra se sacó.
   useAuth,
   hasModule: (u, m) => u.modulos.includes(m),
   getUserName: (u) => u.nombre,
