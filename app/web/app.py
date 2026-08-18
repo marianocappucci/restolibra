@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+
+from app.spa import TIPOS_PROPIOS, archivo_publico
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
@@ -612,5 +614,7 @@ if os.path.isdir(FRONTEND_DIST):
 
     @app.get("/{full_path:path}", include_in_schema=False)
     async def spa_fallback(full_path: str):
-        del full_path  # catch-all: enrutamiento client-side de react-router
+        archivo = archivo_publico(FRONTEND_DIST, full_path)
+        if archivo is not None:
+            return FileResponse(archivo, media_type=TIPOS_PROPIOS.get(archivo.suffix))
         return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
