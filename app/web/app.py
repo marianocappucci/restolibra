@@ -24,6 +24,11 @@ from app.web.routers import logs as logs_router
 from app.web.routers import reportes as reportes_router
 from app.web.routers import libros_iva as libros_iva_router
 from app.web.routers import kds as kds_router
+from app import db_usuarios
+from app.web import auth as web_auth
+from libraauth.auth_events import AuthEventRepository
+from libraauth.demo_codigos import DemoCodigoRepository
+from libraauth.session_auth import build_demo_codigos_router, demo_username
 from app.web.api import auth as api_auth_router
 from app.web.api import dashboard as api_dashboard_router
 from app.web.api import caja as api_caja_router
@@ -59,6 +64,27 @@ from libracore.config_router import build_backup_router
 from libracore.respaldo import Instancia
 
 app = FastAPI(title="Restolibra")
+
+# ── Lo que el router de auth de libraauth espera en `app.state` ─────────────
+#
+# Desde el 2026-08-18 los siete endpoints de `/api` los sirve el motor (ver
+# `app/web/api/auth.py`). El router los busca en el state en cada request, asi
+# que esto tiene que quedar puesto al importar el modulo, igual que el `app`.
+#
+# 🔴 `auth_events` es lo que alimenta el **rate limiting** del login del motor,
+# que reemplaza al que este producto tenia escrito a mano. Escribe en la MISMA
+# tabla `auth_log` que ya usaba `db.registrar_auth_event`, asi que el historial
+# de accesos no se parte en dos y los intentos viejos siguen contando.
+app.state.users = db_usuarios.user_repository()
+app.state.session_auth = web_auth.session_auth
+app.state.auth_events = AuthEventRepository(db_usuarios.sessions())
+app.state.password_reset = db_usuarios.password_reset_service()
+
+# 🔴 Solo en la demo, y **falla cerrado**: una instancia demo que llegue aca
+# sin el repositorio deja de dejar entrar, con `503 demo access codes not
+# configured`. En la instancia de un cliente no hay demo que abrir.
+if demo_username():
+    app.state.demo_codigos = DemoCodigoRepository(db_usuarios.sessions())
 
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
@@ -204,6 +230,11 @@ def servicio_suspendido(request: Request):
 # los ultimos 3 gaps reales que quedaban de la migracion (reportes de
 # salon, monitor de pedidos, categorias de egreso -- este ultimo en
 # config.py, que si sigue vivo por el logo/backup).
+# `GET`/`POST`/`DELETE /admin/demo-codigos`: por donde el backoffice emite los
+# codigos que se le pasan a un interesado. Solo en la demo, por lo mismo que el
+# repositorio de arriba.
+if demo_username():
+    app.include_router(build_demo_codigos_router())
 app.include_router(remitos.router)
 app.include_router(presupuestos.router)
 app.include_router(facturas.router)
