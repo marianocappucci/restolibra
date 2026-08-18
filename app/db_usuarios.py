@@ -90,6 +90,26 @@ _password_reset = PasswordResetService(
 )
 
 
+# Lo que el router de auth de libraauth espera en `app.state`.
+#
+# Se exponen con accesores y no importando los `_` de este modulo: lo que se
+# comparte con el motor es una decision explicita, no lo que quedo accesible.
+
+
+def sessions():
+    """El `session_factory` donde vive `usuarios` — y desde v0.28.0 tambien
+    `demo_codigos` y `auth_log`."""
+    return _sessions
+
+
+def user_repository():
+    return _repo
+
+
+def password_reset_service():
+    return _password_reset
+
+
 def leer_config_smtp() -> dict:
     """Estado de la config SMTP para la pantalla. **Nunca incluye la
     contrasena** — solo si hay una cargada."""

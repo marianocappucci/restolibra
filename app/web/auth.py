@@ -15,6 +15,12 @@ _auth = SessionAuth(
     check_credentials=db.check_usuario_credentials,
 )
 
+#: El objeto entero, para `app.state.session_auth`: el router de auth de
+#: libraauth lo busca ahi. Es el MISMO `SessionAuth` que ya emitia la cookie,
+#: asi que la sesion de un usuario logueado no se invalida al pasar del router
+#: propio al del motor.
+session_auth = _auth
+
 SECRET_KEY = _auth.secret_key
 COOKIE_NAME = _auth.cookie_name
 create_session_cookie = _auth.create_session_cookie
