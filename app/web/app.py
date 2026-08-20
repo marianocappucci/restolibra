@@ -2,12 +2,12 @@ import os
 import re
 
 
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import RedirectResponse, JSONResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app.spa import TIPOS_PROPIOS, archivo_publico
+from app.spa import montar_spa
 from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
@@ -635,17 +635,16 @@ async def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
 # declarados, asi que el catch-all solo atrapa lo que ningun otro endpoint
 # respondio.
 _DOCKER_FRONTEND_DIST = "/opt/frontend-dist"
-_LOCAL_FRONTEND_DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+# Tres niveles arriba: app/web/app.py -> app/web -> app -> raiz del repo.
+# 🔴 Eran dos cuando este archivo vivia en web/; al empaquetar se sumo un
+# nivel y esta linea quedo atras — apuntaba a `app/frontend/dist`, que no
+# existe, asi que en dev local el frontend NO se montaba y `/` daba 404.
+# En Docker no se veia: ahi gana _DOCKER_FRONTEND_DIST. Contalibra corrigio
+# lo mismo el 2026-07-31 y este quedo sin corregir.
+_LOCAL_FRONTEND_DIST = os.path.join(
+    os.path.dirname(__file__), "..", "..", "frontend", "dist"
+)
 FRONTEND_DIST = _DOCKER_FRONTEND_DIST if os.path.isdir(_DOCKER_FRONTEND_DIST) else _LOCAL_FRONTEND_DIST
 
 if os.path.isdir(FRONTEND_DIST):
-    app.mount(
-        "/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="frontend-assets"
-    )
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def spa_fallback(full_path: str):
-        archivo = archivo_publico(FRONTEND_DIST, full_path)
-        if archivo is not None:
-            return FileResponse(archivo, media_type=TIPOS_PROPIOS.get(archivo.suffix))
-        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
+    montar_spa(app, FRONTEND_DIST)
