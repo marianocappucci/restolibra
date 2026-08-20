@@ -116,7 +116,18 @@ def get_actividad_log(tipos=None, usuario_id=None, turno_id=None,
     partes.append("""
         SELECT
             t.created_at  AS ts,
-            DATE(t.apertura) AS fecha,
+            -- `substr` y no `DATE()`: las otras ramas del UNION traen `fecha`
+            -- como texto (`sales.occurred_on`, `remitos.date`,
+            -- `presupuestos.date` y el `substr` de stock son todas columnas
+            -- TEXT), y PostgreSQL exige que las ramas de un UNION tengan
+            -- tipos compatibles: `DATE(t.apertura)` devuelve `date` y la
+            -- consulta entera moria con "UNION types text and date cannot be
+            -- matched" -- o sea, la pantalla de Logs no cargaba NADA. SQLite
+            -- no chequea nada de esto y por eso la suite vieja lo dejaba
+            -- pasar. `apertura` es texto ISO (`2026-05-26 23:50:59`), asi que
+            -- los primeros 10 caracteres son la misma fecha que devolvia
+            -- `DATE()`; verificado contra las bases reales antes de tocar.
+            substr(t.apertura, 1, 10) AS fecha,
             'turno'       AS tipo,
             CASE t.estado
               WHEN 'abierto' THEN 'Turno #' || t.id || ' abierto — fondo $' || t.monto_inicial
