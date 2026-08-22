@@ -167,7 +167,7 @@ export function Tesoreria() {
                 <p className="text-sm text-muted-foreground">Necesitás al menos dos cuentas para transferir.</p>
               ) : (
                 <div className="grid gap-3">
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Cuenta origen</Label>
                     <Select value={tOrigen} onValueChange={setTOrigen}>
                       <SelectTrigger><SelectValue placeholder="Cuenta…" /></SelectTrigger>
@@ -176,7 +176,7 @@ export function Tesoreria() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Cuenta destino</Label>
                     <Select value={tDestino} onValueChange={setTDestino}>
                       <SelectTrigger><SelectValue placeholder="Cuenta…" /></SelectTrigger>
@@ -186,11 +186,11 @@ export function Tesoreria() {
                     </Select>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-1.5"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={tMonto} onChange={(e) => setTMonto(e.target.value)} /></div>
-                    <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={tMonto} onChange={(e) => setTMonto(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} /></div>
                   </div>
-                  <div className="grid gap-1.5"><Label>Concepto</Label><Input value={tConcepto} onChange={(e) => setTConcepto(e.target.value)} /></div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2"><Label>Concepto</Label><Input value={tConcepto} onChange={(e) => setTConcepto(e.target.value)} /></div>
+                  <div className="grid gap-2">
                     <Label>Referencia <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                     <Input value={tReferencia} onChange={(e) => setTReferencia(e.target.value)} placeholder="N° op., comprobante…" />
                   </div>
@@ -215,14 +215,14 @@ export function Tesoreria() {
                 <DialogTitle className="flex items-center gap-2"><Landmark className="size-4" />Nueva cuenta</DialogTitle>
               </DialogHeader>
               <div className="grid gap-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Nombre <span className="text-destructive">*</span></Label>
                   <Input
                     value={cuentaForm.nombre} onChange={(e) => setCuentaForm({ ...cuentaForm, nombre: e.target.value })} autoFocus
                     placeholder="Ej: Banco Galicia Cta. Cte., Caja chica, MercadoPago…"
                   />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Tipo</Label>
                   <Select value={cuentaForm.tipo} onValueChange={(v) => setCuentaForm({ ...cuentaForm, tipo: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -233,16 +233,16 @@ export function Tesoreria() {
                 </div>
                 {cuentaForm.tipo !== 'efectivo' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-1.5"><Label>Banco / Entidad</Label><Input value={cuentaForm.banco} onChange={(e) => setCuentaForm({ ...cuentaForm, banco: e.target.value })} placeholder="Ej: Galicia, BBVA, MP…" /></div>
-                    <div className="grid gap-1.5"><Label>N° de cuenta / CBU / alias</Label><Input value={cuentaForm.numero} onChange={(e) => setCuentaForm({ ...cuentaForm, numero: e.target.value })} placeholder="Últimos 4 dígitos o alias" /></div>
+                    <div className="grid gap-2"><Label>Banco / Entidad</Label><Input value={cuentaForm.banco} onChange={(e) => setCuentaForm({ ...cuentaForm, banco: e.target.value })} placeholder="Ej: Galicia, BBVA, MP…" /></div>
+                    <div className="grid gap-2"><Label>N° de cuenta / CBU / alias</Label><Input value={cuentaForm.numero} onChange={(e) => setCuentaForm({ ...cuentaForm, numero: e.target.value })} placeholder="Últimos 4 dígitos o alias" /></div>
                   </div>
                 )}
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Saldo inicial</Label>
                   <Input type="number" step="0.01" value={cuentaForm.saldo_inicial} onChange={(e) => setCuentaForm({ ...cuentaForm, saldo_inicial: e.target.value })} placeholder="0.00" />
                   <p className="text-xs text-muted-foreground">Saldo al momento de dar de alta la cuenta en el sistema.</p>
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Descripción <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                   <Input value={cuentaForm.descripcion} onChange={(e) => setCuentaForm({ ...cuentaForm, descripcion: e.target.value })} placeholder="Nota interna sobre esta cuenta" />
                 </div>

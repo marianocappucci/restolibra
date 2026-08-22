@@ -320,7 +320,7 @@ export function PedidoDetalle() {
           {pedido.comandas.length > 0 && (
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Printer className="size-4" />Comandas enviadas</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 p-0 px-4 pb-4">
+              <CardContent className="grid gap-2 p-0 px-4 pb-4">
                 {pedido.comandas.map((c) => (
                   <div key={c.id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
                     <span className="flex items-center gap-2">
@@ -401,7 +401,7 @@ export function PedidoDetalle() {
       <Dialog open={!!modProducto} onOpenChange={(o) => !o && setModProducto(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle className="flex items-center gap-2"><Sliders className="size-4" />Personalizar: {modProducto?.nombre}</DialogTitle></DialogHeader>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             {modIngredientes.map((ing) => (
               <div key={ing.ingrediente_id} className="flex items-center justify-between border-b py-1.5 text-sm last:border-0">
                 <span>{ing.ingrediente_nombre}</span>
@@ -419,7 +419,7 @@ export function PedidoDetalle() {
               </div>
             ))}
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label className="text-xs">Observación para la comanda</Label>
             <Input value={modNota} onChange={(e) => setModNota(e.target.value)} placeholder="Ej: bien cocido" />
           </div>

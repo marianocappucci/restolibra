@@ -130,7 +130,7 @@ export function PresupuestoDetalle() {
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2"><Mail className="size-4" />Enviar presupuesto por email</DialogTitle>
               </DialogHeader>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Destinatario</Label>
                 <Input type="email" value={emailTo} onChange={(e) => setEmailTo(e.target.value)} placeholder="email@ejemplo.com" />
                 <p className="text-xs text-muted-foreground">Se adjunta el PDF del presupuesto.</p>
@@ -157,7 +157,7 @@ export function PresupuestoDetalle() {
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader><CardTitle className="text-base">Datos del cliente</CardTitle></CardHeader>
-                  <CardContent className="grid gap-1.5 text-sm">
+                  <CardContent className="grid gap-2 text-sm">
                     <p><span className="text-muted-foreground">Cliente:</span> {p.client_name}</p>
                     {p.client_cuit && <p><span className="text-muted-foreground">CUIT / DNI:</span> {p.client_cuit}</p>}
                     {p.client_address && <p><span className="text-muted-foreground">Domicilio:</span> {p.client_address}</p>}
@@ -167,7 +167,7 @@ export function PresupuestoDetalle() {
                 </Card>
                 <Card>
                   <CardHeader><CardTitle className="text-base">Datos del presupuesto</CardTitle></CardHeader>
-                  <CardContent className="grid gap-1.5 text-sm">
+                  <CardContent className="grid gap-2 text-sm">
                     <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{p.number}</span></p>
                     <p><span className="text-muted-foreground">Fecha:</span> {p.date}</p>
                     <p><span className="text-muted-foreground">Válido hasta:</span> {p.valid_until || '—'}</p>

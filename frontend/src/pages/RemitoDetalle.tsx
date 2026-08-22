@@ -69,7 +69,7 @@ export function RemitoDetalle() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Datos del cliente</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Cliente:</span> {detalle.client_name}</p>
                 {detalle.client_cuit && <p><span className="text-muted-foreground">CUIT / DNI:</span> {detalle.client_cuit}</p>}
                 {detalle.client_address && <p><span className="text-muted-foreground">Domicilio:</span> {detalle.client_address}</p>}
@@ -79,7 +79,7 @@ export function RemitoDetalle() {
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">Datos del remito</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{detalle.number}</span></p>
                 <p><span className="text-muted-foreground">Fecha:</span> {detalle.date}</p>
                 {detalle.observations && <p><span className="text-muted-foreground">Observaciones:</span> {detalle.observations}</p>}

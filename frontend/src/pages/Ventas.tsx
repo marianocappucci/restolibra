@@ -314,7 +314,7 @@ export function Ventas() {
 
             <div className="grid gap-4">
               <div className="flex flex-wrap items-end gap-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Cliente</Label>
                   <div className="flex items-center gap-1">
                     <SelectBuscable
@@ -331,7 +331,7 @@ export function Ventas() {
                   </div>
                 </div>
                 {listasPrecio.length > 0 && (
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Lista de precios</Label>
                     <Select value={listaPrecioId || '__base__'} onValueChange={(v) => setListaPrecioId(v === '__base__' ? '' : v)}>
                       <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -342,14 +342,14 @@ export function Ventas() {
                     </Select>
                   </div>
                 )}
-                <div className="grid gap-1.5"><Label>Observaciones</Label><Input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-64" /></div>
+                <div className="grid gap-2"><Label>Observaciones</Label><Input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} className="w-64" /></div>
               </div>
 
               {nuevoCliente && (
                 <div className="flex flex-wrap items-end gap-3 rounded-md border bg-muted/30 p-3">
-                  <div className="grid gap-1.5"><Label>Nombre *</Label><Input value={ncNombre} onChange={(e) => setNcNombre(e.target.value)} className="w-44" /></div>
-                  <div className="grid gap-1.5"><Label>CUIT/DNI</Label><Input value={ncCuit} onChange={(e) => setNcCuit(e.target.value)} className="w-32" /></div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2"><Label>Nombre *</Label><Input value={ncNombre} onChange={(e) => setNcNombre(e.target.value)} className="w-44" /></div>
+                  <div className="grid gap-2"><Label>CUIT/DNI</Label><Input value={ncCuit} onChange={(e) => setNcCuit(e.target.value)} className="w-32" /></div>
+                  <div className="grid gap-2">
                     <Label>Condición IVA</Label>
                     <Select value={ncIva || '__none__'} onValueChange={(v) => setNcIva(v === '__none__' ? '' : v)}>
                       <SelectTrigger className="w-44"><SelectValue placeholder="— Sin especificar —" /></SelectTrigger>
@@ -359,8 +359,8 @@ export function Ventas() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-1.5"><Label>Email</Label><Input type="email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} className="w-44" /></div>
-                  <div className="grid gap-1.5"><Label>Teléfono</Label><Input value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} className="w-36" /></div>
+                  <div className="grid gap-2"><Label>Email</Label><Input type="email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} className="w-44" /></div>
+                  <div className="grid gap-2"><Label>Teléfono</Label><Input value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} className="w-36" /></div>
                   <Button size="sm" disabled={ncSaving || !ncNombre.trim()} onClick={crearClienteRapido}><UserPlus />{ncSaving ? 'Guardando…' : 'Crear cliente'}</Button>
                   <Button size="sm" type="button" variant="ghost" onClick={() => setNuevoCliente(false)}>Cancelar</Button>
                 </div>
@@ -420,7 +420,7 @@ export function Ventas() {
               </div>
 
               <div className="flex flex-wrap items-end gap-4 border-t pt-4">
-                <div className="grid gap-1.5"><Label>Descuento</Label><Input type="number" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="w-28" /></div>
+                <div className="grid gap-2"><Label>Descuento</Label><Input type="number" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="w-28" /></div>
                 <p className="text-sm">Subtotal: <span className="font-medium">{formatCurrency(subtotalCalc)}</span></p>
                 <p className="text-sm">Total: <span className="font-medium">{formatCurrency(totalCalc)}</span></p>
               </div>
@@ -444,9 +444,9 @@ export function Ventas() {
 
       <Card>
         <CardContent className="flex flex-wrap items-end gap-2 py-3">
-          <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2">
             <Label>Buscar</Label>
             <Input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && load()} className="min-w-48" placeholder="Buscar…" />
           </div>

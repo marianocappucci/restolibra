@@ -426,12 +426,12 @@ export function MpBandeja() {
         <Card>
           <CardHeader><CardTitle className="text-base">Dar de alta cliente</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5"><Label>Nombre / Razón social *</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-48" /></div>
-            <div className="grid gap-1.5"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-52" placeholder="Para enviar la factura" /></div>
-            <div className="grid gap-1.5"><Label>Tipo ID</Label><Input value={tipoId} onChange={(e) => setTipoId(e.target.value)} className="w-24" placeholder="DNI / CUIT" /></div>
-            <div className="grid gap-1.5"><Label>CUIT/DNI</Label><Input value={cuit} onChange={(e) => setCuit(e.target.value)} className="w-36" /></div>
-            <div className="grid gap-1.5"><Label>Domicilio</Label><Input value={direccion} onChange={(e) => setDireccion(e.target.value)} className="w-48" placeholder="Opcional" /></div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2"><Label>Nombre / Razón social *</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} className="w-48" /></div>
+            <div className="grid gap-2"><Label>Email</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-52" placeholder="Para enviar la factura" /></div>
+            <div className="grid gap-2"><Label>Tipo ID</Label><Input value={tipoId} onChange={(e) => setTipoId(e.target.value)} className="w-24" placeholder="DNI / CUIT" /></div>
+            <div className="grid gap-2"><Label>CUIT/DNI</Label><Input value={cuit} onChange={(e) => setCuit(e.target.value)} className="w-36" /></div>
+            <div className="grid gap-2"><Label>Domicilio</Label><Input value={direccion} onChange={(e) => setDireccion(e.target.value)} className="w-48" placeholder="Opcional" /></div>
+            <div className="grid gap-2">
               <Label>Condición IVA</Label>
               <Select value={ivaCond} onValueChange={setIvaCond}>
                 <SelectTrigger className="w-52"><SelectValue /></SelectTrigger>
@@ -450,8 +450,8 @@ export function MpBandeja() {
         <Card>
           <CardHeader><CardTitle className="text-base">Datos del emisor</CardTitle></CardHeader>
           <CardContent className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5"><Label>Nombre completo</Label><Input value={nombreMov} onChange={(e) => setNombreMov(e.target.value)} className="w-52" /></div>
-            <div className="grid gap-1.5"><Label>Email *</Label><Input type="email" value={emailMov} onChange={(e) => setEmailMov(e.target.value)} className="w-52" placeholder="email@ejemplo.com" /></div>
+            <div className="grid gap-2"><Label>Nombre completo</Label><Input value={nombreMov} onChange={(e) => setNombreMov(e.target.value)} className="w-52" /></div>
+            <div className="grid gap-2"><Label>Email *</Label><Input type="email" value={emailMov} onChange={(e) => setEmailMov(e.target.value)} className="w-52" placeholder="email@ejemplo.com" /></div>
             <Button disabled={saving || !emailMov.trim()} onClick={guardarEmailMov}><Mail />{saving ? 'Guardando…' : 'Guardar'}</Button>
             <Button type="button" variant="outline" onClick={() => setCargandoEmail(null)}>Cancelar</Button>
           </CardContent>

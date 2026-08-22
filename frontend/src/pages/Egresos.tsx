@@ -227,15 +227,15 @@ export function Egresos() {
 
         <Card>
           <CardContent className="flex flex-wrap items-end gap-3 py-3">
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Desde</Label>
               <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Hasta</Label>
               <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Categoría</Label>
               <SelectBuscable
                 value={categoriaFiltro || '__todas__'}
@@ -248,7 +248,7 @@ export function Egresos() {
                 className="w-48"
               />
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Estado</Label>
               <Select value={estadoFiltro || '__todos__'} onValueChange={(v) => setEstadoFiltro(v === '__todos__' ? '' : v)}>
                 <SelectTrigger className="w-40"><SelectValue placeholder="Todos los estados" /></SelectTrigger>
