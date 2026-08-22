@@ -52,6 +52,20 @@ function horaDe(ts: string): string {
   return ts && ts.length > 10 ? ts.slice(11, 19) : '—'
 }
 
+/** `2026-08-22` → `22-08-2026`. El backend manda la fecha del separador en ISO
+ *  (`db.get_actividad_log()` la devuelve como texto de 10 caracteres, ver
+ *  `tests/test_logs_actividad.py`), y el formato visible del ecosistema es
+ *  `dd-mm-aaaa` — decidido el 2026-08-12, ver
+ *  `wiki/concepts/estandares-desarrollo.md`. Se convierte acá, en la
+ *  presentación: la API sigue hablando ISO, que es lo correcto.
+ *
+ *  Una fecha con otra forma se devuelve tal cual en vez de recortarse a ciegas:
+ *  mejor mostrar lo que vino que una cadena armada con pedazos de otra cosa. */
+export function aFechaLocal(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  return m ? `${m[3]}-${m[2]}-${m[1]}` : iso
+}
+
 export function Logs() {
   const [data, setData] = useState<LogsData | null>(null)
   const [page, setPage] = useState(1)
@@ -152,7 +166,7 @@ export function Logs() {
 
           <Card>
             <CardContent className="grid gap-4">
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Tipo de evento</Label>
                 <div className="flex flex-wrap gap-2">
                   {tipoKeys.map((t) => {
@@ -177,7 +191,7 @@ export function Logs() {
               </div>
 
               <div className="flex flex-wrap items-end gap-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Usuario</Label>
                   <Select value={usuarioId} onValueChange={(v) => { setPage(1); setUsuarioId(v) }}>
                     <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -187,12 +201,12 @@ export function Logs() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Turno #</Label>
                   <Input type="number" min={0} placeholder="Todos" value={turnoId} onChange={(e) => { setPage(1); setTurnoId(e.target.value) }} className="w-28" />
                 </div>
-                <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => { setPage(1); setDesde(e.target.value) }} className="w-40" /></div>
-                <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => { setPage(1); setHasta(e.target.value) }} className="w-40" /></div>
+                <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => { setPage(1); setDesde(e.target.value) }} className="w-40" /></div>
+                <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => { setPage(1); setHasta(e.target.value) }} className="w-40" /></div>
                 <Button size="sm" variant="outline" onClick={limpiarFiltros}>Limpiar</Button>
               </div>
             </CardContent>
@@ -237,7 +251,7 @@ export function Logs() {
                               <tr className="bg-muted/50">
                                 <td colSpan={7} className="px-3 py-1.5">
                                   <span className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-                                    <CalendarDays className="size-3.5" />{g.fecha}
+                                    <CalendarDays className="size-3.5" />{aFechaLocal(g.fecha)}
                                   </span>
                                 </td>
                               </tr>
