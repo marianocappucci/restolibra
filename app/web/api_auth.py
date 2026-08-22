@@ -14,18 +14,38 @@ from libraauth.session_auth import (
     permite_lectura_de_demo,
     token_de_servicio_valido,
 )
+from libraauth.terminos import exigir_terminos
 
 from app import database as db
 from app.web.auth import get_current_user as _get_username_from_cookie
 
 
 def get_current_user_json(request: Request) -> dict:
+    """El usuario logueado, **y con los Terminos del Servicio aceptados**.
+
+    🔴 **El gate de Terminos vive aca, y no en `require_role_json`**, porque en
+    este producto el gating de la API no pasa por el rol: `app/web/app.py` monta
+    la mayoria de los routers con `_auth_json = Depends(get_current_user_json)`.
+    Con el gate en el guard de rol, `/api/clientes` seguia contestando 200 con el
+    contrato sin aceptar. Lo encontro `tests/test_terminos_gate.py`.
+
+    Poniendolo aca el default pasa a ser "gateado" y las excepciones quedan
+    explicitas, que es la unica forma de que un endpoint nuevo no nazca abierto:
+
+    - `/api/me`, `/api/login` y `/api/logout` los sirve el router de libraauth
+      con SU propia dependencia de identidad, no esta. Siguen abiertos, y eso es
+      lo que permite salir del gate.
+    - El router de Terminos, por lo mismo.
+    - El token de servicio del backoffice sale antes en
+      `require_admin_o_servicio_json`.
+    """
     username = _get_username_from_cookie(request)
     if not username:
         raise HTTPException(401, "No autenticado")
     user = db.get_usuario_by_username(username)
     if not user:
         raise HTTPException(401, "No autenticado")
+    exigir_terminos(request, user)
     return user
 
 
@@ -70,6 +90,8 @@ def require_admin_o_servicio_json(request: Request) -> dict:
     """
     if token_de_servicio_valido(request):
         return dict(SERVICE_USER)
+    # El token sale arriba; a partir de aca es un usuario de la instancia, y
+    # `get_current_user_json` ya le exige los Terminos aceptados.
     usuario = get_current_user_json(request)
     if usuario["role"] == "admin":
         return usuario

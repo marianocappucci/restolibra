@@ -29,6 +29,7 @@ from app.web import auth as web_auth
 from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.session_auth import build_demo_codigos_router, demo_username
+from libraauth.terminos import TerminosRepository, build_terminos_router
 from app.web.api import auth as api_auth_router
 from app.web.api import dashboard as api_dashboard_router
 from app.web.api import caja as api_caja_router
@@ -79,6 +80,14 @@ app.state.users = db_usuarios.user_repository()
 app.state.session_auth = web_auth.session_auth
 app.state.auth_events = AuthEventRepository(db_usuarios.sessions())
 app.state.password_reset = db_usuarios.password_reset_service()
+# Terminos y Condiciones del Servicio: la prueba de la aceptacion y lo que
+# enciende el gate. MISMA fabrica de sesiones que el resto del motor de auth --
+# la tabla tiene FK a `usuarios`, que en este producto vive en la base de
+# LibraCore.
+#
+# 🔴 Sin esta linea el gate NO corta y la instancia no falla: se queda sin gate,
+# en silencio. Por eso hay un test que lo prueba (`tests/test_terminos_gate.py`).
+app.state.terminos = TerminosRepository(db_usuarios.sessions())
 
 # 🔴 Solo en la demo, y **falla cerrado**: una instancia demo que llegue aca
 # sin el repositorio deja de dejar entrar, con `503 demo access codes not
@@ -253,6 +262,10 @@ app.include_router(kds_router.router)
 _auth_json = Depends(get_current_user_json)
 
 app.include_router(api_auth_router.router)
+# `GET /api/terminos`, `POST /api/terminos/aceptar`, `GET /api/terminos/historial`.
+# Bajo `/api` como el resto de la API de este producto, y **sin gatear desde
+# afuera**: es el unico camino para salir del gate.
+app.include_router(build_terminos_router(prefix="/api/terminos"))
 app.include_router(api_dashboard_router.router)
 app.include_router(
     api_caja_router.router,
