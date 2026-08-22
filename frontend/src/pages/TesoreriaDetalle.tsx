@@ -247,7 +247,7 @@ export function TesoreriaDetalle() {
                     <DialogTitle className="flex items-center gap-2"><ArrowLeftRight className="size-4" />Transferir desde {cuenta.nombre}</DialogTitle>
                   </DialogHeader>
                   <div className="grid gap-3">
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label>Cuenta destino</Label>
                       <Select value={tDestino} onValueChange={setTDestino}>
                         <SelectTrigger><SelectValue placeholder="Cuenta…" /></SelectTrigger>
@@ -257,11 +257,11 @@ export function TesoreriaDetalle() {
                       </Select>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="grid gap-1.5"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={tMonto} onChange={(e) => setTMonto(e.target.value)} /></div>
-                      <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} /></div>
+                      <div className="grid gap-2"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={tMonto} onChange={(e) => setTMonto(e.target.value)} /></div>
+                      <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={tFecha} onChange={(e) => setTFecha(e.target.value)} /></div>
                     </div>
-                    <div className="grid gap-1.5"><Label>Concepto</Label><Input value={tConcepto} onChange={(e) => setTConcepto(e.target.value)} /></div>
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2"><Label>Concepto</Label><Input value={tConcepto} onChange={(e) => setTConcepto(e.target.value)} /></div>
+                    <div className="grid gap-2">
                       <Label>Referencia <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                       <Input value={tReferencia} onChange={(e) => setTReferencia(e.target.value)} placeholder="N° op., comprobante…" />
                     </div>
@@ -286,7 +286,7 @@ export function TesoreriaDetalle() {
                   <DialogTitle className="flex items-center gap-2"><Plus className="size-4" />Registrar movimiento</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-3">
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Tipo</Label>
                     <div className="grid grid-cols-2 gap-2">
                       <Button type="button" variant={movTipo === 'ingreso' ? 'default' : 'outline'} onClick={() => setMovTipo('ingreso')}>Ingreso</Button>
@@ -294,14 +294,14 @@ export function TesoreriaDetalle() {
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-1.5"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={movMonto} onChange={(e) => setMovMonto(e.target.value)} /></div>
-                    <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={movFecha} onChange={(e) => setMovFecha(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Monto</Label><Input type="number" step="0.01" min="0.01" value={movMonto} onChange={(e) => setMovMonto(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={movFecha} onChange={(e) => setMovFecha(e.target.value)} /></div>
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Concepto <span className="text-destructive">*</span></Label>
                     <Input value={movConcepto} onChange={(e) => setMovConcepto(e.target.value)} placeholder="Ej: Cobro cliente, Pago proveedor, Retiro…" />
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Referencia <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                     <Input value={movReferencia} onChange={(e) => setMovReferencia(e.target.value)} placeholder="N° cheque, transferencia, etc." />
                   </div>
@@ -323,14 +323,14 @@ export function TesoreriaDetalle() {
                   <DialogTitle className="flex items-center gap-2"><Pencil className="size-4" />Editar cuenta</DialogTitle>
                 </DialogHeader>
                 <div className="grid gap-3">
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Nombre <span className="text-destructive">*</span></Label>
                     <Input
                       value={editForm.nombre} onChange={(e) => setEditForm({ ...editForm, nombre: e.target.value })}
                       placeholder="Ej: Banco Galicia Cta. Cte., Caja chica, MercadoPago…"
                     />
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Tipo</Label>
                     <Select value={editForm.tipo} onValueChange={(v) => setEditForm({ ...editForm, tipo: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
@@ -341,16 +341,16 @@ export function TesoreriaDetalle() {
                   </div>
                   {editForm.tipo !== 'efectivo' && (
                     <div className="grid grid-cols-2 gap-3">
-                      <div className="grid gap-1.5"><Label>Banco / Entidad</Label><Input value={editForm.banco} onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })} placeholder="Ej: Galicia, BBVA, MP…" /></div>
-                      <div className="grid gap-1.5"><Label>N° de cuenta / CBU / alias</Label><Input value={editForm.numero} onChange={(e) => setEditForm({ ...editForm, numero: e.target.value })} placeholder="Últimos 4 dígitos o alias" /></div>
+                      <div className="grid gap-2"><Label>Banco / Entidad</Label><Input value={editForm.banco} onChange={(e) => setEditForm({ ...editForm, banco: e.target.value })} placeholder="Ej: Galicia, BBVA, MP…" /></div>
+                      <div className="grid gap-2"><Label>N° de cuenta / CBU / alias</Label><Input value={editForm.numero} onChange={(e) => setEditForm({ ...editForm, numero: e.target.value })} placeholder="Últimos 4 dígitos o alias" /></div>
                     </div>
                   )}
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Saldo inicial</Label>
                     <Input type="number" step="0.01" value={editForm.saldo_inicial} onChange={(e) => setEditForm({ ...editForm, saldo_inicial: e.target.value })} placeholder="0.00" />
                     <p className="text-xs text-muted-foreground">Saldo al momento de dar de alta la cuenta en el sistema.</p>
                   </div>
-                  <div className="grid gap-1.5">
+                  <div className="grid gap-2">
                     <Label>Descripción <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                     <Input value={editForm.descripcion} onChange={(e) => setEditForm({ ...editForm, descripcion: e.target.value })} placeholder="Nota interna sobre esta cuenta" />
                   </div>
@@ -402,8 +402,8 @@ export function TesoreriaDetalle() {
           </div>
 
           <div className="flex flex-wrap items-end gap-2">
-            <div className="grid gap-1.5"><Label className="text-xs">Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-8 w-40" /></div>
-            <div className="grid gap-1.5"><Label className="text-xs">Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="h-8 w-40" /></div>
+            <div className="grid gap-2"><Label className="text-xs">Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="h-8 w-40" /></div>
+            <div className="grid gap-2"><Label className="text-xs">Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="h-8 w-40" /></div>
             <Button size="sm" variant="outline" onClick={filtrar}>Filtrar</Button>
             {(desde || hasta) && <Button size="sm" variant="outline" onClick={limpiarFiltros}>Limpiar</Button>}
           </div>

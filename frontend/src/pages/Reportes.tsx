@@ -67,9 +67,9 @@ export function Reportes() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <TituloPantalla icono={BarChart3}>Reportes</TituloPantalla>
         <div className="flex items-end gap-3">
-          <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2">
             <Label>Agrupar por</Label>
             <Select value={agrupacion} onValueChange={setAgrupacion}>
               <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>

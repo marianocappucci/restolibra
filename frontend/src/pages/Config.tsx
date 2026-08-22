@@ -255,7 +255,7 @@ function EmpresaTab({ cfg, setCfg, saving, guardar, subirArchivo }: {
         <Field label="Teléfono" value={cfg.empresa_telefono} onChange={(v) => setCfg({ ...cfg, empresa_telefono: v })} />
         <Field label="Email" value={cfg.empresa_email} onChange={(v) => setCfg({ ...cfg, empresa_email: v })} />
         <Field label="Ingresos Brutos" value={cfg.empresa_iibb} onChange={(v) => setCfg({ ...cfg, empresa_iibb: v })} />
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Condición de IVA</Label>
           <Select value={cfg.empresa_iva_condition} onValueChange={(v) => setCfg({ ...cfg, empresa_iva_condition: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -267,7 +267,7 @@ function EmpresaTab({ cfg, setCfg, saving, guardar, subirArchivo }: {
           </Select>
         </div>
         <Field label="Inicio de actividades" type="date" value={cfg.empresa_inicio_actividades} onChange={(v) => setCfg({ ...cfg, empresa_inicio_actividades: v })} />
-        <div className="col-span-full grid gap-1.5">
+        <div className="col-span-full grid gap-2">
           <Label>Logo (PNG o JPG)</Label>
           {cfg.logo_path && (
             <div className="flex items-center gap-3">
@@ -356,7 +356,7 @@ function MpTab({ cfg, setCfg, saving, guardar }: {
         <Field label="Access Token" type="password" value={cfg.mp_access_token} onChange={(v) => setCfg({ ...cfg, mp_access_token: v })} />
         <Field label="Webhook Secret" type="password" value={cfg.mp_webhook_secret} onChange={(v) => setCfg({ ...cfg, mp_webhook_secret: v })} />
         <Field label="Descripción del cobro" value={cfg.mp_concepto_descripcion} onChange={(v) => setCfg({ ...cfg, mp_concepto_descripcion: v })} />
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Alícuota IVA</Label>
           <Select value={cfg.mp_iva_rate || '0'} onValueChange={(v) => setCfg({ ...cfg, mp_iva_rate: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -369,7 +369,7 @@ function MpTab({ cfg, setCfg, saving, guardar }: {
         </div>
         <Field label="User ID (QR)" value={cfg.mp_user_id} onChange={(v) => setCfg({ ...cfg, mp_user_id: v })} />
         <Field label="POS ID (QR)" value={cfg.mp_pos_id} onChange={(v) => setCfg({ ...cfg, mp_pos_id: v })} />
-        <div className="col-span-full grid gap-1.5 rounded-md border bg-muted/40 p-3 text-sm">
+        <div className="col-span-full grid gap-2 rounded-md border bg-muted/40 p-3 text-sm">
           <p className="font-medium">URL del webhook para registrar en MercadoPago</p>
           <div className="flex gap-2">
             <Input readOnly value={webhookUrl} className="font-mono text-xs" />
@@ -544,7 +544,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
         </div>
         <Field label="CUIT" value={a.cuit} onChange={(v) => setArca({ ...a, cuit: v })} />
         <Field label="Punto de venta" value={String(a.punto_venta)} onChange={(v) => setArca({ ...a, punto_venta: Number(v) || 1 })} />
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Ambiente</Label>
           <Select value={a.ambiente} onValueChange={(v) => setArca({ ...a, ambiente: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -555,7 +555,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
           </Select>
         </div>
         <Field label="Alias" value={a.alias} onChange={(v) => setArca({ ...a, alias: v })} />
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Certificado (.crt)</Label>
           {a.certificado_path && (
             <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargado</BadgeEstado>
@@ -564,7 +564,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
             onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificados?empresa=${a.empresa}`, 'certificado', f) }} />
           {a.certificado_path && <p className="truncate text-xs text-muted-foreground">Actual: {a.certificado_path}</p>}
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Clave privada (.key)</Label>
           {a.clave_path && (
             <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargada</BadgeEstado>
@@ -601,7 +601,7 @@ function TicketTab({ cfg, setCfg, saving, guardar }: {
         <CardDescription>Configurá cómo se imprime el ticket en impresoras de rollo (Epson TM, Star, Bixolon, etc.). El ticket se genera como PDF angosto descargable desde cada venta o factura.</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Ancho del rollo</Label>
           <Select value={cfg.ticket_ancho_mm} onValueChange={(v) => setCfg({ ...cfg, ticket_ancho_mm: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -611,7 +611,7 @@ function TicketTab({ cfg, setCfg, saving, guardar }: {
             </SelectContent>
           </Select>
         </div>
-        <div className="grid gap-1.5">
+        <div className="grid gap-2">
           <Label>Tamaño de fuente</Label>
           <Select value={cfg.ticket_fuente_size} onValueChange={(v) => setCfg({ ...cfg, ticket_fuente_size: v })}>
             <SelectTrigger><SelectValue /></SelectTrigger>
@@ -801,7 +801,7 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
           <CardDescription>Esto reemplaza todos los datos actuales con el backup seleccionado.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3">
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label>Archivo de backup (.zip)</Label>
             <Input ref={fileInputRef} type="file" accept=".zip" disabled={saving} onChange={seleccionarArchivo} />
           </div>
@@ -860,7 +860,7 @@ function Field({ label, value, onChange, type = 'text' }: {
     ? <PasswordInput value={value} onChange={(e) => onChange(e.target.value)} />
     : <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
   return (
-    <div className="grid gap-1.5">
+    <div className="grid gap-2">
       <Label>{label}</Label>
       {Campo}
     </div>

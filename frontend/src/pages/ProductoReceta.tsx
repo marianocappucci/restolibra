@@ -248,15 +248,15 @@ export function ProductoReceta() {
               </div>
 
               <div className="grid gap-3 border-t pt-4 sm:grid-cols-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Rinde (para elaborados / sub-recetas)</Label>
                   <Input type="number" min="0" step="any" value={rinde} onChange={(e) => setRinde(e.target.value)} />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Unidad de rinde</Label>
                   <Input value={rindeUnidad} onChange={(e) => setRindeUnidad(e.target.value)} placeholder="u" />
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Rendimiento (% que se aprovecha)</Label>
                   <Input type="number" min="1" max="100" step="any" value={rendimientoPct} onChange={(e) => setRendimientoPct(e.target.value)} />
                 </div>
@@ -268,7 +268,7 @@ export function ProductoReceta() {
                 del producto.
               </p>
 
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Notas</Label>
                 <Textarea value={notas} onChange={(e) => setNotas(e.target.value)} rows={2} placeholder="Notas de preparación (opcional)" />
               </div>

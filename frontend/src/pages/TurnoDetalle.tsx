@@ -82,7 +82,7 @@ export function TurnoDetalle() {
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader><CardTitle className="text-base">Datos del turno</CardTitle></CardHeader>
-            <CardContent className="grid gap-1.5 text-sm">
+            <CardContent className="grid gap-2 text-sm">
               <p><span className="text-muted-foreground">Cajero:</span> {turno.usuario_nombre}</p>
               <p><span className="text-muted-foreground">Apertura:</span> {turno.apertura}</p>
               {turno.cierre && <p><span className="text-muted-foreground">Cierre:</span> {turno.cierre}</p>}
@@ -93,7 +93,7 @@ export function TurnoDetalle() {
 
           <Card>
             <CardHeader><CardTitle className="text-base">Recaudación por medio</CardTitle></CardHeader>
-            <CardContent className="grid gap-1.5 text-sm">
+            <CardContent className="grid gap-2 text-sm">
               {Object.keys(resumen.pagos_por_medio).length === 0 ? (
                 <p className="text-muted-foreground">Sin ventas en este turno.</p>
               ) : (
@@ -115,7 +115,7 @@ export function TurnoDetalle() {
           {turno.estado === 'cerrado' && turno.monto_declarado_cierre != null && turno.monto_esperado_cierre != null && (
             <Card>
               <CardHeader><CardTitle className="text-base">Resultado del cierre</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Efectivo esperado:</span> {formatCurrency(turno.monto_esperado_cierre)}</p>
                 <p><span className="text-muted-foreground">Efectivo declarado:</span> {formatCurrency(turno.monto_declarado_cierre)}</p>
                 <div className="mt-1 flex items-center gap-2 border-t pt-1.5 font-semibold">

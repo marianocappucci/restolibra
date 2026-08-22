@@ -308,7 +308,7 @@ export function ProveedorDetalle() {
         <>
           <Card>
             <CardHeader><CardTitle className="text-base">Datos del proveedor</CardTitle></CardHeader>
-            <CardContent className="grid gap-1.5 text-sm">
+            <CardContent className="grid gap-2 text-sm">
               {proveedor.cuit_dni && <p><span className="text-muted-foreground">CUIT / DNI:</span> <span className="font-mono">{proveedor.cuit_dni}</span></p>}
               {proveedor.iva_condition && <p><span className="text-muted-foreground">Condición IVA:</span> {proveedor.iva_condition}</p>}
               {proveedor.address && <p><span className="text-muted-foreground">Domicilio:</span> {proveedor.address}</p>}

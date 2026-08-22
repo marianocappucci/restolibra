@@ -92,7 +92,7 @@ export function VentaDetalle() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Datos de la venta</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Fecha:</span> {detalle.fecha}</p>
                 <p><span className="text-muted-foreground">Cliente:</span> {detalle.cliente_nombre || '— Consumidor final —'}</p>
                 {detalle.observaciones && <p><span className="text-muted-foreground">Obs.:</span> {detalle.observaciones}</p>}
@@ -101,7 +101,7 @@ export function VentaDetalle() {
 
             <Card>
               <CardHeader><CardTitle className="flex items-center gap-2 text-base"><CheckCircle2 className="size-4" />Pagos recibidos</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 {detalle.pagos.length === 0 ? (
                   <p className="text-muted-foreground">Sin pagos registrados.</p>
                 ) : (

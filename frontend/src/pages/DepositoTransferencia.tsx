@@ -90,7 +90,7 @@ export function DepositoTransferencia() {
         <Card className="w-full max-w-2xl">
           <CardHeader><CardTitle className="text-base">Transferir stock entre depósitos</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Producto <span className="text-destructive">*</span></Label>
               <SelectBuscable
                 value={productoId}
@@ -113,7 +113,7 @@ export function DepositoTransferencia() {
             )}
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Depósito origen <span className="text-destructive">*</span></Label>
                 <Select value={origenId} onValueChange={setOrigenId}>
                   <SelectTrigger><SelectValue placeholder="— Origen —" /></SelectTrigger>
@@ -122,7 +122,7 @@ export function DepositoTransferencia() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Depósito destino <span className="text-destructive">*</span></Label>
                 <Select value={destinoId} onValueChange={setDestinoId}>
                   <SelectTrigger><SelectValue placeholder="— Destino —" /></SelectTrigger>
@@ -134,9 +134,9 @@ export function DepositoTransferencia() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-3">
-              <div className="grid gap-1.5"><Label>Cantidad <span className="text-destructive">*</span></Label><Input type="number" min="0.001" step="any" value={cantidad} onChange={(e) => setCantidad(e.target.value)} /></div>
-              <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
-              <div className="grid gap-1.5"><Label>Observaciones</Label><Input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Opcional" /></div>
+              <div className="grid gap-2"><Label>Cantidad <span className="text-destructive">*</span></Label><Input type="number" min="0.001" step="any" value={cantidad} onChange={(e) => setCantidad(e.target.value)} /></div>
+              <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
+              <div className="grid gap-2"><Label>Observaciones</Label><Input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Opcional" /></div>
             </div>
 
             <Button disabled={transfiriendo || !productoId || !origenId || !destinoId || !cantidad} onClick={transferir}>

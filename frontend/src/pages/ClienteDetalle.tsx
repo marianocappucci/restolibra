@@ -426,7 +426,7 @@ export function ClienteDetalle() {
               <CardHeader>
                 <CardTitle className="text-base">Datos del cliente</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Nombre / Razón social:</span> <span className="font-medium">{cliente.name}</span></p>
                 {cliente.cuit_dni && <p><span className="text-muted-foreground">CUIT / DNI:</span> <span className="font-mono">{cliente.cuit_dni}</span></p>}
                 {cliente.iva_condition && <p><span className="text-muted-foreground">Condición IVA:</span> {cliente.iva_condition}</p>}
@@ -502,7 +502,7 @@ export function ClienteDetalle() {
               )}
 
               <div className="flex flex-wrap items-end gap-2 border-t pt-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Tipo</Label>
                   <Select value={aliasTipo} onValueChange={(v) => setAliasTipo(v as 'cuit' | 'email')}>
                     <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -512,7 +512,7 @@ export function ClienteDetalle() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Valor</Label>
                   <Input value={aliasValor} onChange={(e) => setAliasValor(e.target.value)} placeholder="20-12345678-9 o correo@ejemplo.com" className="w-56" />
                 </div>

@@ -268,7 +268,7 @@ function SalonCard({
         {mesas.length === 0 ? (
           <p className="text-sm text-muted-foreground">Sin mesas.</p>
         ) : (
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             {mesas.map((m) => (
               <MesaRow key={m.id} mesa={m} onEditar={onEditarMesa} onEliminar={() => onEliminarMesa(m)} />
             ))}

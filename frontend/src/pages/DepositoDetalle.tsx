@@ -170,11 +170,11 @@ export function DepositoDetalle() {
         </DialogHeader>
         {formError && <p className="text-sm text-destructive">{formError}</p>}
         <div className="grid gap-4">
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label>Nombre <span className="text-destructive">*</span></Label>
             <Input value={nombre} onChange={(e) => setNombre(e.target.value)} autoFocus />
           </div>
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label>Descripción</Label>
             <Textarea
               value={descripcion} onChange={(e) => setDescripcion(e.target.value)} rows={2}

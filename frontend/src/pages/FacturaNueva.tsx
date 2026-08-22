@@ -212,7 +212,7 @@ export function FacturaNueva() {
           <CardHeader><CardTitle className="text-base">Datos del comprobante</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Tipo</Label>
                 <Select value={tipo} onValueChange={setTipo}>
                   <SelectTrigger className="w-36"><SelectValue placeholder="Elegir…" /></SelectTrigger>
@@ -221,7 +221,7 @@ export function FacturaNueva() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Concepto</Label>
                 <Select value={concepto} onValueChange={setConcepto}>
                   <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
@@ -230,9 +230,9 @@ export function FacturaNueva() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-1.5"><Label>Punto de venta</Label><Input type="number" min="1" value={puntoVenta} onChange={(e) => setPuntoVenta(e.target.value)} className="w-24" /></div>
-              <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-40" /></div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2"><Label>Punto de venta</Label><Input type="number" min="1" value={puntoVenta} onChange={(e) => setPuntoVenta(e.target.value)} className="w-24" /></div>
+              <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-40" /></div>
+              <div className="grid gap-2">
                 <Label>Condición de venta</Label>
                 <Select value={condicionVenta} onValueChange={setCondicionVenta}>
                   <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
@@ -249,15 +249,15 @@ export function FacturaNueva() {
                   Período de servicio <span className="font-normal text-muted-foreground">— requerido por ARCA cuando el concepto es Servicios</span>
                 </p>
                 <div className="flex flex-wrap gap-3">
-                  <div className="grid gap-1.5"><Label>Fecha desde</Label><Input type="date" value={fchServDesde} onChange={(e) => setFchServDesde(e.target.value)} className="w-40" /></div>
-                  <div className="grid gap-1.5"><Label>Fecha hasta</Label><Input type="date" value={fchServHasta} onChange={(e) => setFchServHasta(e.target.value)} className="w-40" /></div>
-                  <div className="grid gap-1.5"><Label>Vto. de pago</Label><Input type="date" value={fchVtoPago} onChange={(e) => setFchVtoPago(e.target.value)} className="w-40" /></div>
+                  <div className="grid gap-2"><Label>Fecha desde</Label><Input type="date" value={fchServDesde} onChange={(e) => setFchServDesde(e.target.value)} className="w-40" /></div>
+                  <div className="grid gap-2"><Label>Fecha hasta</Label><Input type="date" value={fchServHasta} onChange={(e) => setFchServHasta(e.target.value)} className="w-40" /></div>
+                  <div className="grid gap-2"><Label>Vto. de pago</Label><Input type="date" value={fchVtoPago} onChange={(e) => setFchVtoPago(e.target.value)} className="w-40" /></div>
                 </div>
               </div>
             )}
 
             <div className="flex flex-wrap items-end gap-3">
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Cliente</Label>
                 <SelectBuscable
                   value={clienteId}
@@ -269,13 +269,13 @@ export function FacturaNueva() {
                 />
               </div>
               {!clienteId && (
-                <div className="grid gap-1.5"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" placeholder="Consumidor Final" /></div>
+                <div className="grid gap-2"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" placeholder="Consumidor Final" /></div>
               )}
             </div>
 
             <div className="flex flex-wrap items-end gap-3">
               {!tiposInfo.es_monotributista && (
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>IVA</Label>
                   <Select value={taxRate} onValueChange={setTaxRate}>
                     <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -287,7 +287,7 @@ export function FacturaNueva() {
                   </Select>
                 </div>
               )}
-              <div className="grid flex-1 gap-1.5"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
+              <div className="grid flex-1 gap-2"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
             </div>
 
             <div className="rounded-md border">
