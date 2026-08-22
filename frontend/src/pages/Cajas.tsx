@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SquareStack, Plus, Eye, Pencil, Trash2, Star, Wallet, Check } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const TODOS_MEDIOS = Object.keys(MEDIOS_PAGO_LABELS)
 
@@ -114,7 +116,7 @@ export function Cajas() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><SquareStack className="size-5 text-primary" />Cajas</h2>
+        <TituloPantalla icono={SquareStack}>Cajas</TituloPantalla>
         <Button onClick={abrirNueva}><Plus />Nueva caja</Button>
       </div>
 
@@ -130,8 +132,8 @@ export function Cajas() {
                 <div className="flex items-start justify-between gap-2">
                   <p className="flex items-center gap-2 font-semibold"><Wallet className="size-4 text-emerald-600 dark:text-emerald-400" />{c.nombre}</p>
                   <div className="flex gap-1">
-                    {!!c.es_default && <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">Por defecto</Badge>}
-                    {!c.activo && <Badge variant="secondary">Inactiva</Badge>}
+                    {!!c.es_default && <BadgeEstado tono="ok">Por defecto</BadgeEstado>}
+                    {!c.activo && <BadgeEstado tono="neutro">Inactiva</BadgeEstado>}
                   </div>
                 </div>
 

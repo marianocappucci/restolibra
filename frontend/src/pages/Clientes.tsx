@@ -8,7 +8,7 @@ import { api, ApiError, IVA_CONDITIONS, type Cliente } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -23,6 +23,7 @@ import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   Users, Plus, Pencil, Eye, Trash2, Undo2, Search, Loader2, CheckCircle2, XCircle,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const clienteSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -174,7 +175,7 @@ export function Clientes() {
     { accessorKey: 'name', header: sortableHeader('Nombre / Razón social'), cell: ({ row }) => (
       <Link to={`/clientes/${row.original.id}`} className="font-medium hover:underline">
         {row.original.name}
-        {!row.original.activo && <Badge variant="secondary" className="ml-2">Inactivo</Badge>}
+        {!row.original.activo && <BadgeEstado tono="neutro" className="ml-2">Inactivo</BadgeEstado>}
       </Link>
     ) },
     { accessorKey: 'cuit_dni', header: 'CUIT / DNI', cell: ({ row }) => row.original.cuit_dni || '—' },
@@ -206,7 +207,7 @@ export function Clientes() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Users className="size-5 text-primary" />Clientes</h2>
+        <TituloPantalla icono={Users}>Clientes</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo cliente</Button>

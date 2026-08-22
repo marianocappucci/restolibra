@@ -11,6 +11,7 @@ import {
   BarChart3, ShoppingCart, DollarSign, Receipt, Wallet, Download, TrendingUp, PieChart, Boxes,
   Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, AlertTriangle,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function firstOfMonthIso(): string {
   const d = new Date()
@@ -64,7 +65,7 @@ export function Reportes() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="size-5 text-primary" />Reportes</h2>
+        <TituloPantalla icono={BarChart3}>Reportes</TituloPantalla>
         <div className="flex items-end gap-3">
           <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
           <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>

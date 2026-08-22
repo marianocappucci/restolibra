@@ -7,14 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  ArrowLeftRight, Building2, Check, Eye, Package, Pencil, Plus, Star, Trash2,
-} from 'lucide-react'
+import { ArrowLeftRight, Building2, Check, Eye, Package, Pencil, Plus, Star, Trash2, Warehouse } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // Portado desde Contalibra (frontend/src/pages/Depositos.tsx), mismo backend
 // libracore (db_productos.py) -- ver web/api/depositos.py. Alta y edición
@@ -116,7 +115,7 @@ export function Depositos() {
     <Dialog open={formOpen} onOpenChange={setFormOpen}>
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold"><Building2 className="size-5" />Depósitos</h2>
+          <TituloPantalla icono={Warehouse}>Depósitos</TituloPantalla>
           <div className="flex items-center gap-2">
             <Button asChild variant="outline"><Link to="/depositos/transferencia"><ArrowLeftRight />Transferir stock</Link></Button>
             <DialogTrigger asChild>
@@ -139,8 +138,8 @@ export function Depositos() {
                   <div>
                     <p className="flex items-center gap-2 font-semibold"><Building2 className="size-4 text-primary" />{d.nombre}</p>
                     <div className="mt-1 flex gap-1.5">
-                      {d.es_default ? <Badge variant="default">Por defecto</Badge> : null}
-                      {!d.activo && <Badge variant="secondary">Inactivo</Badge>}
+                      {d.es_default ? <BadgeEstado tono="ok">Por defecto</BadgeEstado> : null}
+                      {!d.activo && <BadgeEstado tono="neutro">Inactivo</BadgeEstado>}
                     </div>
                   </div>
                   {d.descripcion && <p className="text-sm text-muted-foreground">{d.descripcion}</p>}

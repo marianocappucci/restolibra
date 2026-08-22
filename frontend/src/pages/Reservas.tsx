@@ -6,19 +6,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   ArrowLeft, CalendarClock, CalendarPlus, PlayCircle, X, Filter,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
 const ESTADO_LABEL: Record<Reserva['estado'], string> = { pendiente: 'Pendiente', cumplida: 'Sentada', cancelada: 'Cancelada' }
-const ESTADO_VARIANT: Record<Reserva['estado'], 'default' | 'secondary' | 'outline'> = { pendiente: 'default', cumplida: 'secondary', cancelada: 'outline' }
+const ESTADO_TONO: Record<Reserva['estado'], TonoEstado> = { pendiente: 'curso', cumplida: 'ok', cancelada: 'negativo' }
 
 // Reservas de mesa -- buffer fijo de 90 minutos entre reservas de la misma
 // mesa (no hay campo de duración en el esquema, ver db_reservas.py). El
@@ -115,7 +116,7 @@ export function Reservas() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><CalendarClock className="size-5 text-primary" />Reservas</h2>
+        <TituloPantalla icono={CalendarClock}>Reservas</TituloPantalla>
         <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Salón</Button>
       </div>
 
@@ -194,7 +195,7 @@ export function Reservas() {
                         </td>
                         <td className="p-2.5 text-right">{r.comensales}</td>
                         <td className="p-2.5 text-xs text-muted-foreground">{r.telefono}</td>
-                        <td className="p-2.5"><Badge variant={ESTADO_VARIANT[r.estado]}>{ESTADO_LABEL[r.estado]}</Badge></td>
+                        <td className="p-2.5"><BadgeEstado tono={ESTADO_TONO[r.estado]}>{ESTADO_LABEL[r.estado]}</BadgeEstado></td>
                         <td className="p-2.5 text-right">
                           {r.estado === 'pendiente' && (
                             <div className="flex justify-end gap-1">

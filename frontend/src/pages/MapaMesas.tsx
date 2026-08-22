@@ -5,9 +5,10 @@ import { useAuth } from '../context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatoTiempo(mins: number): string {
   if (mins < 60) return `${mins} min`
@@ -20,10 +21,10 @@ const ESTADO_COLOR: Record<Mesa['estado'], string> = {
   cuenta: 'border-amber-500',
 }
 
-const ESTADO_BADGE: Record<Mesa['estado'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
-  libre: 'outline',
-  ocupada: 'destructive',
-  cuenta: 'secondary',
+const ESTADO_TONO: Record<Mesa['estado'], TonoEstado> = {
+  libre: 'neutro',
+  ocupada: 'negativo',
+  cuenta: 'atencion',
 }
 
 function formatCurrency(value: number): string {
@@ -117,7 +118,7 @@ export function MapaMesas() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><LayoutGrid className="size-5 text-primary" />Salón</h2>
+        <TituloPantalla icono={LayoutGrid}>Salón</TituloPantalla>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline"><a href="/salon/reservas" onClick={(e) => { e.preventDefault(); navigate('/salon/reservas') }}><CalendarClock />Reservas</a></Button>
           {!isMozo && (
@@ -170,13 +171,13 @@ export function MapaMesas() {
                         <div className="text-xs text-muted-foreground">{m.capacidad} cub.</div>
                         {m.pedido_id ? (
                           <>
-                            <Badge variant={ESTADO_BADGE[m.estado]} className="mx-auto">{formatCurrency(m.pedido_total)}</Badge>
+                            <BadgeEstado tono={ESTADO_TONO[m.estado]} className="mx-auto">{formatCurrency(m.pedido_total)}</BadgeEstado>
                             <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                               <Clock className="size-3" />{formatoTiempo(m.mins_ocupada)}
                             </div>
                           </>
                         ) : (
-                          <Badge variant="outline" className="mx-auto text-emerald-600 dark:text-emerald-400">Libre</Badge>
+                          <BadgeEstado tono="ok" className="mx-auto">Libre</BadgeEstado>
                         )}
                         {prox && (
                           <div className="flex items-center justify-center gap-1 text-xs text-sky-600 dark:text-sky-400">

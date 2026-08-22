@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Maximize, Minimize, Martini, ShoppingBag, Bike, Clock } from 'lucide-react'
+import { Bike, ClipboardList, Clock, Martini, Maximize, Minimize, ShoppingBag } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import {
   api, ApiError, CANALES_SIN_MESA, CANAL_LABEL,
   type CanalSinMesa, type PedidoResumen, type PedidosBoardData,
 } from '../api'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const CANAL_ICON: Record<CanalSinMesa, typeof Martini> = { barra: Martini, takeaway: ShoppingBag, delivery: Bike }
 
@@ -73,7 +74,7 @@ export function PedidosMonitor() {
       >
         {fullscreen ? <Minimize /> : <Maximize />}
       </Button>
-      <h2 className="mb-4 text-lg font-semibold">Pedidos (mostrador y delivery)</h2>
+      <TituloPantalla icono={ClipboardList} className="mb-4">Pedidos (mostrador y delivery)</TituloPantalla>
       {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
       {data && (
         <div className="grid gap-4 md:grid-cols-3">

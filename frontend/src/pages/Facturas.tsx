@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -15,6 +16,7 @@ import {
   Eye, FileDown, Plus, CheckCircle2, Hourglass, CircleDollarSign,
   Receipt, FileText, FileMinus, FilePlus, Search, X, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -156,12 +158,12 @@ export function Facturas() {
         minSize: 90,
         cell: ({ row }) => {
           const f = row.original
-          if (!estaAutorizada(f)) return <Badge variant="secondary">Sin CAE</Badge>
-          if (vista === 'nc' || vista === 'nd') return <Badge variant="default"><CheckCircle2 />Autorizada</Badge>
+          if (!estaAutorizada(f)) return <BadgeEstado tono="neutro">Sin CAE</BadgeEstado>
+          if (vista === 'nc' || vista === 'nd') return <BadgeEstado tono="ok"><CheckCircle2 />Autorizada</BadgeEstado>
           const tc = f.total_cobrado ?? 0
-          if (tc >= f.total) return <Badge variant="default"><CheckCircle2 />Cobrada</Badge>
-          if (tc > 0) return <Badge variant="secondary"><Hourglass />Parcial</Badge>
-          return <Badge variant="outline"><Hourglass />Sin cobrar</Badge>
+          if (tc >= f.total) return <BadgeEstado tono="ok"><CheckCircle2 />Cobrada</BadgeEstado>
+          if (tc > 0) return <BadgeEstado tono="atencion"><Hourglass />Parcial</BadgeEstado>
+          return <BadgeEstado tono="neutro"><Hourglass />Sin cobrar</BadgeEstado>
         },
       },
       {
@@ -204,7 +206,7 @@ export function Facturas() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Receipt className="size-5 text-primary" />Comprobantes</h2>
+        <TituloPantalla icono={Receipt}>Comprobantes</TituloPantalla>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button><Plus />Nuevo</Button>

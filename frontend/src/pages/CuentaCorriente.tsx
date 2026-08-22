@@ -4,9 +4,10 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { api, ApiError, type ClienteConSaldoCC } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { BookOpen, Eye } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -52,11 +53,11 @@ export function CuentaCorriente() {
         return (
           <div className="text-right">
             {s > 0 ? (
-              <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">{formatCurrency(s)}</Badge>
+              <BadgeEstado tono="atencion">{formatCurrency(s)}</BadgeEstado>
             ) : s < 0 ? (
-              <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">A favor {formatCurrency(s * -1)}</Badge>
+              <BadgeEstado tono="ok">A favor {formatCurrency(s * -1)}</BadgeEstado>
             ) : (
-              <Badge variant="secondary">{formatCurrency(0)}</Badge>
+              <BadgeEstado tono="neutro">{formatCurrency(0)}</BadgeEstado>
             )}
           </div>
         )
@@ -76,7 +77,7 @@ export function CuentaCorriente() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><BookOpen className="size-5 text-primary" />Cuenta Corriente</h2>
+        <TituloPantalla icono={BookOpen}>Cuenta Corriente</TituloPantalla>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

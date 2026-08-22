@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -16,6 +17,7 @@ import {
   CreditCard, Wallet, Landmark, Banknote, RefreshCw, UserPlus, ReceiptText, X, Mail,
   Forward, UserRoundX, MailWarning, History, ArrowDownCircle, Hourglass, Info, User,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -259,7 +261,7 @@ export function MpBandeja() {
             <Button asChild size="icon" variant="outline" title="Ver factura"><Link to={`/facturas/${r.factura_id}`} aria-label="Ver factura"><ReceiptText /></Link></Button>
             {puedeReenviar
               ? <Button size="icon" variant="outline" title="Reenviar email" disabled={saving} onClick={() => reenviarEmail(r.factura_id!)}><Forward className="size-4" /></Button>
-              : <Badge variant="outline" className="text-amber-700 dark:text-amber-400"><MailWarning className="mr-1 size-3.5" />Sin email</Badge>}
+              : <BadgeEstado tono="atencion"><MailWarning className="mr-1 size-3.5" />Sin email</BadgeEstado>}
           </div>
         )
       },
@@ -367,7 +369,7 @@ export function MpBandeja() {
         if (p.cliente) return (
           <div className="grid w-full gap-0.5">
             <span className="flex items-center gap-1"><User className="size-3.5 shrink-0 text-emerald-600" /><span className="truncate" title={p.cliente.name}>{p.cliente.name}</span></span>
-            {!p.cliente.email && <Badge variant="outline" className="w-fit text-amber-700 dark:text-amber-400"><MailWarning className="mr-1 size-3.5" />Sin email</Badge>}
+            {!p.cliente.email && <BadgeEstado tono="atencion" className="w-fit"><MailWarning className="mr-1 size-3.5" />Sin email</BadgeEstado>}
           </div>
         )
         return (
@@ -397,7 +399,7 @@ export function MpBandeja() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><CreditCard className="size-5 text-sky-500" />Pagos MercadoPago</h2>
+        <TituloPantalla icono={CreditCard}>Pagos MercadoPago</TituloPantalla>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

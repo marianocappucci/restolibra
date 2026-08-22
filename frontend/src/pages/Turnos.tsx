@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Clock, PlayCircle, StopCircle, Eye, ArrowUpCircle, ArrowDownCircle, CheckCircle2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -133,7 +134,7 @@ export function Turnos() {
         header: 'Estado',
         size: 80,
         minSize: 70,
-        cell: ({ row }) => <Badge variant={row.original.estado === 'abierto' ? 'default' : 'secondary'}>{row.original.estado === 'abierto' ? 'Abierto' : 'Cerrado'}</Badge>,
+        cell: ({ row }) => <BadgeEstado tono={row.original.estado === 'abierto' ? 'ok' : 'neutro'}>{row.original.estado === 'abierto' ? 'Abierto' : 'Cerrado'}</BadgeEstado>,
       },
       {
         id: 'actions',
@@ -155,7 +156,7 @@ export function Turnos() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Clock className="size-5" />Turnos de caja</h2>
+        <TituloPantalla icono={Clock}>Turnos de caja</TituloPantalla>
         {!turnoActivo && (
           <Dialog open={abrirOpen} onOpenChange={setAbrirOpen}>
             <DialogTrigger asChild>

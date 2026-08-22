@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -23,6 +23,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Tag, Plus, Pencil, Trash2, Ban, Undo2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const listaSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -125,7 +126,7 @@ export function ListasPrecio() {
     { accessorKey: 'nombre', header: sortableHeader('Nombre'), cell: ({ row }) => (
       <span className="font-medium">
         {row.original.nombre}
-        {row.original.es_default ? <Badge variant="secondary" className="ml-2">Por defecto</Badge> : null}
+        {row.original.es_default ? <BadgeEstado tono="ok" className="ml-2">Por defecto</BadgeEstado> : null}
       </span>
     ) },
     { accessorKey: 'descripcion', header: 'Descripción', cell: ({ row }) => row.original.descripcion || '—' },
@@ -133,9 +134,9 @@ export function ListasPrecio() {
       accessorKey: 'activa',
       header: 'Estado',
       cell: ({ row }) => (
-        <Badge variant={row.original.activa ? 'default' : 'outline'}>
+        <BadgeEstado tono={row.original.activa ? 'ok' : 'neutro'}>
           {row.original.activa ? 'Activa' : 'Inactiva'}
-        </Badge>
+        </BadgeEstado>
       ),
     },
     {
@@ -159,7 +160,7 @@ export function ListasPrecio() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Tag className="size-5 text-primary" />Listas de precios</h2>
+        <TituloPantalla icono={Tag}>Listas de precios</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nueva lista</Button>

@@ -5,22 +5,20 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  Send, XCircle, CheckCircle2, RefreshCw, Receipt, CheckCheck, Undo2, Mail, Trash2, ArrowLeft,
-  FileDown, Pencil,
-} from 'lucide-react'
+import { ArrowLeft, Calculator, CheckCheck, CheckCircle2, FileDown, Mail, Pencil, Receipt, RefreshCw, Send, Trash2, Undo2, XCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const estadoVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  aceptado: 'default', enviado: 'secondary', borrador: 'outline', rechazado: 'destructive', vencido: 'destructive', facturado: 'default',
+const ESTADO_TONO: Record<string, TonoEstado> = {
+  aceptado: 'ok', enviado: 'curso', borrador: 'neutro', rechazado: 'negativo', vencido: 'negativo', facturado: 'ok',
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -116,11 +114,8 @@ export function PresupuestoDetalle() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Receipt className="size-5 text-primary" />
-            Presupuesto {p && <span className="font-mono">{p.number}</span>}
-          </h2>
-          {p && <Badge variant={estadoVariant[p.status] ?? 'outline'}>{ESTADO_LABELS[p.status] ?? p.status}</Badge>}
+          <TituloPantalla icono={Calculator}>Presupuesto {p && <span className="font-mono">{p.number}</span>}</TituloPantalla>
+          {p && <BadgeEstado tono={ESTADO_TONO[p.status] ?? 'neutro'}>{ESTADO_LABELS[p.status] ?? p.status}</BadgeEstado>}
         </div>
         <div className="flex flex-wrap gap-2">
           {p && p.status === 'borrador' && (
@@ -176,7 +171,7 @@ export function PresupuestoDetalle() {
                     <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{p.number}</span></p>
                     <p><span className="text-muted-foreground">Fecha:</span> {p.date}</p>
                     <p><span className="text-muted-foreground">Válido hasta:</span> {p.valid_until || '—'}</p>
-                    <p><span className="text-muted-foreground">Estado:</span> <Badge variant={estadoVariant[st] ?? 'outline'}>{ESTADO_LABELS[st] ?? st}</Badge></p>
+                    <p><span className="text-muted-foreground">Estado:</span> <BadgeEstado tono={ESTADO_TONO[st] ?? 'neutro'}>{ESTADO_LABELS[st] ?? st}</BadgeEstado></p>
                     {p.observations && <p><span className="text-muted-foreground">Observaciones:</span> {p.observations}</p>}
                   </CardContent>
                 </Card>

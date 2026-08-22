@@ -10,6 +10,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Eye, Plus, Receipt, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -196,7 +197,7 @@ export function FacturaNueva() {
 
   return (
     <div className="grid gap-4">
-      <h2 className="flex items-center gap-2 text-lg font-semibold"><Receipt className="size-5 text-primary" />Nueva factura</h2>
+      <TituloPantalla icono={Receipt}>Nueva factura</TituloPantalla>
 
       {ventaId && (
         <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">

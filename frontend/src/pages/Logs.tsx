@@ -12,11 +12,8 @@ import {
 import {
   Tabs, TabsContent, TabsList, TabsTrigger,
 } from '@/components/ui/tabs'
-import {
-  Download, ShoppingCart, PiggyBank, Boxes, FileText, Clock, PackageCheck, ClipboardList,
-  ChevronLeft, ChevronRight, CalendarDays, Shield, LogIn, LogOut, XCircle, Inbox, ExternalLink,
-  User as UserIcon, BookText,
-} from 'lucide-react'
+import { BookText, Boxes, CalendarDays, ChevronLeft, ChevronRight, ClipboardList, Clock, Download, ExternalLink, FileText, History, Inbox, LogIn, LogOut, PackageCheck, PiggyBank, Shield, ShoppingCart, User as UserIcon, XCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // Orden y set canonico de tipos -- coincide con TIPO_META de
 // web/api/logs.py (que a su vez preserva el dict del router Jinja2 viejo,
@@ -129,7 +126,7 @@ export function Logs() {
 
   return (
     <div className="grid gap-4">
-      <h2 className="flex items-center gap-2 text-lg font-semibold"><BookText className="size-5 text-primary" />Logs</h2>
+      <TituloPantalla icono={History}>Logs</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -21,6 +21,7 @@ import { anchoColumnaAcciones, DataTable } from 'libra-ui/data-table'
 import {
   ArrowLeft, ArrowLeftRight, Archive, Check, Landmark, Pencil, Plus, Trash2,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -228,15 +229,12 @@ export function TesoreriaDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Landmark className="size-5 text-primary" />
-          {cuenta ? cuenta.nombre : 'Cuenta'}
+        <TituloPantalla icono={Landmark}>{cuenta ? cuenta.nombre : 'Cuenta'}
           {cuenta && (
-            <Badge className={cuenta.saldo >= 0 ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400' : ''} variant={cuenta.saldo >= 0 ? undefined : 'destructive'}>
+            <BadgeEstado tono={cuenta.saldo >= 0 ? 'ok' : 'negativo'}>
               {formatCurrency(cuenta.saldo)}
-            </Badge>
-          )}
-        </h2>
+            </BadgeEstado>
+          )}</TituloPantalla>
         {cuenta && (
           <div className="flex flex-wrap gap-2">
             {todas.length > 0 && (

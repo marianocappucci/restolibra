@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { BookText, ArrowUpRight, ArrowDownLeft, Download, Info } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function firstOfMonthIso(): string {
   const d = new Date()
@@ -160,7 +161,7 @@ export function LibrosIva() {
 
   return (
     <div className="grid gap-4">
-      <h2 className="flex items-center gap-2 text-lg font-semibold"><BookText className="size-5 text-primary" />Libros IVA Digital</h2>
+      <TituloPantalla icono={BookText}>Libros IVA Digital</TituloPantalla>
 
       {/* ── Selector de período ── */}
       <Card>

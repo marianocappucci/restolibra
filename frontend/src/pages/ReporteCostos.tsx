@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { TrendingUp } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -19,10 +20,10 @@ function formatQty(value: number): string {
 // web/templates/productos/reportes_costos.html (>40% mal / >28% atención /
 // resto bien) -- sin equivalente en Contalibra (esa comparación solo tiene
 // sentido con receta/costeo, propio de Restolibra).
-function foodCostVariant(pct: number): 'destructive' | 'secondary' | 'default' {
-  if (pct > 40) return 'destructive'
-  if (pct > 28) return 'secondary'
-  return 'default'
+function foodCostTono(pct: number): TonoEstado {
+  if (pct > 40) return 'negativo'
+  if (pct > 28) return 'atencion'
+  return 'ok'
 }
 
 // Página propia de reportes (no un tab de Reportes.tsx general): cruza
@@ -58,9 +59,7 @@ export function ReporteCostos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <TrendingUp className="size-5 text-primary" />Food cost y consumo de insumos
-        </h2>
+        <TituloPantalla icono={TrendingUp}>Food cost y consumo de insumos</TituloPantalla>
         <Button variant="outline" asChild><Link to="/productos">Volver a Productos</Link></Button>
       </div>
 
@@ -98,7 +97,7 @@ export function ReporteCostos() {
                       <td className="p-2 text-right">{formatCurrency(r.margen)}</td>
                       <td className="p-2 text-right">
                         {r.food_cost_pct !== null ? (
-                          <Badge variant={foodCostVariant(r.food_cost_pct)}>{r.food_cost_pct.toFixed(1)}%</Badge>
+                          <BadgeEstado tono={foodCostTono(r.food_cost_pct)}>{r.food_cost_pct.toFixed(1)}%</BadgeEstado>
                         ) : '—'}
                       </td>
                     </tr>

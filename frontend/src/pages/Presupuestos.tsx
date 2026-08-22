@@ -6,16 +6,18 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Plus, Pencil, Search, X, Eye, FileDown, Calculator } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const estadoVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  aceptado: 'default', enviado: 'secondary', borrador: 'outline', rechazado: 'destructive', vencido: 'destructive', facturado: 'default',
+const ESTADO_TONO: Record<string, TonoEstado> = {
+  aceptado: 'ok', enviado: 'curso', borrador: 'neutro', rechazado: 'negativo', vencido: 'negativo', facturado: 'ok',
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -70,7 +72,7 @@ export function Presupuestos() {
       header: 'Estado',
       size: 110,
       minSize: 90,
-      cell: ({ row }) => <Badge variant={estadoVariant[row.original.status] ?? 'outline'}>{ESTADO_LABELS[row.original.status] ?? row.original.status}</Badge>,
+      cell: ({ row }) => <BadgeEstado tono={ESTADO_TONO[row.original.status] ?? 'neutro'}>{ESTADO_LABELS[row.original.status] ?? row.original.status}</BadgeEstado>,
     },
     { accessorKey: 'valid_until', header: 'Válido hasta', size: 115, minSize: 90, cell: ({ row }) => row.original.valid_until || '—' },
     { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 130, minSize: 100, cell: ({ row }) => <div className="truncate text-right font-medium">{formatCurrency(row.original.total)}</div> },
@@ -105,7 +107,7 @@ export function Presupuestos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Calculator className="size-5 text-primary" />Presupuestos</h2>
+        <TituloPantalla icono={Calculator}>Presupuestos</TituloPantalla>
         <Button asChild><Link to="/presupuestos/nuevo"><Plus />Nuevo presupuesto</Link></Button>
       </div>
 

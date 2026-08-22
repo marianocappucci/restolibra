@@ -7,17 +7,18 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { formatEntero } from '@/lib/utils'
-import { ArrowLeft, ArrowLeftRight, Building2, Check, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Check, Pencil, Warehouse } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
-function estadoStock(s: StockItem): { label: string; className: string } {
-  if (s.stock_actual <= 0) return { label: 'Sin stock', className: 'border-destructive/30 bg-destructive/10 text-destructive' }
-  if (s.stock_minimo > 0 && s.stock_actual < s.stock_minimo) return { label: 'Bajo mínimo', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400' }
-  return { label: 'OK', className: 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' }
+function estadoStock(s: StockItem): { label: string; tono: TonoEstado } {
+  if (s.stock_actual <= 0) return { label: 'Sin stock', tono: 'negativo' }
+  if (s.stock_minimo > 0 && s.stock_actual < s.stock_minimo) return { label: 'Bajo mínimo', tono: 'atencion' }
+  return { label: 'OK', tono: 'ok' }
 }
 
 // Portado desde Contalibra (frontend/src/pages/DepositoDetalle.tsx), mismo
@@ -97,11 +98,8 @@ export function DepositoDetalle() {
     <Dialog open={editOpen} onOpenChange={setEditOpen}>
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Building2 className="size-5 text-primary" />
-            {deposito ? deposito.nombre : 'Depósito'}
-            {deposito?.es_default ? <Badge variant="default">Por defecto</Badge> : null}
-          </h2>
+          <TituloPantalla icono={Warehouse}>{deposito ? deposito.nombre : 'Depósito'}
+            {deposito?.es_default ? <BadgeEstado tono="ok">Por defecto</BadgeEstado> : null}</TituloPantalla>
           {deposito && (
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm" variant="outline"><Link to="/depositos/transferencia"><ArrowLeftRight />Transferir</Link></Button>
@@ -153,7 +151,7 @@ export function DepositoDetalle() {
                             <td className="p-3 text-center">{s.unidad}</td>
                             <td className="p-3 text-right font-semibold">{formatEntero(s.stock_actual)}</td>
                             <td className="p-3 text-right text-muted-foreground">{formatEntero(s.stock_minimo)}</td>
-                            <td className="p-3 text-center"><Badge variant="outline" className={estado.className}>{estado.label}</Badge></td>
+                            <td className="p-3 text-center"><BadgeEstado tono={estado.tono}>{estado.label}</BadgeEstado></td>
                           </tr>
                         )
                       })}

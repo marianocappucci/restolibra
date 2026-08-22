@@ -3,7 +3,8 @@ import { api, ApiError, type ReporteSalonData } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { BarChart3, Timer } from 'lucide-react'
+import { LineChart, Timer } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function firstOfMonthIso(): string {
   const d = new Date()
@@ -55,7 +56,7 @@ export function ReportesSalon() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><BarChart3 className="size-5 text-primary" />Reportes de salón</h2>
+        <TituloPantalla icono={LineChart}>Reportes de salón</TituloPantalla>
         <div className="flex items-end gap-3">
           <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
           <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
