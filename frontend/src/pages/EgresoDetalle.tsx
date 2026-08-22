@@ -225,7 +225,7 @@ export function EgresoDetalle() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader><CardTitle className="text-base">Datos del egreso</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Fecha:</span> {egreso.fecha}</p>
                 {egreso.proveedor_nombre && <p><span className="text-muted-foreground">Proveedor:</span> {egreso.proveedor_nombre}</p>}
                 {egreso.categoria && <p><span className="text-muted-foreground">Categoría:</span> {egreso.categoria}</p>}
@@ -238,7 +238,7 @@ export function EgresoDetalle() {
             </Card>
             <Card>
               <CardHeader><CardTitle className="text-base">Montos</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 {egreso.monto_neto > 0 && egreso.monto_neto !== egreso.total && (
                   <>
                     <p><span className="text-muted-foreground">Neto:</span> {formatCurrency(egreso.monto_neto)}</p>

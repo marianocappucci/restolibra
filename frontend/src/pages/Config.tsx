@@ -267,7 +267,7 @@ function EmpresaTab({ cfg, setCfg, saving, guardar, subirArchivo }: {
           </Select>
         </div>
         <Field label="Inicio de actividades" type="date" value={cfg.empresa_inicio_actividades} onChange={(v) => setCfg({ ...cfg, empresa_inicio_actividades: v })} />
-        <div className="col-span-full grid gap-1.5">
+        <div className="col-span-full grid gap-2">
           <Label>Logo (PNG o JPG)</Label>
           {cfg.logo_path && (
             <div className="flex items-center gap-3">
@@ -369,7 +369,7 @@ function MpTab({ cfg, setCfg, saving, guardar }: {
         </div>
         <Field label="User ID (QR)" value={cfg.mp_user_id} onChange={(v) => setCfg({ ...cfg, mp_user_id: v })} />
         <Field label="POS ID (QR)" value={cfg.mp_pos_id} onChange={(v) => setCfg({ ...cfg, mp_pos_id: v })} />
-        <div className="col-span-full grid gap-1.5 rounded-md border bg-muted/40 p-3 text-sm">
+        <div className="col-span-full grid gap-2 rounded-md border bg-muted/40 p-3 text-sm">
           <p className="font-medium">URL del webhook para registrar en MercadoPago</p>
           <div className="flex gap-2">
             <Input readOnly value={webhookUrl} className="font-mono text-xs" />

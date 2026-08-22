@@ -168,8 +168,8 @@ export function Turnos() {
               </DialogHeader>
               <div className="grid gap-3">
                 <p className="text-sm text-muted-foreground">Registrá el efectivo en caja al inicio del turno. Se usa para calcular la diferencia al cierre.</p>
-                <div className="grid gap-1.5"><Label>Fondo inicial</Label><Input type="number" step="0.01" value={montoInicial} onChange={(e) => setMontoInicial(e.target.value)} /></div>
-                <div className="grid gap-1.5"><Label>Notas</Label><Input value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Turno mañana, cajero Juan…" /></div>
+                <div className="grid gap-2"><Label>Fondo inicial</Label><Input type="number" step="0.01" value={montoInicial} onChange={(e) => setMontoInicial(e.target.value)} /></div>
+                <div className="grid gap-2"><Label>Notas</Label><Input value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Turno mañana, cajero Juan…" /></div>
               </div>
               <DialogFooter>
                 <DialogClose asChild><Button type="button" variant="outline">Cancelar</Button></DialogClose>

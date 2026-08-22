@@ -95,7 +95,7 @@ export function TurnoCerrar() {
           <div className="grid gap-4">
             <Card>
               <CardHeader><CardTitle className="text-base">Resumen del turno</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Cajero:</span> {turno.usuario_nombre}</p>
                 <p><span className="text-muted-foreground">Apertura:</span> {turno.apertura}</p>
                 <p><span className="text-muted-foreground">Fondo inicial:</span> {formatCurrency(turno.monto_inicial)}</p>
@@ -105,7 +105,7 @@ export function TurnoCerrar() {
 
             <Card>
               <CardHeader><CardTitle className="text-base">Recaudación por medio</CardTitle></CardHeader>
-              <CardContent className="grid gap-1.5 text-sm">
+              <CardContent className="grid gap-2 text-sm">
                 {Object.keys(resumen.pagos_por_medio).length === 0 ? (
                   <p className="text-muted-foreground">Sin ventas en este turno.</p>
                 ) : (
@@ -125,7 +125,7 @@ export function TurnoCerrar() {
             </Card>
 
             <Card className="border-amber-500/50">
-              <CardContent className="grid gap-1.5 pt-6 text-sm">
+              <CardContent className="grid gap-2 pt-6 text-sm">
                 <div className="flex justify-between"><span className="text-muted-foreground">Efectivo en ventas</span><span>{formatCurrency(resumen.efectivo_ventas)}</span></div>
                 <div className="flex justify-between border-t pt-1.5 font-semibold"><span>Efectivo esperado en caja</span><span className="text-lg text-primary">{formatCurrency(efectivoEsperado)}</span></div>
                 <p className="text-xs text-muted-foreground">Fondo inicial + cobros en efectivo del turno.</p>
@@ -137,7 +137,7 @@ export function TurnoCerrar() {
             <CardHeader><CardTitle className="text-base">Conteo de caja</CardTitle></CardHeader>
             <CardContent className="grid gap-3">
               <p className="text-sm text-muted-foreground">Contá el dinero físico en la caja y registrá el total. El sistema calculará la diferencia con lo esperado.</p>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Efectivo contado en caja</Label>
                 <Input type="number" step="0.01" value={montoDeclarado} onChange={(e) => setMontoDeclarado(e.target.value)} className="text-lg" />
               </div>
@@ -145,7 +145,7 @@ export function TurnoCerrar() {
                 <span className="text-muted-foreground">Diferencia:</span>
                 <DiferenciaBadge esperado={efectivoEsperado} declarado={Number(montoDeclarado) || 0} />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Notas de cierre</Label>
                 <Input value={notas} onChange={(e) => setNotas(e.target.value)} placeholder="Ej: Todo en orden, faltante por error de vuelto…" />
               </div>

@@ -177,10 +177,10 @@ export function Cajas() {
           </DialogHeader>
           <div className="grid gap-3">
             <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5"><Label>Nombre</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Caja mostrador, Caja online…" /></div>
-              <div className="grid gap-1.5"><Label>Descripción</Label><Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} /></div>
+              <div className="grid gap-2"><Label>Nombre</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Caja mostrador, Caja online…" /></div>
+              <div className="grid gap-2"><Label>Descripción</Label><Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} /></div>
             </div>
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Medios de pago habilitados</Label>
               <div className="flex flex-wrap gap-3">
                 {TODOS_MEDIOS.map((m) => (

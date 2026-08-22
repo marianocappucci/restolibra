@@ -212,7 +212,7 @@ export function MapaMesas() {
             </div>
           )}
 
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <label className="flex items-center gap-1.5 text-sm font-medium"><Users className="size-4" />Comensales</label>
             <Input type="number" min={1} value={comensales} onChange={(e) => setComensales(e.target.value)} />
           </div>

@@ -96,7 +96,7 @@ export function RemitoNuevo() {
         <CardHeader><CardTitle className="text-base">Datos del remito</CardTitle></CardHeader>
         <CardContent className="grid gap-4">
           <div className="flex flex-wrap items-end gap-3">
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Cliente</Label>
               <SelectBuscable
                 value={clienteId}
@@ -108,10 +108,10 @@ export function RemitoNuevo() {
               />
             </div>
             {!clienteId && (
-              <div className="grid gap-1.5"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" /></div>
+              <div className="grid gap-2"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" /></div>
             )}
-            <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40" /></div>
-            <div className="grid gap-1.5 flex-1"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
+            <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40" /></div>
+            <div className="grid gap-2 flex-1"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
           </div>
 
           <div className="rounded-md border">

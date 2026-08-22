@@ -236,7 +236,7 @@ export function Caja() {
             </DialogHeader>
             <div className="grid gap-3">
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Tipo</Label>
                   <Select value={tipoMov} onValueChange={setTipoMov}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -246,15 +246,15 @@ export function Caja() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={fechaMov} onChange={(e) => setFechaMov(e.target.value)} /></div>
+                <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={fechaMov} onChange={(e) => setFechaMov(e.target.value)} /></div>
               </div>
-              <div className="grid gap-1.5"><Label>Concepto</Label><Input value={conceptoMov} onChange={(e) => setConceptoMov(e.target.value)} placeholder="Ej: Cobro factura cliente / Pago servicios" /></div>
+              <div className="grid gap-2"><Label>Concepto</Label><Input value={conceptoMov} onChange={(e) => setConceptoMov(e.target.value)} placeholder="Ej: Cobro factura cliente / Pago servicios" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="grid gap-1.5"><Label>Monto</Label><Input type="number" step="0.01" value={montoMov} onChange={(e) => setMontoMov(e.target.value)} /></div>
-                <div className="grid gap-1.5"><Label>Referencia</Label><Input value={referenciaMov} onChange={(e) => setReferenciaMov(e.target.value)} placeholder="Opcional — N° factura, proveedor, etc." /></div>
+                <div className="grid gap-2"><Label>Monto</Label><Input type="number" step="0.01" value={montoMov} onChange={(e) => setMontoMov(e.target.value)} /></div>
+                <div className="grid gap-2"><Label>Referencia</Label><Input value={referenciaMov} onChange={(e) => setReferenciaMov(e.target.value)} placeholder="Opcional — N° factura, proveedor, etc." /></div>
               </div>
               {cajas.length > 1 && (
-                <div className="grid gap-1.5">
+                <div className="grid gap-2">
                   <Label>Caja</Label>
                   <Select value={cajaIdMov} onValueChange={setCajaIdMov}>
                     <SelectTrigger><SelectValue placeholder="Por defecto" /></SelectTrigger>
@@ -264,7 +264,7 @@ export function Caja() {
                   </Select>
                 </div>
               )}
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Medio de pago</Label>
                 <Select value={medioPagoMov} onValueChange={setMedioPagoMov}>
                   <SelectTrigger><SelectValue /></SelectTrigger>

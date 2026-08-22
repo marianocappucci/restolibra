@@ -58,8 +58,8 @@ export function ReportesSalon() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <TituloPantalla icono={LineChart}>Reportes de salón</TituloPantalla>
         <div className="flex items-end gap-3">
-          <div className="grid gap-1.5"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-1.5"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
+          <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
         </div>
       </div>
 

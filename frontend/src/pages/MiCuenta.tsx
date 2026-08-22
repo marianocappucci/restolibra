@@ -68,7 +68,7 @@ export function MiCuenta() {
 
       <Card className="max-w-md">
         <CardHeader><CardTitle className="text-base">Datos de la cuenta</CardTitle></CardHeader>
-        <CardContent className="grid gap-1.5 text-sm">
+        <CardContent className="grid gap-2 text-sm">
           <p><span className="text-muted-foreground">Usuario:</span> {user?.username}</p>
           <p><span className="text-muted-foreground">Nombre:</span> {user?.nombre}</p>
           <p className="capitalize"><span className="text-muted-foreground">Rol:</span> {user?.role}</p>

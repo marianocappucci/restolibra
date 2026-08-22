@@ -232,12 +232,12 @@ export function CuentaCorrienteDetalle() {
                     </p>
                   )}
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-1.5"><Label>Monto <span className="text-destructive">*</span></Label><Input type="number" step="0.01" min="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} /></div>
-                    <div className="grid gap-1.5"><Label>Fecha <span className="text-destructive">*</span></Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Monto <span className="text-destructive">*</span></Label><Input type="number" step="0.01" min="0.01" value={monto} onChange={(e) => setMonto(e.target.value)} /></div>
+                    <div className="grid gap-2"><Label>Fecha <span className="text-destructive">*</span></Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} /></div>
                   </div>
-                  <div className="grid gap-1.5"><Label>Concepto</Label><Input value={concepto} onChange={(e) => setConcepto(e.target.value)} /></div>
+                  <div className="grid gap-2"><Label>Concepto</Label><Input value={concepto} onChange={(e) => setConcepto(e.target.value)} /></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label>Medio de pago</Label>
                       <Select value={medioPago} onValueChange={setMedioPago}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
@@ -246,13 +246,13 @@ export function CuentaCorrienteDetalle() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label>Referencia <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                       <Input value={referencia} onChange={(e) => setReferencia(e.target.value)} placeholder="N° transferencia, cheque…" />
                     </div>
                   </div>
                   {cajas.length > 0 && (
-                    <div className="grid gap-1.5">
+                    <div className="grid gap-2">
                       <Label>Registrar en caja <span className="font-normal text-muted-foreground">(opcional)</span></Label>
                       <Select value={cajaId || 'ninguna'} onValueChange={(v) => setCajaId(v === 'ninguna' ? '' : v)}>
                         <SelectTrigger><SelectValue placeholder="— No registrar en caja —" /></SelectTrigger>

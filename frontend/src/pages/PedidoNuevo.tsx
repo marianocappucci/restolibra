@@ -79,11 +79,11 @@ export function PedidoNuevo() {
 
           {canal !== 'barra' && (
             <>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Cliente</Label>
                 <Input value={clienteNombre} onChange={(e) => setClienteNombre(e.target.value)} placeholder="Nombre del cliente" />
               </div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Teléfono</Label>
                 <Input value={telefono} onChange={(e) => setTelefono(e.target.value)} placeholder="Teléfono de contacto" />
               </div>
@@ -91,7 +91,7 @@ export function PedidoNuevo() {
           )}
 
           {canal === 'takeaway' && (
-            <div className="grid gap-1.5">
+            <div className="grid gap-2">
               <Label>Hora de retiro</Label>
               <Input type="time" value={horaRetiro} onChange={(e) => setHoraRetiro(e.target.value)} />
             </div>
@@ -99,18 +99,18 @@ export function PedidoNuevo() {
 
           {canal === 'delivery' && (
             <>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Dirección de entrega *</Label>
                 <Input value={direccion} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle, número, piso/depto" />
               </div>
               <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1.5"><Label>Repartidor</Label><Input value={repartidor} onChange={(e) => setRepartidor(e.target.value)} placeholder="Nombre del repartidor" /></div>
-                <div className="grid gap-1.5"><Label>Costo de envío</Label><Input type="number" step="0.01" value={costoEnvio} onChange={(e) => setCostoEnvio(e.target.value)} /></div>
+                <div className="grid gap-2"><Label>Repartidor</Label><Input value={repartidor} onChange={(e) => setRepartidor(e.target.value)} placeholder="Nombre del repartidor" /></div>
+                <div className="grid gap-2"><Label>Costo de envío</Label><Input type="number" step="0.01" value={costoEnvio} onChange={(e) => setCostoEnvio(e.target.value)} /></div>
               </div>
             </>
           )}
 
-          <div className="grid gap-1.5">
+          <div className="grid gap-2">
             <Label>Observaciones</Label>
             <Input value={observaciones} onChange={(e) => setObservaciones(e.target.value)} placeholder="Opcional" />
           </div>

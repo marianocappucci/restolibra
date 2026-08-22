@@ -138,7 +138,7 @@ export function PresupuestoForm() {
           <CardHeader><CardTitle className="text-base">Datos del presupuesto</CardTitle></CardHeader>
           <CardContent className="grid gap-4">
             <div className="flex flex-wrap items-end gap-3">
-              <div className="grid gap-1.5">
+              <div className="grid gap-2">
                 <Label>Cliente</Label>
                 <SelectBuscable
                   value={clienteId}
@@ -150,11 +150,11 @@ export function PresupuestoForm() {
                 />
               </div>
               {!clienteId && (
-                <div className="grid gap-1.5"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" /></div>
+                <div className="grid gap-2"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" /></div>
               )}
-              <div className="grid gap-1.5"><Label>Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40" /></div>
-              <div className="grid gap-1.5"><Label>Válido hasta</Label><Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-40" /></div>
-              <div className="grid gap-1.5">
+              <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-40" /></div>
+              <div className="grid gap-2"><Label>Válido hasta</Label><Input type="date" value={validUntil} onChange={(e) => setValidUntil(e.target.value)} className="w-40" /></div>
+              <div className="grid gap-2">
                 <Label>IVA</Label>
                 <Select value={taxRate} onValueChange={setTaxRate}>
                   <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -230,7 +230,7 @@ export function PresupuestoForm() {
               </table>
             </div>
 
-            <div className="grid gap-1.5"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
+            <div className="grid gap-2"><Label>Observaciones</Label><Input value={observations} onChange={(e) => setObservations(e.target.value)} /></div>
 
             <div className="flex flex-wrap items-end gap-2 border-t pt-4">
               <Button disabled={saving} onClick={guardar}>{saving ? 'Guardando…' : editingId ? 'Guardar cambios' : 'Crear presupuesto'}</Button>
