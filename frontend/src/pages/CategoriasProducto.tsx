@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Plus, Tag, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // CRUD simple, página propia (no un tab de Config -- ver comentario en
 // Config.tsx: en Restolibra las categorías de producto viven aparte, no
@@ -61,7 +62,7 @@ export function CategoriasProducto() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Tag className="size-5 text-primary" />Categorías de producto</h2>
+        <TituloPantalla icono={Tag}>Categorías de producto</TituloPantalla>
         <Button variant="outline" asChild><Link to="/productos"><ArrowLeft />Volver a Productos</Link></Button>
       </div>
 

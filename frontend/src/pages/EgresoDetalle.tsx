@@ -21,9 +21,8 @@ import {
   Form, FormControl, FormField, FormItem, FormLabel, FormMessage,
 } from '@/components/ui/form'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  ArrowLeft, ArrowUpCircle, CheckCircle2, CreditCard, Hourglass, ListChecks, Trash2,
-} from 'lucide-react'
+import { ArrowLeft, CheckCircle2, CreditCard, Hourglass, ListChecks, ShoppingBag, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -170,10 +169,7 @@ export function EgresoDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <ArrowUpCircle className="size-5 text-destructive" />
-          {egreso ? egreso.concepto : 'Egreso'}
-        </h2>
+        <TituloPantalla icono={ShoppingBag}>{egreso ? egreso.concepto : 'Egreso'}</TituloPantalla>
         <Button asChild size="sm" variant="outline"><Link to="/egresos"><ArrowLeft />Volver</Link></Button>
       </div>
 

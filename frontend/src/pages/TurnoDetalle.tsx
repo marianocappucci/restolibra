@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
-import {
-  ArrowLeft, ArrowUpCircle, ArrowDownCircle, Badge as BadgeIcon, CheckCircle2, Receipt, StopCircle,
-} from 'lucide-react'
+import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, CheckCircle2, Clock, Receipt, StopCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -63,11 +62,8 @@ export function TurnoDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <BadgeIcon className="size-5 text-primary" />
-          {turno ? <>Turno #{turno.id}</> : 'Turno'}
-          {turno && <BadgeEstado tono={turno.estado === 'abierto' ? 'ok' : 'neutro'}>{turno.estado === 'abierto' ? 'Abierto' : 'Cerrado'}</BadgeEstado>}
-        </h2>
+        <TituloPantalla icono={Clock}>{turno ? <>Turno #{turno.id}</> : 'Turno'}
+          {turno && <BadgeEstado tono={turno.estado === 'abierto' ? 'ok' : 'neutro'}>{turno.estado === 'abierto' ? 'Abierto' : 'Cerrado'}</BadgeEstado>}</TituloPantalla>
         {turno && (
           <div className="flex flex-wrap gap-2">
             {turno.estado === 'abierto' && (

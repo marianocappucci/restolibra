@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, ArrowUpCircle, ArrowDownCircle, CheckCircle2, StopCircle } from 'lucide-react'
+import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, CheckCircle2, Clock, StopCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -81,7 +82,7 @@ export function TurnoCerrar() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><StopCircle className="size-5 text-destructive" />Cerrar turno {turno && `#${turno.id}`}</h2>
+        <TituloPantalla icono={Clock}>Cerrar turno {turno && `#${turno.id}`}</TituloPantalla>
         {turno && <Button asChild size="sm" variant="outline"><Link to={`/turnos/${turno.id}`}><ArrowLeft />Volver</Link></Button>}
       </div>
 

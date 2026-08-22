@@ -17,6 +17,7 @@ import {
   CreditCard, Wallet, Landmark, Banknote, RefreshCw, UserPlus, ReceiptText, X, Mail,
   Forward, UserRoundX, MailWarning, History, ArrowDownCircle, Hourglass, Info, User,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -398,7 +399,7 @@ export function MpBandeja() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><CreditCard className="size-5 text-sky-500" />Pagos MercadoPago</h2>
+        <TituloPantalla icono={CreditCard}>Pagos MercadoPago</TituloPantalla>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

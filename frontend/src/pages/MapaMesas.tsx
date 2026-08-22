@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatoTiempo(mins: number): string {
   if (mins < 60) return `${mins} min`
@@ -117,7 +118,7 @@ export function MapaMesas() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><LayoutGrid className="size-5 text-primary" />Salón</h2>
+        <TituloPantalla icono={LayoutGrid}>Salón</TituloPantalla>
         <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline"><a href="/salon/reservas" onClick={(e) => { e.preventDefault(); navigate('/salon/reservas') }}><CalendarClock />Reservas</a></Button>
           {!isMozo && (

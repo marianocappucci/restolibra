@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { TrendingUp } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -58,9 +59,7 @@ export function ReporteCostos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <TrendingUp className="size-5 text-primary" />Food cost y consumo de insumos
-        </h2>
+        <TituloPantalla icono={TrendingUp}>Food cost y consumo de insumos</TituloPantalla>
         <Button variant="outline" asChild><Link to="/productos">Volver a Productos</Link></Button>
       </div>
 

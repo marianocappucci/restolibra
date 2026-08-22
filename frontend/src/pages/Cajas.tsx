@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { SquareStack, Plus, Eye, Pencil, Trash2, Star, Wallet, Check } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const TODOS_MEDIOS = Object.keys(MEDIOS_PAGO_LABELS)
 
@@ -115,7 +116,7 @@ export function Cajas() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><SquareStack className="size-5 text-primary" />Cajas</h2>
+        <TituloPantalla icono={SquareStack}>Cajas</TituloPantalla>
         <Button onClick={abrirNueva}><Plus />Nueva caja</Button>
       </div>
 

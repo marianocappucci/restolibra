@@ -21,6 +21,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Truck, Pencil, ArrowLeft, Plus, Inbox, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -187,10 +188,7 @@ export function ProveedorDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Truck className="size-5 text-primary" />
-          {proveedor ? proveedor.nombre : 'Proveedor'}
-        </h2>
+        <TituloPantalla icono={Truck}>{proveedor ? proveedor.nombre : 'Proveedor'}</TituloPantalla>
         <div className="flex flex-wrap gap-2">
           {proveedor && (
             <Dialog open={editOpen} onOpenChange={setEditOpen}>

@@ -23,6 +23,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Tag, Plus, Pencil, Trash2, Ban, Undo2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const listaSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -159,7 +160,7 @@ export function ListasPrecio() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Tag className="size-5 text-primary" />Listas de precios</h2>
+        <TituloPantalla icono={Tag}>Listas de precios</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nueva lista</Button>

@@ -10,10 +10,8 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  Send, XCircle, CheckCircle2, RefreshCw, Receipt, CheckCheck, Undo2, Mail, Trash2, ArrowLeft,
-  FileDown, Pencil,
-} from 'lucide-react'
+import { ArrowLeft, Calculator, CheckCheck, CheckCircle2, FileDown, Mail, Pencil, Receipt, RefreshCw, Send, Trash2, Undo2, XCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -116,10 +114,7 @@ export function PresupuestoDetalle() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Receipt className="size-5 text-primary" />
-            Presupuesto {p && <span className="font-mono">{p.number}</span>}
-          </h2>
+          <TituloPantalla icono={Calculator}>Presupuesto {p && <span className="font-mono">{p.number}</span>}</TituloPantalla>
           {p && <BadgeEstado tono={ESTADO_TONO[p.status] ?? 'neutro'}>{ESTADO_LABELS[p.status] ?? p.status}</BadgeEstado>}
         </div>
         <div className="flex flex-wrap gap-2">

@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClipboardList, Plus, LayoutGrid, Martini, ShoppingBag, Bike, Clock, Monitor } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -61,7 +62,7 @@ export function PedidosBoard() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><ClipboardList className="size-5 text-primary" />Pedidos (mostrador y delivery)</h2>
+        <TituloPantalla icono={ClipboardList}>Pedidos (mostrador y delivery)</TituloPantalla>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={separarMonitor}><Monitor />Separar monitor</Button>
           <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><LayoutGrid />Ir al salón</Button>

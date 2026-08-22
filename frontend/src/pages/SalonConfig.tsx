@@ -10,6 +10,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   ArrowLeft, Settings, Plus, Check, Trash2, LayoutGrid,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // ABM de salones/mesas + cargos automáticos (cubierto/panera) -- admin/gerente
 // solamente (oculto para el rol mozo, ver Layout.tsx). Espejo de
@@ -143,7 +144,7 @@ export function SalonConfig() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Settings className="size-5 text-primary" />Salones y mesas</h2>
+        <TituloPantalla icono={Settings}>Salones y mesas</TituloPantalla>
         <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Ir al salón</Button>
       </div>
 

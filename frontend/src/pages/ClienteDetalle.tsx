@@ -23,10 +23,8 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  IdCard, Pencil, Undo2, ArrowLeft, ArrowLeftRight, Plus, Trash2,
-  BarChart3, Receipt, FileText, Truck, Inbox, Eye, Search, Loader2, CheckCircle2, XCircle,
-} from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, BarChart3, CheckCircle2, Eye, FileText, Inbox, Loader2, Pencil, Plus, Receipt, Search, Trash2, Truck, Undo2, Users, XCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -268,10 +266,7 @@ export function ClienteDetalle() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <IdCard className="size-5 text-primary" />
-            {cliente ? cliente.name : 'Cliente'}
-          </h2>
+          <TituloPantalla icono={Users}>{cliente ? cliente.name : 'Cliente'}</TituloPantalla>
           {cliente && !cliente.activo && <BadgeEstado tono="neutro">Inactivo</BadgeEstado>}
         </div>
         <div className="flex flex-wrap gap-2">

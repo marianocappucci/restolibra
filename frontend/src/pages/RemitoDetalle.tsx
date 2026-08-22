@@ -4,7 +4,8 @@ import { api, ApiError, type Remito } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ArrowLeft, FileDown, Trash2 } from 'lucide-react'
+import { ArrowLeft, FileDown, FileText, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 export function RemitoDetalle() {
   const { id } = useParams<{ id: string }>()
@@ -52,7 +53,7 @@ export function RemitoDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">{detalle ? `Remito ${detalle.number}` : 'Remito'}</h2>
+        <TituloPantalla icono={FileText}>{detalle ? `Remito ${detalle.number}` : 'Remito'}</TituloPantalla>
         <div className="flex gap-2">
           {detalle && <Button asChild size="sm" variant="outline"><a href={`/remitos/${detalle.id}/pdf`} target="_blank" rel="noreferrer"><FileDown />Ver PDF</a></Button>}
           <Button asChild size="sm" variant="outline"><Link to="/remitos"><ArrowLeft />Volver</Link></Button>

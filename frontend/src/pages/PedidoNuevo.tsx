@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, PlayCircle } from 'lucide-react'
+import { ArrowLeft, ClipboardList, PlayCircle } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // Alta de un pedido sin mesa (barra/takeaway/delivery) -- espejo de
 // web/routers/pedidos.py: GET/POST /pedidos/nuevo. Al crear, navega a la
@@ -62,7 +63,7 @@ export function PedidoNuevo() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><PlayCircle className="size-5 text-primary" />Nuevo pedido · {CANAL_LABEL[canal]}</h2>
+        <TituloPantalla icono={ClipboardList}>Nuevo pedido · {CANAL_LABEL[canal]}</TituloPantalla>
         <Button size="sm" variant="outline" onClick={() => navigate('/pedidos')}><ArrowLeft />Volver</Button>
       </div>
 

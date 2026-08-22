@@ -10,7 +10,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import { ArrowLeft, ClipboardList, Layers, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, Layers, Package, Plus, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -175,9 +176,7 @@ export function ProductoReceta() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <ClipboardList className="size-5 text-primary" />Receta de {detalle.producto.nombre}
-        </h2>
+        <TituloPantalla icono={Package}>Receta de {detalle.producto.nombre}</TituloPantalla>
         <Button variant="outline" asChild>
           <Link to="/productos"><ArrowLeft />Volver a Productos</Link>
         </Button>

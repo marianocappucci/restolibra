@@ -20,6 +20,7 @@ import { DataTable } from 'libra-ui/data-table'
 import {
   Landmark, Plus, Pencil, List, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, ArrowDownCircle, ArrowUpCircle, Check,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -152,7 +153,7 @@ export function Tesoreria() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Landmark className="size-5 text-primary" />Tesorería</h2>
+        <TituloPantalla icono={Landmark}>Tesorería</TituloPantalla>
         <div className="flex gap-2">
           <Dialog open={showTransfer} onOpenChange={setShowTransfer}>
             <DialogTrigger asChild>

@@ -22,6 +22,7 @@ import { DataTable } from 'libra-ui/data-table'
 import {
   ArrowLeft, Tag, Percent, Download, Settings, Trash2, Check,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -278,11 +279,8 @@ export function ListaPrecioDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Tag className="size-5 text-primary" />
-          {lista ? lista.nombre : 'Lista de precios'}
-          {lista && !lista.activa && <BadgeEstado tono="neutro">Inactiva</BadgeEstado>}
-        </h2>
+        <TituloPantalla icono={Tag}>{lista ? lista.nombre : 'Lista de precios'}
+          {lista && !lista.activa && <BadgeEstado tono="neutro">Inactiva</BadgeEstado>}</TituloPantalla>
         {lista && (
           <div className="flex flex-wrap gap-2">
             <Sheet open={loteOpen} onOpenChange={setLoteOpen}>

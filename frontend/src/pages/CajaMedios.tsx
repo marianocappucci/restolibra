@@ -12,6 +12,7 @@ import {
   Wallet, Download, ArrowLeft, ArrowUp, ArrowDown,
   Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, Receipt,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function firstOfMonthIso(): string {
   const d = new Date()
@@ -64,7 +65,7 @@ export function CajaMedios() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Wallet className="size-5 text-primary" />Caja por Medio de Cobro</h2>
+        <TituloPantalla icono={Wallet}>Caja por Medio de Cobro</TituloPantalla>
         <Button asChild variant="outline" size="sm"><Link to="/reportes"><ArrowLeft />Reportes</Link></Button>
       </div>
 

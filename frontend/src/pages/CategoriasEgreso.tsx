@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Plus, Tag, Trash2 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // CRUD simple, página propia -- mismo patrón que CategoriasProducto.tsx.
 // Gap real encontrado en el corte de la Etapa E (2026-07-24): el backend
@@ -62,7 +63,7 @@ export function CategoriasEgreso() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Tag className="size-5 text-primary" />Categorías de egreso</h2>
+        <TituloPantalla icono={Tag}>Categorías de egreso</TituloPantalla>
         <Button variant="outline" asChild><Link to="/egresos"><ArrowLeft />Volver a Egresos</Link></Button>
       </div>
 
