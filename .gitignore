@@ -88,3 +88,6 @@ coverage.xml
 htmlcov/
 coverage/
 frontend/coverage/
+
+# Reporte JUnit que emite el paso de tests del CI para su gate.
+frontend/vitest.xml
