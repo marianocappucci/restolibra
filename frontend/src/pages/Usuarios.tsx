@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -170,14 +171,9 @@ export function Usuarios() {
       size: 105,
       minSize: 85,
       cell: ({ row }) => (
-        <Badge
-          variant="outline"
-          className={row.original.activo
-            ? 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-            : 'border-destructive/30 bg-destructive/10 text-destructive'}
-        >
+        <BadgeEstado tono={row.original.activo ? 'ok' : 'negativo'}>
           {row.original.activo ? 'Activo' : 'Inactivo'}
-        </Badge>
+        </BadgeEstado>
       ),
     },
     {

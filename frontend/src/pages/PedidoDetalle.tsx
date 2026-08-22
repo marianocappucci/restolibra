@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -330,7 +331,7 @@ export function PedidoDetalle() {
                     <span className="flex items-center gap-2">
                       <span className="font-semibold uppercase">{c.estacion}</span>
                       <span className="text-xs text-muted-foreground">ronda {c.numero}</span>
-                      <Badge variant="secondary">{c.estado}</Badge>
+                      <BadgeEstado tono="neutro">{c.estado}</BadgeEstado>
                     </span>
                     <Button asChild size="sm" variant="outline"><a href={`/kds/comanda/${c.id}/ticket`} target="_blank" rel="noreferrer"><Printer /></a></Button>
                   </div>
@@ -509,7 +510,7 @@ function ItemRow({ item, onEliminar, onGuardarNota }: { item: PedidoItem; onElim
           <span>{item.nombre}</span>
           {item.estacion === 'cocina' && <Flame className="size-3.5 text-destructive" />}
           {item.estacion === 'barra' && <Martini className="size-3.5 text-sky-500" />}
-          <Badge variant={item.estado === 'nuevo' ? 'secondary' : 'outline'}>{item.estado === 'nuevo' ? 'nuevo' : 'enviado'}</Badge>
+          <BadgeEstado tono={item.estado === 'nuevo' ? 'atencion' : 'neutro'}>{item.estado === 'nuevo' ? 'nuevo' : 'enviado'}</BadgeEstado>
         </div>
         {item.modificadores_resumen && (
           <div className="flex items-center gap-1 text-xs text-primary"><Sliders className="size-3" />{item.modificadores_resumen}</div>

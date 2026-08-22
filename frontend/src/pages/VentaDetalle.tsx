@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   ArrowLeft, Printer, FileCheck, CheckCircle2, Ban, ReceiptText, PackageCheck, QrCode,
@@ -14,8 +15,8 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const estadoVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  cobrada: 'default', parcial: 'secondary', pendiente: 'outline', anulada: 'destructive',
+const ESTADO_TONO: Record<string, TonoEstado> = {
+  cobrada: 'ok', parcial: 'atencion', pendiente: 'neutro', anulada: 'negativo',
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -73,7 +74,7 @@ export function VentaDetalle() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <ReceiptText className="size-5 text-primary" />
-          {detalle ? <>Venta {detalle.numero} <Badge variant={estadoVariant[detalle.estado] ?? 'outline'}>{estadoLabel(detalle.estado)}</Badge></> : 'Venta'}
+          {detalle ? <>Venta {detalle.numero} <BadgeEstado tono={ESTADO_TONO[detalle.estado] ?? 'neutro'}>{estadoLabel(detalle.estado)}</BadgeEstado></> : 'Venta'}
         </h2>
         {detalle && (
           <div className="flex flex-wrap gap-2">

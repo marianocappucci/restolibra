@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -32,10 +33,10 @@ const EMPTY_CUENTA_FORM = { nombre: '', tipo: 'banco', banco: '', numero: '', de
 
 export function MovTipoBadge({ m }: { m: MovimientoTesoreria }) {
   if (m.tipo === 'ingreso') {
-    return <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400"><ArrowDownCircle />Ingreso</Badge>
+    return <BadgeEstado tono="ok"><ArrowDownCircle />Ingreso</BadgeEstado>
   }
   if (m.tipo === 'egreso') {
-    return <Badge variant="destructive"><ArrowUpCircle />Egreso</Badge>
+    return <BadgeEstado tono="negativo"><ArrowUpCircle />Egreso</BadgeEstado>
   }
   if (m.tipo === 'transferencia_entrada') {
     return <Badge variant="outline"><ArrowDownLeft />desde {m.cuenta_destino_nombre}</Badge>
@@ -281,12 +282,12 @@ export function Tesoreria() {
                       {c.numero && <> · {c.numero}</>}
                     </p>
                   </div>
-                  <Badge className={c.saldo >= 0 ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400' : ''} variant={c.saldo >= 0 ? undefined : 'destructive'}>
+                  <BadgeEstado tono={c.saldo >= 0 ? 'ok' : 'negativo'}>
                     {formatCurrency(c.saldo)}
-                  </Badge>
+                  </BadgeEstado>
                 </div>
                 {c.descripcion && <p className="text-sm text-muted-foreground">{c.descripcion}</p>}
-                {!c.activa && <Badge variant="outline" className="w-fit">Archivada</Badge>}
+                {!c.activa && <BadgeEstado tono="neutro" className="w-fit">Archivada</BadgeEstado>}
                 <div className="mt-2 flex gap-2">
                   <Button asChild size="sm" variant="outline" className="flex-1"><Link to={`/tesoreria/${c.id}`}><List />Movimientos</Link></Button>
                   <Button asChild size="sm" variant="outline"><Link to={`/tesoreria/${c.id}`}><Pencil /></Link></Button>

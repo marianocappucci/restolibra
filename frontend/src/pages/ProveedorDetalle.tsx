@@ -7,7 +7,7 @@ import { type ColumnDef } from '@tanstack/react-table'
 import { api, ApiError, IVA_CONDITIONS, type Egreso, type Proveedor } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Input } from '@/components/ui/input'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -26,13 +26,8 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const estadoVariant: Record<Egreso['estado'], 'default' | 'secondary' | 'outline'> = {
-  pagado: 'default', parcial: 'default', pendiente: 'secondary',
-}
-const estadoBadgeClass: Record<Egreso['estado'], string> = {
-  pagado: 'bg-emerald-600 text-white [a&]:hover:bg-emerald-600/90 dark:bg-emerald-500',
-  parcial: 'bg-amber-500 text-white [a&]:hover:bg-amber-500/90 dark:bg-amber-600',
-  pendiente: '',
+const estadoTono: Record<Egreso['estado'], TonoEstado> = {
+  pagado: 'ok', parcial: 'atencion', pendiente: 'neutro',
 }
 const estadoLabel: Record<Egreso['estado'], string> = {
   pagado: 'Pagado', parcial: 'Parcial', pendiente: 'Pendiente',
@@ -179,9 +174,9 @@ export function ProveedorDetalle() {
       accessorKey: 'estado',
       header: 'Estado',
       cell: ({ row }) => (
-        <Badge variant={estadoVariant[row.original.estado]} className={estadoBadgeClass[row.original.estado]}>
+        <BadgeEstado tono={estadoTono[row.original.estado]}>
           {estadoLabel[row.original.estado]}
-        </Badge>
+        </BadgeEstado>
       ),
     },
     { accessorKey: 'total', header: 'Total', cell: ({ row }) => <span className="font-medium text-destructive">{formatCurrency(row.original.total)}</span> },

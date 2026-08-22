@@ -10,7 +10,7 @@ import {
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -59,10 +59,10 @@ const ajusteSchema = z.object({
 })
 type AjusteFormValues = z.infer<typeof ajusteSchema>
 
-function estadoStock(p: StockItem): { label: string; className: string } {
-  if (p.stock_actual <= 0) return { label: 'Sin stock', className: 'border-destructive/30 bg-destructive/10 text-destructive' }
-  if (p.stock_minimo > 0 && p.stock_actual <= p.stock_minimo) return { label: 'Bajo mínimo', className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400' }
-  return { label: 'OK', className: 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400' }
+function estadoStock(p: StockItem): { label: string; tono: TonoEstado } {
+  if (p.stock_actual <= 0) return { label: 'Sin stock', tono: 'negativo' }
+  if (p.stock_minimo > 0 && p.stock_actual <= p.stock_minimo) return { label: 'Bajo mínimo', tono: 'atencion' }
+  return { label: 'OK', tono: 'ok' }
 }
 
 export function Stock() {
@@ -183,7 +183,7 @@ export function Stock() {
       minSize: 95,
       cell: ({ row }) => {
         const e = estadoStock(row.original)
-        return <div className="flex justify-center"><Badge variant="outline" className={e.className}>{e.label}</Badge></div>
+        return <div className="flex justify-center"><BadgeEstado tono={e.tono}>{e.label}</BadgeEstado></div>
       },
     },
     {
@@ -218,9 +218,9 @@ export function Stock() {
           <div>
             <strong>{data.alertas.length} producto{data.alertas.length > 1 ? 's' : ''} con stock bajo mínimo:</strong>{' '}
             {data.alertas.map((a) => (
-              <Badge key={a.id} variant="outline" className="ml-1 border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-400">
+              <BadgeEstado key={a.id} tono="atencion" className="ml-1">
                 {a.nombre} ({formatEntero(a.stock_actual)} {a.unidad})
-              </Badge>
+              </BadgeEstado>
             ))}
           </div>
         </div>

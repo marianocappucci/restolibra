@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -271,7 +271,7 @@ function EmpresaTab({ cfg, setCfg, saving, guardar, subirArchivo }: {
           {cfg.logo_path && (
             <div className="flex items-center gap-3">
               <img src="/config/empresa/logo" alt="Logo actual" className="h-16 max-w-48 rounded-md border bg-white object-contain p-1.5" />
-              <Badge className="bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-500"><CheckCircle2 />Logo cargado</Badge>
+              <BadgeEstado tono="ok"><CheckCircle2 />Logo cargado</BadgeEstado>
             </div>
           )}
           <Input type="file" accept=".png,.jpg,.jpeg" onChange={handleLogo} disabled={saving} className="max-w-sm" />
@@ -557,7 +557,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
         <div className="grid gap-1.5">
           <Label>Certificado (.crt)</Label>
           {a.certificado_path && (
-            <Badge className="w-fit bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-500"><CheckCircle2 />Cargado</Badge>
+            <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargado</BadgeEstado>
           )}
           <Input type="file" accept=".crt,.pem" disabled={saving}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificados?empresa=${a.empresa}`, 'certificado', f) }} />
@@ -566,7 +566,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
         <div className="grid gap-1.5">
           <Label>Clave privada (.key)</Label>
           {a.clave_path && (
-            <Badge className="w-fit bg-emerald-600 text-white hover:bg-emerald-600/90 dark:bg-emerald-500"><CheckCircle2 />Cargada</Badge>
+            <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargada</BadgeEstado>
           )}
           <Input type="file" accept=".key,.pem" disabled={saving}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificados?empresa=${a.empresa}`, 'clave_privada', f) }} />

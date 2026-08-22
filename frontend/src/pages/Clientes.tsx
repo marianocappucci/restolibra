@@ -8,7 +8,7 @@ import { api, ApiError, IVA_CONDITIONS, type Cliente } from '../api'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -174,7 +174,7 @@ export function Clientes() {
     { accessorKey: 'name', header: sortableHeader('Nombre / Razón social'), cell: ({ row }) => (
       <Link to={`/clientes/${row.original.id}`} className="font-medium hover:underline">
         {row.original.name}
-        {!row.original.activo && <Badge variant="secondary" className="ml-2">Inactivo</Badge>}
+        {!row.original.activo && <BadgeEstado tono="neutro" className="ml-2">Inactivo</BadgeEstado>}
       </Link>
     ) },
     { accessorKey: 'cuit_dni', header: 'CUIT / DNI', cell: ({ row }) => row.original.cuit_dni || '—' },

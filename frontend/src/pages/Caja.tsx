@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -163,8 +164,8 @@ export function Caja() {
         header: 'Tipo',
         cell: ({ row }) => (
           row.original.tipo === 'ingreso'
-            ? <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400"><ArrowDownCircle />Ingreso</Badge>
-            : <Badge variant="destructive"><ArrowUpCircle />Egreso</Badge>
+            ? <BadgeEstado tono="ok"><ArrowDownCircle />Ingreso</BadgeEstado>
+            : <BadgeEstado tono="negativo"><ArrowUpCircle />Egreso</BadgeEstado>
         ),
       },
       {

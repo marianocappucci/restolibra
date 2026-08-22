@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -259,7 +260,7 @@ export function MpBandeja() {
             <Button asChild size="icon" variant="outline" title="Ver factura"><Link to={`/facturas/${r.factura_id}`} aria-label="Ver factura"><ReceiptText /></Link></Button>
             {puedeReenviar
               ? <Button size="icon" variant="outline" title="Reenviar email" disabled={saving} onClick={() => reenviarEmail(r.factura_id!)}><Forward className="size-4" /></Button>
-              : <Badge variant="outline" className="text-amber-700 dark:text-amber-400"><MailWarning className="mr-1 size-3.5" />Sin email</Badge>}
+              : <BadgeEstado tono="atencion"><MailWarning className="mr-1 size-3.5" />Sin email</BadgeEstado>}
           </div>
         )
       },
@@ -367,7 +368,7 @@ export function MpBandeja() {
         if (p.cliente) return (
           <div className="grid w-full gap-0.5">
             <span className="flex items-center gap-1"><User className="size-3.5 shrink-0 text-emerald-600" /><span className="truncate" title={p.cliente.name}>{p.cliente.name}</span></span>
-            {!p.cliente.email && <Badge variant="outline" className="w-fit text-amber-700 dark:text-amber-400"><MailWarning className="mr-1 size-3.5" />Sin email</Badge>}
+            {!p.cliente.email && <BadgeEstado tono="atencion" className="w-fit"><MailWarning className="mr-1 size-3.5" />Sin email</BadgeEstado>}
           </div>
         )
         return (

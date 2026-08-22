@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -32,8 +33,8 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const estadoVariant: Record<string, 'default' | 'secondary' | 'outline' | 'destructive'> = {
-  cobrada: 'default', parcial: 'secondary', pendiente: 'outline', anulada: 'destructive',
+const ESTADO_TONO: Record<string, TonoEstado> = {
+  cobrada: 'ok', parcial: 'atencion', pendiente: 'neutro', anulada: 'negativo',
 }
 
 const ESTADO_LABELS: Record<string, string> = {
@@ -257,7 +258,7 @@ export function Ventas() {
       header: 'Estado',
       size: 110,
       minSize: 90,
-      cell: ({ row }) => <Badge variant={estadoVariant[row.original.estado] ?? 'outline'}>{estadoLabel(row.original.estado)}</Badge>,
+      cell: ({ row }) => <BadgeEstado tono={ESTADO_TONO[row.original.estado] ?? 'neutro'}>{estadoLabel(row.original.estado)}</BadgeEstado>,
     },
     {
       id: 'factura',
@@ -267,7 +268,7 @@ export function Ventas() {
       cell: ({ row }) => row.original.factura_display
         ? <a href={`/facturas/${row.original.factura_id}`} className="inline-flex w-full items-center gap-1 truncate text-sm font-medium text-emerald-600 hover:underline dark:text-emerald-400" title={row.original.factura_display}><ReceiptText className="size-3.5 shrink-0" /><span className="truncate">{row.original.factura_display}</span></a>
         : row.original.estado !== 'anulada'
-          ? <Badge variant="outline" className="text-amber-700 dark:text-amber-400">Sin facturar</Badge>
+          ? <BadgeEstado tono="atencion">Sin facturar</BadgeEstado>
           : <span className="text-muted-foreground">—</span>,
     },
     {
