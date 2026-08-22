@@ -1,6 +1,6 @@
 import { Hourglass, Flame, CheckCircle2, Printer } from 'lucide-react'
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Button } from '@/components/ui/button'
 import { useKdsFeed } from '../hooks/use-kds-feed'
 import type { Comanda, ComandaEstacion, ComandaEstado } from '../api'
@@ -34,10 +34,10 @@ function horaDe(s: string): string {
   return s && s.length >= 16 ? s.slice(11, 16) : ''
 }
 
-function urgenciaClass(mins: number): string {
-  if (mins >= 20) return 'bg-red-500/15 text-red-700 dark:text-red-400'
-  if (mins >= 10) return 'bg-amber-500/15 text-amber-700 dark:text-amber-400'
-  return 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400'
+function urgenciaTono(mins: number): TonoEstado {
+  if (mins >= 20) return 'negativo'
+  if (mins >= 10) return 'atencion'
+  return 'ok'
 }
 
 function ComandaCard({ comanda, onAvanzar }: { comanda: Comanda; onAvanzar: (id: number) => void }) {
@@ -47,7 +47,7 @@ function ComandaCard({ comanda, onAvanzar }: { comanda: Comanda; onAvanzar: (id:
       <CardHeader className="flex-row items-center justify-between gap-2 border-b px-3 py-2">
         <span className="font-semibold">{c.mesa}</span>
         <span className="flex items-center gap-1.5">
-          <Badge className={urgenciaClass(c.mins)}>{c.mins} min</Badge>
+          <BadgeEstado tono={urgenciaTono(c.mins)}>{c.mins} min</BadgeEstado>
           <span className="text-xs text-muted-foreground">{c.pedido_numero} · {horaDe(c.created_at)}</span>
         </span>
       </CardHeader>

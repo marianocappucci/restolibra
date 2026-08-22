@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -145,8 +146,8 @@ export function CuentaCorrienteDetalle() {
       header: 'Tipo',
       cell: ({ row }) => (
         row.original.tipo === 'debito'
-          ? <Badge variant="destructive"><ArrowUpCircle />Cargo</Badge>
-          : <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400"><ArrowDownCircle />Abono</Badge>
+          ? <BadgeEstado tono="negativo"><ArrowUpCircle />Cargo</BadgeEstado>
+          : <BadgeEstado tono="ok"><ArrowDownCircle />Abono</BadgeEstado>
       ),
     },
     {
@@ -206,11 +207,11 @@ export function CuentaCorrienteDetalle() {
           {cliente ? cliente.name : 'Cuenta Corriente'}
           {cliente && (
             saldo > 0 ? (
-              <Badge className="bg-amber-500/15 text-amber-700 hover:bg-amber-500/15 dark:text-amber-400">Debe {formatCurrency(saldo)}</Badge>
+              <BadgeEstado tono="atencion">Debe {formatCurrency(saldo)}</BadgeEstado>
             ) : saldo < 0 ? (
-              <Badge className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400">A favor {formatCurrency(saldo * -1)}</Badge>
+              <BadgeEstado tono="ok">A favor {formatCurrency(saldo * -1)}</BadgeEstado>
             ) : (
-              <Badge variant="secondary">Saldo $0</Badge>
+              <BadgeEstado tono="neutro">Saldo $0</BadgeEstado>
             )
           )}
         </h2>

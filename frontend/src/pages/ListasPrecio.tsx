@@ -9,7 +9,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -125,7 +125,7 @@ export function ListasPrecio() {
     { accessorKey: 'nombre', header: sortableHeader('Nombre'), cell: ({ row }) => (
       <span className="font-medium">
         {row.original.nombre}
-        {row.original.es_default ? <Badge variant="secondary" className="ml-2">Por defecto</Badge> : null}
+        {row.original.es_default ? <BadgeEstado tono="ok" className="ml-2">Por defecto</BadgeEstado> : null}
       </span>
     ) },
     { accessorKey: 'descripcion', header: 'Descripción', cell: ({ row }) => row.original.descripcion || '—' },
@@ -133,9 +133,9 @@ export function ListasPrecio() {
       accessorKey: 'activa',
       header: 'Estado',
       cell: ({ row }) => (
-        <Badge variant={row.original.activa ? 'default' : 'outline'}>
+        <BadgeEstado tono={row.original.activa ? 'ok' : 'neutro'}>
           {row.original.activa ? 'Activa' : 'Inactiva'}
-        </Badge>
+        </BadgeEstado>
       ),
     },
     {

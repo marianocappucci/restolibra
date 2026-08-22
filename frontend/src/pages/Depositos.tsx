@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
@@ -139,8 +139,8 @@ export function Depositos() {
                   <div>
                     <p className="flex items-center gap-2 font-semibold"><Building2 className="size-4 text-primary" />{d.nombre}</p>
                     <div className="mt-1 flex gap-1.5">
-                      {d.es_default ? <Badge variant="default">Por defecto</Badge> : null}
-                      {!d.activo && <Badge variant="secondary">Inactivo</Badge>}
+                      {d.es_default ? <BadgeEstado tono="ok">Por defecto</BadgeEstado> : null}
+                      {!d.activo && <BadgeEstado tono="neutro">Inactivo</BadgeEstado>}
                     </div>
                   </div>
                   {d.descripcion && <p className="text-sm text-muted-foreground">{d.descripcion}</p>}

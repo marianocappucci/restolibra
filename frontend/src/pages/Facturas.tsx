@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -156,12 +157,12 @@ export function Facturas() {
         minSize: 90,
         cell: ({ row }) => {
           const f = row.original
-          if (!estaAutorizada(f)) return <Badge variant="secondary">Sin CAE</Badge>
-          if (vista === 'nc' || vista === 'nd') return <Badge variant="default"><CheckCircle2 />Autorizada</Badge>
+          if (!estaAutorizada(f)) return <BadgeEstado tono="neutro">Sin CAE</BadgeEstado>
+          if (vista === 'nc' || vista === 'nd') return <BadgeEstado tono="ok"><CheckCircle2 />Autorizada</BadgeEstado>
           const tc = f.total_cobrado ?? 0
-          if (tc >= f.total) return <Badge variant="default"><CheckCircle2 />Cobrada</Badge>
-          if (tc > 0) return <Badge variant="secondary"><Hourglass />Parcial</Badge>
-          return <Badge variant="outline"><Hourglass />Sin cobrar</Badge>
+          if (tc >= f.total) return <BadgeEstado tono="ok"><CheckCircle2 />Cobrada</BadgeEstado>
+          if (tc > 0) return <BadgeEstado tono="atencion"><Hourglass />Parcial</BadgeEstado>
+          return <BadgeEstado tono="neutro"><Hourglass />Sin cobrar</BadgeEstado>
         },
       },
       {

@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -281,7 +281,7 @@ export function ListaPrecioDetalle() {
         <h2 className="flex items-center gap-2 text-lg font-semibold">
           <Tag className="size-5 text-primary" />
           {lista ? lista.nombre : 'Lista de precios'}
-          {lista && !lista.activa && <Badge variant="secondary">Inactiva</Badge>}
+          {lista && !lista.activa && <BadgeEstado tono="neutro">Inactiva</BadgeEstado>}
         </h2>
         {lista && (
           <div className="flex flex-wrap gap-2">

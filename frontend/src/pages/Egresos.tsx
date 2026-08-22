@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -150,13 +150,8 @@ export function Egresos() {
     }
   }
 
-  const estadoBadgeClass: Record<Egreso['estado'], string> = {
-    pagado: 'bg-emerald-600 text-white [a&]:hover:bg-emerald-600/90 dark:bg-emerald-500',
-    parcial: 'bg-amber-500 text-white [a&]:hover:bg-amber-500/90 dark:bg-amber-600',
-    pendiente: '',
-  }
-  const estadoVariant: Record<Egreso['estado'], 'default' | 'secondary' | 'outline'> = {
-    pagado: 'default', parcial: 'default', pendiente: 'secondary',
+  const estadoTono: Record<Egreso['estado'], TonoEstado> = {
+    pagado: 'ok', parcial: 'atencion', pendiente: 'neutro',
   }
   const estadoLabel: Record<Egreso['estado'], string> = {
     pagado: 'Pagado', parcial: 'Parcial', pendiente: 'Pendiente',
@@ -180,9 +175,9 @@ export function Egresos() {
       size: 82,
       minSize: 74,
       cell: ({ row }) => (
-        <Badge variant={estadoVariant[row.original.estado]} className={estadoBadgeClass[row.original.estado]}>
+        <BadgeEstado tono={estadoTono[row.original.estado]}>
           {estadoLabel[row.original.estado]}
-        </Badge>
+        </BadgeEstado>
       ),
     },
     { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 114, minSize: 100, cell: ({ row }) => <div className="truncate text-right font-medium text-destructive">{formatCurrency(row.original.total)}</div> },

@@ -9,20 +9,20 @@ import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import {
   ArrowDownCircle, ArrowLeft, ArrowUpCircle, History, RefreshCw, ShoppingCart, TriangleAlert, X,
 } from 'lucide-react'
 
-const TIPO_BADGE: Record<MovimientoStock['tipo'], { className: string; icon: typeof ArrowDownCircle }> = {
-  entrada: { className: 'border-emerald-600/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400', icon: ArrowDownCircle },
-  salida: { className: 'border-destructive/30 bg-destructive/10 text-destructive', icon: ArrowUpCircle },
-  venta: { className: 'border-primary/30 bg-primary/10 text-primary', icon: ShoppingCart },
-  ajuste: { className: 'border-muted-foreground/30 bg-muted text-muted-foreground', icon: RefreshCw },
-  merma: { className: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400', icon: TriangleAlert },
-  produccion: { className: 'border-muted-foreground/30 bg-muted text-muted-foreground', icon: RefreshCw },
+const TIPO_BADGE: Record<MovimientoStock['tipo'], { tono: TonoEstado; icon: typeof ArrowDownCircle }> = {
+  entrada: { tono: 'ok', icon: ArrowDownCircle },
+  salida: { tono: 'negativo', icon: ArrowUpCircle },
+  venta: { tono: 'curso', icon: ShoppingCart },
+  ajuste: { tono: 'neutro', icon: RefreshCw },
+  merma: { tono: 'atencion', icon: TriangleAlert },
+  produccion: { tono: 'neutro', icon: RefreshCw },
 }
 
 // Portado desde web/routers/stock.py (stock_movimientos) + web/templates/
@@ -101,7 +101,7 @@ export function StockMovimientos() {
         const t = row.original.tipo
         const info = TIPO_BADGE[t] ?? TIPO_BADGE.ajuste
         const Icon = info.icon
-        return <div className="flex justify-center"><Badge variant="outline" className={info.className}><Icon className="mr-1 size-3.5" />{TIPO_MOVIMIENTO_LABELS[t] ?? t}</Badge></div>
+        return <div className="flex justify-center"><BadgeEstado tono={info.tono}><Icon className="mr-1 size-3.5" />{TIPO_MOVIMIENTO_LABELS[t] ?? t}</BadgeEstado></div>
       },
     },
     {

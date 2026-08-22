@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
+import { BadgeEstado } from 'libra-ui/badge-estado'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -232,9 +232,9 @@ export function TesoreriaDetalle() {
           <Landmark className="size-5 text-primary" />
           {cuenta ? cuenta.nombre : 'Cuenta'}
           {cuenta && (
-            <Badge className={cuenta.saldo >= 0 ? 'bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-400' : ''} variant={cuenta.saldo >= 0 ? undefined : 'destructive'}>
+            <BadgeEstado tono={cuenta.saldo >= 0 ? 'ok' : 'negativo'}>
               {formatCurrency(cuenta.saldo)}
-            </Badge>
+            </BadgeEstado>
           )}
         </h2>
         {cuenta && (
