@@ -22,7 +22,8 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { PasswordInput } from 'libra-ui/PasswordInput'
-import { Check, Pencil, Plus, Trash2, UserCog, Users } from 'lucide-react'
+import { Check, Pencil, Plus, Trash2, UserCog } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const crearSchema = z.object({
   username: z.string().trim().min(1, 'El usuario es obligatorio'),
@@ -196,7 +197,7 @@ export function Usuarios() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Users className="size-5" />Usuarios</h2>
+        <TituloPantalla icono={UserCog}>Usuarios</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo usuario</Button>

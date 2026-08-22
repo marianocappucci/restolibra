@@ -16,9 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
-import {
-  PiggyBank, Plus, Trash2, Receipt, ArrowDownCircle, ArrowUpCircle, Wallet, Filter, X, Check,
-} from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Check, Filter, PiggyBank, Plus, Receipt, SquareStack, Trash2, Wallet, X } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -226,7 +225,7 @@ export function Caja() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><PiggyBank className="size-5 text-primary" />Caja</h2>
+        <TituloPantalla icono={SquareStack}>Caja</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo movimiento</Button>

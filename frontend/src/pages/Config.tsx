@@ -16,6 +16,7 @@ import {
   ExternalLink, Info, Mail, Phone, Power, Printer, Save, Send,
   Settings, ShieldCheck, Upload,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 // Portado desde Contalibra (frontend/src/pages/Config.tsx), mismo backend
 // libracore (config_manager/db_arca_config.py) -- ver web/api/config.py.
@@ -169,7 +170,7 @@ export function Config() {
 
   return (
     <div className="grid gap-4">
-      <h2 className="flex items-center gap-2 text-lg font-semibold"><Settings className="size-5" />Configuración</h2>
+      <TituloPantalla icono={Settings}>Configuración</TituloPantalla>
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2">
         <Tabs value={tab} onValueChange={(v) => { setTab(v as TabId); setSaved(null); setError(null) }}>

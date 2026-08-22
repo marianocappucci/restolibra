@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { FileText, Plus, Search, X, Eye, FileDown } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 export function Remitos() {
   const [remitos, setRemitos] = useState<Remito[]>([])
@@ -65,7 +66,7 @@ export function Remitos() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><FileText className="size-5 text-primary" />Remitos</h2>
+        <TituloPantalla icono={FileText}>Remitos</TituloPantalla>
         <Button asChild><Link to="/remitos/nuevo"><Plus />Nuevo remito</Link></Button>
       </div>
 

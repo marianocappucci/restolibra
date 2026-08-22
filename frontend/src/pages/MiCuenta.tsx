@@ -12,6 +12,7 @@ import {
 import { PasswordInput } from 'libra-ui/PasswordInput'
 import { Check, UserCircle } from 'lucide-react'
 import { useState } from 'react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const passwordSchema = z.object({
   new_password: z.string().min(6, 'Mínimo 6 caracteres'),
@@ -63,7 +64,7 @@ export function MiCuenta() {
 
   return (
     <div className="grid gap-4">
-      <h2 className="flex items-center gap-2 text-lg font-semibold"><UserCircle className="size-5" />Mi cuenta</h2>
+      <TituloPantalla icono={UserCircle}>Mi cuenta</TituloPantalla>
 
       <Card className="max-w-md">
         <CardHeader><CardTitle className="text-base">Datos de la cuenta</CardTitle></CardHeader>

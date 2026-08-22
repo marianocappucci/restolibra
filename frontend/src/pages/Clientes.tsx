@@ -23,6 +23,7 @@ import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import {
   Users, Plus, Pencil, Eye, Trash2, Undo2, Search, Loader2, CheckCircle2, XCircle,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const clienteSchema = z.object({
   name: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -206,7 +207,7 @@ export function Clientes() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Users className="size-5 text-primary" />Clientes</h2>
+        <TituloPantalla icono={Users}>Clientes</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo cliente</Button>

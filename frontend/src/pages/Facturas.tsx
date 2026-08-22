@@ -16,6 +16,7 @@ import {
   Eye, FileDown, Plus, CheckCircle2, Hourglass, CircleDollarSign,
   Receipt, FileText, FileMinus, FilePlus, Search, X, ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -205,7 +206,7 @@ export function Facturas() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Receipt className="size-5 text-primary" />Comprobantes</h2>
+        <TituloPantalla icono={Receipt}>Comprobantes</TituloPantalla>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button><Plus />Nuevo</Button>

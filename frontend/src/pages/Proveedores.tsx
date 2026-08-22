@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Truck, Plus, Pencil, Eye, Search, X } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const proveedorSchema = z.object({
   nombre: z.string().trim().min(1, 'El nombre es obligatorio'),
@@ -129,7 +130,7 @@ export function Proveedores() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Truck className="size-5 text-primary" />Proveedores</h2>
+        <TituloPantalla icono={Truck}>Proveedores</TituloPantalla>
         <Dialog open={nuevoOpen} onOpenChange={setNuevoOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo proveedor</Button>

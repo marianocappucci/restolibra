@@ -25,6 +25,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Package, Plus, Pencil, Trash2, Search, X, TrendingUp, ClipboardList } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -241,7 +242,7 @@ export function Productos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Package className="size-5 text-primary" />Productos</h2>
+        <TituloPantalla icono={Package}>Productos</TituloPantalla>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={abrirNuevo}><Plus />Nuevo producto</Button>

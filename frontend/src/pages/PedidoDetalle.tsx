@@ -13,10 +13,8 @@ import { BadgeEstado } from 'libra-ui/badge-estado'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
-import {
-  ArrowLeft, Receipt, Flame, Martini, Send, DollarSign, Ban, X, MessageSquare, Check,
-  Printer, Search, Sliders, Plus, Truck, Phone, MapPin, Bike, User, CheckCircle2, Users,
-} from 'lucide-react'
+import { ArrowLeft, Ban, Bike, Check, CheckCircle2, DollarSign, Flame, LayoutGrid, MapPin, Martini, MessageSquare, Phone, Plus, Printer, Receipt, Search, Send, Sliders, Truck, User, Users, X } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -255,11 +253,8 @@ export function PedidoDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <Receipt className="size-5 text-primary" />
-          {pedido.mesa_nombre ? `Mesa ${pedido.mesa_nombre}` : pedido.canal.charAt(0).toUpperCase() + pedido.canal.slice(1)}
-          <span className="text-sm font-normal text-muted-foreground">· Pedido {pedido.numero}</span>
-        </h2>
+        <TituloPantalla icono={LayoutGrid}>{pedido.mesa_nombre ? `Mesa ${pedido.mesa_nombre}` : pedido.canal.charAt(0).toUpperCase() + pedido.canal.slice(1)}
+          <span className="text-sm font-normal text-muted-foreground">· Pedido {pedido.numero}</span></TituloPantalla>
         <Button size="sm" variant="outline" onClick={() => navigate(pedido.mesa_id ? '/salon' : '/pedidos')}>
           <ArrowLeft />{pedido.mesa_id ? 'Salón' : 'Pedidos'}
         </Button>

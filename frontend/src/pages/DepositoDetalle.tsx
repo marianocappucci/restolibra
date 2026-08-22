@@ -12,7 +12,8 @@ import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose,
 } from '@/components/ui/dialog'
 import { formatEntero } from '@/lib/utils'
-import { ArrowLeft, ArrowLeftRight, Building2, Check, Pencil } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Check, Pencil, Warehouse } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function estadoStock(s: StockItem): { label: string; tono: TonoEstado } {
   if (s.stock_actual <= 0) return { label: 'Sin stock', tono: 'negativo' }
@@ -97,11 +98,8 @@ export function DepositoDetalle() {
     <Dialog open={editOpen} onOpenChange={setEditOpen}>
       <div className="grid gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-lg font-semibold">
-            <Building2 className="size-5 text-primary" />
-            {deposito ? deposito.nombre : 'Depósito'}
-            {deposito?.es_default ? <BadgeEstado tono="ok">Por defecto</BadgeEstado> : null}
-          </h2>
+          <TituloPantalla icono={Warehouse}>{deposito ? deposito.nombre : 'Depósito'}
+            {deposito?.es_default ? <BadgeEstado tono="ok">Por defecto</BadgeEstado> : null}</TituloPantalla>
           {deposito && (
             <div className="flex flex-wrap gap-2">
               <Button asChild size="sm" variant="outline"><Link to="/depositos/transferencia"><ArrowLeftRight />Transferir</Link></Button>

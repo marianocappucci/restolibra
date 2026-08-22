@@ -23,6 +23,7 @@ import {
   ArrowLeft, BookOpen, CircleDollarSign, Trash2, ArrowUpCircle, ArrowDownCircle,
   ShoppingCart, Receipt, User,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -202,9 +203,7 @@ export function CuentaCorrienteDetalle() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <BookOpen className="size-5 text-primary" />
-          {cliente ? cliente.name : 'Cuenta Corriente'}
+        <TituloPantalla icono={BookOpen}>{cliente ? cliente.name : 'Cuenta Corriente'}
           {cliente && (
             saldo > 0 ? (
               <BadgeEstado tono="atencion">Debe {formatCurrency(saldo)}</BadgeEstado>
@@ -213,8 +212,7 @@ export function CuentaCorrienteDetalle() {
             ) : (
               <BadgeEstado tono="neutro">Saldo $0</BadgeEstado>
             )
-          )}
-        </h2>
+          )}</TituloPantalla>
         {cliente && (
           <div className="flex flex-wrap gap-2">
             <Dialog open={pagoOpen} onOpenChange={setPagoOpen}>

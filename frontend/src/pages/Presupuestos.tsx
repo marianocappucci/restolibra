@@ -10,6 +10,7 @@ import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Plus, Pencil, Search, X, Eye, FileDown, Calculator } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -106,7 +107,7 @@ export function Presupuestos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><Calculator className="size-5 text-primary" />Presupuestos</h2>
+        <TituloPantalla icono={Calculator}>Presupuestos</TituloPantalla>
         <Button asChild><Link to="/presupuestos/nuevo"><Plus />Nuevo presupuesto</Link></Button>
       </div>
 

@@ -12,9 +12,8 @@ import { Input } from '@/components/ui/input'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
-import {
-  ArrowDownCircle, ArrowLeft, ArrowUpCircle, History, RefreshCw, ShoppingCart, TriangleAlert, X,
-} from 'lucide-react'
+import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Boxes, RefreshCw, ShoppingCart, TriangleAlert, X } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const TIPO_BADGE: Record<MovimientoStock['tipo'], { tono: TonoEstado; icon: typeof ArrowDownCircle }> = {
   entrada: { tono: 'ok', icon: ArrowDownCircle },
@@ -118,11 +117,8 @@ export function StockMovimientos() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="flex items-center gap-2 text-lg font-semibold">
-          <History className="size-5 text-primary" />
-          Movimientos de stock
-          {productoNombre && <span className="text-sm font-normal text-muted-foreground">· {productoNombre}</span>}
-        </h2>
+        <TituloPantalla icono={Boxes}>Movimientos de stock
+          {productoNombre && <span className="text-sm font-normal text-muted-foreground">· {productoNombre}</span>}</TituloPantalla>
         <Button asChild size="sm" variant="outline"><Link to="/stock"><ArrowLeft />Stock</Link></Button>
       </div>
 

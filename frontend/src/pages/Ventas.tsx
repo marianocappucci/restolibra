@@ -24,6 +24,7 @@ import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-t
 import {
   ShoppingCart, Plus, Eye, Printer, FileCheck, Ban, ReceiptText, ListChecks, UserPlus, X, CheckCircle2,
 } from 'lucide-react'
+import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10)
@@ -301,7 +302,7 @@ export function Ventas() {
   return (
     <div className="grid gap-4">
       <div className="flex items-center justify-between">
-        <h2 className="flex items-center gap-2 text-lg font-semibold"><ShoppingCart className="size-5 text-primary" />Ventas</h2>
+        <TituloPantalla icono={ShoppingCart}>Ventas</TituloPantalla>
         <Dialog open={showNueva} onOpenChange={setShowNueva}>
           <DialogTrigger asChild>
             <Button onClick={abrirNueva}><Plus />Nueva venta</Button>
