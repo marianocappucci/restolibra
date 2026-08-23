@@ -107,4 +107,12 @@ def test_sync_mp_auto_puede_importar_el_paquete():
         "sync_mp_auto.py perdio el sys.path.insert: corre por ruta desde cron "
         "y sin eso no encuentra el paquete `app`"
     )
-    assert "from app import" in fuente
+    # Que importe ALGO del paquete `app`, no una cadena literal: desde que la
+    # sincronizacion vive en `libracore.mp_sync`, lo que este script importa de
+    # `app` es la regla de negocio del webhook (`from app.web.routers...`). Lo
+    # que el test cuida es que el `sys.path.insert` siga siendo necesario, no
+    # como se escribe el import.
+    assert re.search(r"^from app[. ]", fuente, re.M), (
+        "sync_mp_auto.py ya no importa nada del paquete `app`: si es asi, el "
+        "sys.path.insert de arriba dejo de ser necesario y este test no cuida nada"
+    )
