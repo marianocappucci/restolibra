@@ -12,6 +12,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Calculator, CheckCheck, CheckCircle2, FileDown, Mail, Pencil, Receipt, RefreshCw, Send, Trash2, Undo2, XCircle } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -169,8 +170,8 @@ export function PresupuestoDetalle() {
                   <CardHeader><CardTitle className="text-base">Datos del presupuesto</CardTitle></CardHeader>
                   <CardContent className="grid gap-2 text-sm">
                     <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{p.number}</span></p>
-                    <p><span className="text-muted-foreground">Fecha:</span> {p.date}</p>
-                    <p><span className="text-muted-foreground">Válido hasta:</span> {p.valid_until || '—'}</p>
+                    <p><span className="text-muted-foreground">Fecha:</span> {fecha(p.date)}</p>
+                    <p><span className="text-muted-foreground">Válido hasta:</span> {fecha(p.valid_until) || '—'}</p>
                     <p><span className="text-muted-foreground">Estado:</span> <BadgeEstado tono={ESTADO_TONO[st] ?? 'neutro'}>{ESTADO_LABELS[st] ?? st}</BadgeEstado></p>
                     {p.observations && <p><span className="text-muted-foreground">Observaciones:</span> {p.observations}</p>}
                   </CardContent>

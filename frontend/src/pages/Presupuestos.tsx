@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Plus, Pencil, Search, X, Eye, FileDown, Calculator } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -74,7 +75,7 @@ export function Presupuestos() {
       minSize: 90,
       cell: ({ row }) => <BadgeEstado tono={ESTADO_TONO[row.original.status] ?? 'neutro'}>{ESTADO_LABELS[row.original.status] ?? row.original.status}</BadgeEstado>,
     },
-    { accessorKey: 'valid_until', header: 'Válido hasta', size: 115, minSize: 90, cell: ({ row }) => row.original.valid_until || '—' },
+    { accessorKey: 'valid_until', header: 'Válido hasta', size: 115, minSize: 90, cell: ({ row }) => fecha(row.original.valid_until) || '—' },
     { accessorKey: 'total', header: () => <div className="text-right">Total</div>, size: 130, minSize: 100, cell: ({ row }) => <div className="truncate text-right font-medium">{formatCurrency(row.original.total)}</div> },
     {
       id: 'actions',

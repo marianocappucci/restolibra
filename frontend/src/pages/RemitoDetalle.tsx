@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, FileDown, FileText, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 export function RemitoDetalle() {
   const { id } = useParams<{ id: string }>()
@@ -81,7 +82,7 @@ export function RemitoDetalle() {
               <CardHeader><CardTitle className="text-base">Datos del remito</CardTitle></CardHeader>
               <CardContent className="grid gap-2 text-sm">
                 <p><span className="text-muted-foreground">Número:</span> <span className="font-mono">{detalle.number}</span></p>
-                <p><span className="text-muted-foreground">Fecha:</span> {detalle.date}</p>
+                <p><span className="text-muted-foreground">Fecha:</span> {fecha(detalle.date)}</p>
                 {detalle.observations && <p><span className="text-muted-foreground">Observaciones:</span> {detalle.observations}</p>}
               </CardContent>
             </Card>

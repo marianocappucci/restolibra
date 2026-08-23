@@ -14,6 +14,7 @@ import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { formatEntero } from '@/lib/utils'
 import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, Boxes, RefreshCw, ShoppingCart, TriangleAlert, X } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 const TIPO_BADGE: Record<MovimientoStock['tipo'], { tono: TonoEstado; icon: typeof ArrowDownCircle }> = {
   entrada: { tono: 'ok', icon: ArrowDownCircle },
@@ -82,7 +83,7 @@ export function StockMovimientos() {
   const productoNombre = productos.find((p) => String(p.id) === productoId)?.nombre
 
   const columns = useMemo<ColumnDef<MovimientoStock>[]>(() => [
-    { accessorKey: 'fecha', header: sortableHeader('Fecha'), cell: ({ row }) => <span className="text-muted-foreground">{row.original.fecha}</span> },
+    { accessorKey: 'fecha', header: sortableHeader('Fecha'), cell: ({ row }) => <span className="text-muted-foreground">{fecha(row.original.fecha)}</span> },
     {
       accessorKey: 'producto_nombre',
       header: 'Producto',
