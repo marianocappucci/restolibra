@@ -13,10 +13,7 @@ import {
   ArrowLeft, CalendarClock, CalendarPlus, PlayCircle, X, Filter,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 const ESTADO_LABEL: Record<Reserva['estado'], string> = { pendiente: 'Pendiente', cumplida: 'Sentada', cancelada: 'Cancelada' }
 const ESTADO_TONO: Record<Reserva['estado'], TonoEstado> = { pendiente: 'curso', cumplida: 'ok', cancelada: 'negativo' }
@@ -29,7 +26,7 @@ export function Reservas() {
   const navigate = useNavigate()
   const [mesas, setMesas] = useState<Mesa[]>([])
   const [reservas, setReservas] = useState<Reserva[]>([])
-  const [fecha, setFecha] = useState(todayIso())
+  const [fecha, setFecha] = useState(hoyISO())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
@@ -141,7 +138,7 @@ export function Reservas() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <div className="grid gap-1"><Label className="text-xs">Fecha</Label><Input type="date" value={fecha} min={todayIso()} onChange={(e) => setFecha(e.target.value)} /></div>
+              <div className="grid gap-1"><Label className="text-xs">Fecha</Label><Input type="date" value={fecha} min={hoyISO()} onChange={(e) => setFecha(e.target.value)} /></div>
               <div className="grid gap-1"><Label className="text-xs">Hora</Label><Input type="time" value={hora} onChange={(e) => setHora(e.target.value)} /></div>
             </div>
 
@@ -162,7 +159,7 @@ export function Reservas() {
           <div className="flex flex-wrap items-end gap-2">
             <div className="grid gap-1"><Label className="text-xs">Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-44" /></div>
             <Button size="sm" variant="outline" onClick={cargarReservas}><Filter />Ver</Button>
-            {fecha !== todayIso() && <Button size="sm" variant="outline" onClick={() => setFecha(todayIso())}>Hoy</Button>}
+            {fecha !== hoyISO() && <Button size="sm" variant="outline" onClick={() => setFecha(hoyISO())}>Hoy</Button>}
           </div>
 
           <Card>

@@ -21,10 +21,7 @@ import {
   Landmark, Plus, Pencil, List, ArrowLeftRight, ArrowDownLeft, ArrowUpRight, ArrowDownCircle, ArrowUpCircle, Check,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -59,7 +56,7 @@ export function Tesoreria() {
   const [tOrigen, setTOrigen] = useState('')
   const [tDestino, setTDestino] = useState('')
   const [tMonto, setTMonto] = useState('')
-  const [tFecha, setTFecha] = useState(todayIso())
+  const [tFecha, setTFecha] = useState(hoyISO())
   const [tConcepto, setTConcepto] = useState('Transferencia entre cuentas')
   const [tReferencia, setTReferencia] = useState('')
   const [transfiriendo, setTransfiriendo] = useState(false)
@@ -91,7 +88,7 @@ export function Tesoreria() {
   }
 
   function abrirTransfer() {
-    setTOrigen(''); setTDestino(''); setTMonto(''); setTFecha(todayIso())
+    setTOrigen(''); setTDestino(''); setTMonto(''); setTFecha(hoyISO())
     setTConcepto('Transferencia entre cuentas'); setTReferencia('')
     setShowTransfer(true)
   }
