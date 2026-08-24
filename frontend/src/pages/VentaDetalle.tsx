@@ -9,6 +9,7 @@ import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Ban, CheckCircle2, FileCheck, PackageCheck, Printer, QrCode, ReceiptText, ShoppingCart } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -93,7 +94,7 @@ export function VentaDetalle() {
             <Card>
               <CardHeader><CardTitle className="text-base">Datos de la venta</CardTitle></CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <p><span className="text-muted-foreground">Fecha:</span> {detalle.fecha}</p>
+                <p><span className="text-muted-foreground">Fecha:</span> {fecha(detalle.fecha)}</p>
                 <p><span className="text-muted-foreground">Cliente:</span> {detalle.cliente_nombre || '— Consumidor final —'}</p>
                 {detalle.observaciones && <p><span className="text-muted-foreground">Obs.:</span> {detalle.observaciones}</p>}
               </CardContent>

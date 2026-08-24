@@ -18,6 +18,7 @@ import {
   Forward, UserRoundX, MailWarning, History, ArrowDownCircle, Hourglass, Info, User,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -270,7 +271,11 @@ export function MpBandeja() {
 
   // Cobros sincronizados (pestaña 2): transferencias pendientes de facturar.
   const columnsCobros = useMemo<ColumnDef<MpMovimiento>[]>(() => [
-    { id: 'fecha', header: sortableHeader('Fecha'), accessorFn: (r) => r.fecha || r.created_at, size: 100, minSize: 90 },
+    {
+      id: 'fecha', header: sortableHeader('Fecha'), size: 100, minSize: 90,
+      accessorFn: (r) => r.fecha || r.created_at,
+      cell: ({ row }) => fecha(row.original.fecha || row.original.created_at),
+    },
     {
       id: 'emisor',
       header: 'Emisor',

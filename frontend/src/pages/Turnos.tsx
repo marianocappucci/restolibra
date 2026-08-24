@@ -14,6 +14,7 @@ import {
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Clock, PlayCircle, StopCircle, Eye, ArrowUpCircle, ArrowDownCircle, CheckCircle2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fechaHora } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -23,8 +24,7 @@ function formatCurrency(value: number): string {
 // ruido y cuestan ~18px de ancho por columna (son dos). Se recortan solo si
 // el valor tiene exactamente ese formato -- cualquier otra cosa pasa igual.
 function sinSegundos(valor: string | null | undefined): string {
-  if (!valor) return ''
-  return /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(valor) ? valor.slice(0, 16) : valor
+  return fechaHora(valor)
 }
 
 function DiferenciaBadge({ esperado, declarado }: { esperado: number | null; declarado: number | null }) {
@@ -188,7 +188,7 @@ export function Turnos() {
             <CardTitle className="flex items-center gap-2 text-base">
               <span className="inline-block size-2.5 rounded-full bg-emerald-500" />Turno abierto
             </CardTitle>
-            <CardDescription>Desde {turnoActivo.apertura} — fondo inicial {formatCurrency(turnoActivo.monto_inicial)}</CardDescription>
+            <CardDescription>Desde {fechaHora(turnoActivo.apertura)} — fondo inicial {formatCurrency(turnoActivo.monto_inicial)}</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">
             <Button asChild size="sm" variant="outline"><Link to={`/turnos/${turnoActivo.id}`}><Eye />Ver detalle</Link></Button>

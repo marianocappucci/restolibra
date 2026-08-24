@@ -17,6 +17,7 @@ import {
   Settings, ShieldCheck, Upload,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fechaHora } from '@/lib/fechas'
 
 // Portado desde Contalibra (frontend/src/pages/Config.tsx), mismo backend
 // libracore (config_manager/db_arca_config.py) -- ver web/api/config.py.
@@ -824,7 +825,7 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
                   <li key={b.filename} className="flex items-center justify-between py-2 text-sm">
                     <div>
                       <p className="font-mono font-medium">{b.filename}</p>
-                      <p className="text-muted-foreground">{b.mtime} — {b.size_mb} MB</p>
+                      <p className="text-muted-foreground">{fechaHora(b.mtime)} — {b.size_mb} MB</p>
                     </div>
                     <Button asChild size="sm" variant="outline">
                       <a href={`/api/config/backups/${b.filename}`} download><Download />Descargar</a>

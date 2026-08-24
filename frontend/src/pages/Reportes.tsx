@@ -12,6 +12,7 @@ import {
   Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, AlertTriangle,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function firstOfMonthIso(): string {
   const d = new Date()
@@ -151,7 +152,7 @@ export function Reportes() {
                       <tbody>
                         {data.ventas_ts.map((v) => (
                           <tr key={v.periodo} className="border-b last:border-0">
-                            <td className="p-3">{v.periodo}</td>
+                            <td className="p-3">{fecha(v.periodo)}</td>
                             <td className="p-3 text-right">{v.cantidad}</td>
                             <td className="p-3 text-right font-semibold">{formatCurrency(v.total)}</td>
                           </tr>
