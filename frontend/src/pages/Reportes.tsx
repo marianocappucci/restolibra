@@ -9,9 +9,10 @@ import {
 } from '@/components/ui/select'
 import {
   BarChart3, ShoppingCart, DollarSign, Receipt, Wallet, Download, TrendingUp, PieChart, Boxes,
-  Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, AlertTriangle,
+  AlertTriangle,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { iconoDe } from 'libra-ui/medios-pago'
 import { fecha } from '@/lib/fechas'
 import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
@@ -19,19 +20,17 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const MEDIO_LABELS: Record<string, string> = {
-  efectivo: 'Efectivo', transferencia: 'Transferencia', mercadopago: 'Mercado Pago',
-  cuenta_dni: 'Cuenta DNI', billetera: 'Billetera', cuenta_corriente: 'Cuenta Corriente', cheque: 'Cheque',
-}
-const MEDIO_ICONS: Record<string, typeof Banknote> = {
-  efectivo: Banknote, transferencia: Landmark, mercadopago: Smartphone,
-  cuenta_dni: CreditCard, billetera: WalletCards, cuenta_corriente: ArrowRightLeft, cheque: Receipt,
-}
+// 🔴 Aca habia un `MEDIO_LABELS` y un `MEDIO_ICONS` propios: dos copias mas del
+// vocabulario, y la de etiquetas ya divergia (decia "Billetera" donde el resto
+// de la casa dice "Otras billeteras"). El `MEDIO_ICONS` estaba ademas duplicado
+// byte a byte en `CajaMedios.tsx`, y otras dos veces en Contalibra.
+//
+// Las etiquetas vienen con el reporte (`data.medio_label`), que las saca del
+// motor e incluye las grafias historicas -- un reporte mira meses para atras.
+// Los iconos viven en `libra-ui/medios-pago`, como lookup PARCIAL con fallback:
+// un medio nuevo en LibraCore se dibuja con el generico en vez de romper la
+// tabla.
 
-// Reportes generales de negocio (ventas, medios de pago, productos, caja,
-// stock bajo) -- reuso directo del modulo homonimo de Contalibra. NO
-// incluye los reportes gastronomicos de Salon/Pedidos/KDS (esos viven en
-// db_reportes_gastronomicos.py y salon/reportes.html, modulo aparte).
 export function Reportes() {
   const [desde, setDesde] = useState(primerDiaDelMesISO())
   const [hasta, setHasta] = useState(hoyISO())
@@ -178,12 +177,12 @@ export function Reportes() {
                   return (
                     <ul className="grid gap-3">
                       {data.medios.map((m) => {
-                        const Icon = MEDIO_ICONS[m.medio] ?? Banknote
+                        const Icon = iconoDe(m.medio)
                         const p = totalMedios ? Math.round((m.total / totalMedios) * 1000) / 10 : 0
                         return (
                           <li key={m.medio} className="grid gap-1 text-sm">
                             <div className="flex items-center justify-between">
-                              <span className="flex items-center gap-2"><Icon className="size-4 text-muted-foreground" />{MEDIO_LABELS[m.medio] ?? m.medio}</span>
+                              <span className="flex items-center gap-2"><Icon className="size-4 text-muted-foreground" />{data.medio_label[m.medio] ?? m.medio}</span>
                               <span className="font-semibold">{formatCurrency(m.total)}</span>
                             </div>
                             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
