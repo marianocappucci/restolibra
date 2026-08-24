@@ -2,8 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  api, ApiError, MEDIOS_PAGO_LABELS, type Caja, type Cliente, type MovimientoCC,
+  api, ApiError, type Caja, type Cliente, type MovimientoCC,
 } from '../api'
+import { useMediosPago } from '../lib/medios-pago'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,7 @@ function formatCurrency(value: number): string {
 // convertir el resto de los modulos a Dialog inline. Mismo backend
 // libracore, ver web/api/cuenta_corriente.py.
 export function CuentaCorrienteDetalle() {
+  const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
   const { id } = useParams<{ id: string }>()
   const clienteId = Number(id)
   const { user } = useAuth()
@@ -168,7 +170,7 @@ export function CuentaCorrienteDetalle() {
       cell: ({ row }) => (
         <span className="flex flex-wrap items-center gap-1 text-muted-foreground">
           {row.original.referencia || '—'}
-          {row.original.medio && <Badge variant="outline">{MEDIOS_PAGO_LABELS[row.original.medio] ?? row.original.medio}</Badge>}
+          {row.original.medio && <Badge variant="outline">{etiquetaDeMedio(row.original.medio)}</Badge>}
         </span>
       ),
     },
@@ -239,7 +241,9 @@ export function CuentaCorrienteDetalle() {
                       <Select value={medioPago} onValueChange={setMedioPago}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {Object.entries(MEDIOS_PAGO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                          {/* Del motor, no de una copia TypeScript: esa tenia `cheque` de mas
+                              y le faltaban las tarjetas. */}
+                          {medios.map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

@@ -6,6 +6,8 @@ from fastapi import APIRouter, Request, Depends
 from fastapi.responses import StreamingResponse
 from typing import Annotated
 
+from libracore import medios_pago
+
 from app import database as db
 from app.web.auth import require_auth
 
@@ -18,7 +20,7 @@ Auth = Annotated[str, Depends(require_auth)]
 # React -- ver wiki/entities/restolibra.md, Etapa D; ahora viven en
 # web/api/reportes.py + frontend/src/pages/Reportes.tsx y CajaMedios.tsx.
 # Solo quedan los exports CSV, que la SPA linkea directo (no viven bajo
-# /api/). `_MEDIO_LABEL`/`_pivot_caja_medios`/`_totales_por_medio` NO se
+# /api/). `MEDIO_LABEL`/`_pivot_caja_medios`/`_totales_por_medio` NO se
 # borran pese a no tener ruta HTML propia: web/api/reportes.py los importa
 # tal cual (sin duplicarlos) para el endpoint JSON /api/reportes/caja-medios.
 
@@ -75,16 +77,24 @@ def export_productos(request: Request, user: Auth, desde: str = "", hasta: str =
 
 # ── Reporte Caja por Medio de Cobro (solo export) ────────────────────────────
 
-_MEDIO_LABEL = {
-    "efectivo":         "Efectivo",
-    "transferencia":    "Transferencia",
-    "mercadopago":      "Mercado Pago",
-    "cuenta_dni":       "Cuenta DNI",
-    "billetera":        "Billetera",
-    "cuenta_corriente": "Cuenta Corriente",
-    "cheque":           "Cheque",
-    "sin_especificar":  "Sin especificar",
-}
+# 🔴 Las etiquetas salen del motor. Este mapa era una de las 28 copias del
+# vocabulario, y una de las que ya divergia: decia "Billetera" donde el resto de
+# la casa dice "Otras billeteras", y "Cuenta Corriente" con dos mayusculas.
+#
+# `sin_especificar` NO es un medio: es lo que el SQL del reporte pone cuando la
+# columna viene nula, asi que se resuelve aca y no en el vocabulario de la
+# familia -- meterlo alla lo haria elegible en un selector.
+_SIN_MEDIO = {"sin_especificar": "Sin especificar", "": "Sin especificar"}
+
+#: El mapa completo que consume la SPA. Lleva **los historicos tambien**: un
+#: reporte mira meses para atras, y ahi hay filas con `tarjeta`, `mercado_pago` y
+#: `cuenta corriente` con espacio. Sin ellas, esas filas salian con el slug crudo
+#: justo en la pantalla donde se cuadra la caja.
+MEDIO_LABEL = {**medios_pago.CONOCIDOS, **_SIN_MEDIO}
+
+
+def _medio_label(medio: str) -> str:
+    return MEDIO_LABEL.get(medio, medio)
 
 
 def _pivot_caja_medios(rows: list) -> list:
@@ -147,7 +157,7 @@ def export_caja_medios(user: Auth, desde: str = "", hasta: str = "", caja_id: in
     w = csv.writer(buf)
     w.writerow(["Caja", "Medio de cobro", "Tipo", "Operaciones", "Total"])
     for r in rows:
-        label = _MEDIO_LABEL.get(r["medio"], r["medio"])
+        label = _medio_label(r["medio"])
         w.writerow([r["caja_nombre"], label, r["tipo"], r["operaciones"], r["total"]])
     buf.seek(0)
     fn = f"caja_medios_{desde}_{hasta}.csv"

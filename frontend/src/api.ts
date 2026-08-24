@@ -18,7 +18,9 @@ import type { OpcionSelect } from 'libra-ui/SelectBuscable'
 // producto que emite comprobantes. Se re-exporta desde aca para que los
 // archivos que ya lo importaban de este modulo sigan andando sin cambios
 // (mismo patron que `cn` en lib/utils.ts).
-export { MEDIOS_PAGO_LABELS } from 'libra-ui/facturas'
+// MEDIOS_PAGO_LABELS se fue: era una copia de la lista del motor y divergia
+// en las dos direcciones. La lista sale de la API; las etiquetas y
+// abreviaturas, de libra-ui/medios-pago. Ver lib/medios-pago.ts.
 export type {
   BorradorDuplicado, Caja, Factura, FacturaDetalle, FacturaItem,
 } from 'libra-ui/facturas'
@@ -605,6 +607,10 @@ export type ReportesData = {
   desde: string; hasta: string; agrupacion: string
   resumen: ReporteResumen; ventas_ts: ReporteVentaTs[]; medios: ReporteMedio[]
   productos: ReporteProducto[]; caja: ReporteCaja[]; stock_bajo: ReporteStockBajo[]
+  /** Como se llama cada medio, **incluidos los historicos**: un reporte mira
+   *  meses para atras y ahi hay filas con tarjeta y mercado_pago. Viene del
+   *  backend porque la pantalla ya no declara el vocabulario. */
+  medio_label: Record<string, string>
 }
 
 // Caja por medio de cobro (sub-reporte de Reportes, /reportes/caja-medios)

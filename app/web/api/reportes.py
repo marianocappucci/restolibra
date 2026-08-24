@@ -14,7 +14,7 @@ import datetime
 from fastapi import APIRouter
 
 from app import database as db
-from app.web.routers.reportes import _MEDIO_LABEL, _pivot_caja_medios, _totales_por_medio
+from app.web.routers.reportes import MEDIO_LABEL, _pivot_caja_medios, _totales_por_medio
 
 router = APIRouter(prefix="/api/reportes", tags=["reportes"])
 
@@ -40,6 +40,13 @@ def obtener(desde: str = "", hasta: str = "", agrupacion: str = "dia"):
         "productos": db.get_reporte_productos_top(desde, hasta),
         "caja": db.get_reporte_caja(desde, hasta),
         "stock_bajo": db.get_reporte_stock_bajo(),
+        # 🔴 Las etiquetas viajan con el reporte, igual que en `/caja-medios`.
+        # Sin esto la pantalla las declaraba por su cuenta --era una copia mas
+        # del vocabulario-- y ya divergia: decia "Billetera" donde el resto de
+        # la casa dice "Otras billeteras". Lleva **los historicos tambien**: un
+        # reporte mira meses para atras, y ahi hay filas con `tarjeta` y
+        # `mercado_pago`.
+        "medio_label": MEDIO_LABEL,
     }
 
 
@@ -54,5 +61,5 @@ def caja_medios(desde: str = "", hasta: str = "", caja_id: int = 0):
         "cajas_config": db.get_all_cajas(),
         "cajas": cajas_pivot,
         "totales": _totales_por_medio(cajas_pivot),
-        "medio_label": _MEDIO_LABEL,
+        "medio_label": MEDIO_LABEL,
     }

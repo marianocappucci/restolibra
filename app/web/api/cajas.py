@@ -8,18 +8,17 @@ Ventas/Salon."""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from libracore import medios_pago
+
 from app import database as db
 
 router = APIRouter(prefix="/api/cajas", tags=["cajas"])
 
-TODOS_MEDIOS = [
-    {"id": "efectivo", "label": "Efectivo"},
-    {"id": "transferencia", "label": "Transferencia"},
-    {"id": "mercadopago", "label": "Mercado Pago"},
-    {"id": "cuenta_dni", "label": "Cuenta DNI"},
-    {"id": "billetera", "label": "Otras billeteras"},
-    {"id": "cuenta_corriente", "label": "Cuenta corriente"},
-]
+# 🔴 Del motor, no de una copia escrita aca. Este repo tenia la MISMA lista
+# escrita TRES VECES --`api/ventas.py`, `api/cajas.py` y `api/pedidos.py`-- y
+# otras 25 copias vivian en los demas productos, ya divergiendo entre si. Ver
+# `libracore.medios_pago` y wiki/concepts/medios-de-pago-familia-libra.md.
+TODOS_MEDIOS = medios_pago.para_selector()
 
 
 class CajaPayload(BaseModel):

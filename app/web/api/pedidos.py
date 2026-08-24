@@ -30,7 +30,9 @@ import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from libracore import medios_pago
 
 from app import database as db
 from app.web.api_auth import get_current_user_json
@@ -39,18 +41,19 @@ router = APIRouter(prefix="/api/pedidos", tags=["pedidos"])
 
 CANALES_SIN_MESA = ["barra", "takeaway", "delivery"]
 
-MEDIOS_PAGO = [
-    {"id": "efectivo", "label": "Efectivo"},
-    {"id": "transferencia", "label": "Transferencia"},
-    {"id": "mercadopago", "label": "Mercado Pago"},
-    {"id": "cuenta_dni", "label": "Cuenta DNI"},
-    {"id": "billetera", "label": "Otras billeteras"},
-    {"id": "cuenta_corriente", "label": "Cuenta corriente"},
-]
+# 🔴 Del motor. Seguia duplicada de `api/ventas.py` --el docstring de arriba
+# explica por que no se importaba de alli: este router funciona con el modulo
+# "ventas" apagado-- pero esa razon nunca pidio COPIAR LA LISTA, solo no depender
+# de aquel modulo. Salir del motor resuelve las dos cosas.
+MEDIOS_PAGO = medios_pago.para_selector()
 
 
 @router.get("/medios-pago")
-def medios_pago():
+def listar_medios_pago():
+    # 🔴 Se llamaba `medios_pago` y TAPABA al modulo del motor dentro de este
+    # archivo: `medios_pago.validar(...)` revienta con "'function' object has
+    # no attribute 'validar'". La ruta no cambia -- el nombre de la funcion no
+    # es parte del contrato HTTP.
     return MEDIOS_PAGO
 
 
@@ -191,9 +194,22 @@ def anular(pid: int):
 
 
 class PagoPayload(BaseModel):
+    #: 🔴 **Se valida.** Hasta el 2026-08-24 era un `str` pelado, y
+    #: `add_venta_pago()` tampoco miraba: la lista de medios solo existia para
+    #: poblar el `<Select>`. Un medio inventado entraba, creaba su movimiento de
+    #: caja y salia en el cierre como un bucket suelto con el nombre crudo -- la
+    #: plata bien contada y **el reparto mal**. Nadie se enteraba.
+    #:
+    #: Las seis grafias de siempre siguen siendo validas, asi que un frontend
+    #: viejo no se rompe; lo que rebota es lo que nunca debio entrar.
     medio: str
     monto: float
     referencia: str = ""
+
+    @field_validator("medio")
+    @classmethod
+    def _medio_del_vocabulario(cls, v: str) -> str:
+        return medios_pago.validar(v)
 
 
 class CobroPayload(BaseModel):
