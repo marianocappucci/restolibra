@@ -15,6 +15,7 @@ services:
   # Sin `ports:` a propósito: sólo se llega desde la red interna.
   restolibra-postgres:
     image: postgres:16
+    command: postgres -c timezone=America/Argentina/Buenos_Aires
     container_name: restolibra-postgres
     restart: unless-stopped
     environment:
@@ -23,6 +24,7 @@ services:
       # Sin default a propósito: `:?` aborta el `up` si falta, en vez de
       # levantar la base con una clave escrita en git.
       POSTGRES_PASSWORD: ${RESTOLIBRA_POSTGRES_PASSWORD:?hay que definirla en el .env del VPS}
+      TZ: America/Argentina/Buenos_Aires
     volumes:
       - restolibra-postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -80,6 +82,7 @@ services:
     command: uvicorn app.asgi:app --host 0.0.0.0 --port 8000 --reload
     environment:
       - SECRET_KEY=${SECRET_KEY:-restolibra-dev-secret}
+      - TZ=America/Argentina/Buenos_Aires
       - ADMIN_USER=${ADMIN_USER:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-}
       - ADMIN_NOMBRE=${ADMIN_NOMBRE:-Administrador}

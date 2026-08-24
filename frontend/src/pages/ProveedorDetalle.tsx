@@ -22,6 +22,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DataTable, sortableHeader } from 'libra-ui/data-table'
 import { Truck, Pencil, ArrowLeft, Plus, Inbox, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -108,7 +109,7 @@ export function ProveedorDetalle() {
   async function cargarEgresos() {
     setEgresosLoading(true)
     try {
-      const hoy = new Date().toISOString().slice(0, 10)
+      const hoy = hoyISO()
       const data = await api.get<{ items: Egreso[] }>(
         `/api/egresos?proveedor_id=${proveedorId}&desde=2000-01-01&hasta=${hoy}`,
       )

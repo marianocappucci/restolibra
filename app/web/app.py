@@ -29,6 +29,7 @@ from app.web import auth as web_auth
 from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.session_auth import build_demo_codigos_router, demo_username
+from libraauth.terminos import TerminosRepository, build_terminos_router
 from app.web.api import auth as api_auth_router
 from app.web.api import dashboard as api_dashboard_router
 from app.web.api import caja as api_caja_router
@@ -54,6 +55,7 @@ from app.web.api import stock as api_stock_router
 from app.web.api import listas_precio as api_listas_precio_router
 from app.web.api import productos as api_productos_router
 from app.web.api import config as api_config_router
+from libracore.arca_router import build_arca_router
 from app.web.api import salon as api_salon_router
 from app.web.api import pedidos as api_pedidos_router
 from app.web.api_auth import (  # noqa: F401
@@ -79,6 +81,14 @@ app.state.users = db_usuarios.user_repository()
 app.state.session_auth = web_auth.session_auth
 app.state.auth_events = AuthEventRepository(db_usuarios.sessions())
 app.state.password_reset = db_usuarios.password_reset_service()
+# Terminos y Condiciones del Servicio: la prueba de la aceptacion y lo que
+# enciende el gate. MISMA fabrica de sesiones que el resto del motor de auth --
+# la tabla tiene FK a `usuarios`, que en este producto vive en la base de
+# LibraCore.
+#
+# 🔴 Sin esta linea el gate NO corta y la instancia no falla: se queda sin gate,
+# en silencio. Por eso hay un test que lo prueba (`tests/test_terminos_gate.py`).
+app.state.terminos = TerminosRepository(db_usuarios.sessions())
 
 # 🔴 Solo en la demo, y **falla cerrado**: una instancia demo que llegue aca
 # sin el repositorio deja de dejar entrar, con `503 demo access codes not
@@ -253,6 +263,10 @@ app.include_router(kds_router.router)
 _auth_json = Depends(get_current_user_json)
 
 app.include_router(api_auth_router.router)
+# `GET /api/terminos`, `POST /api/terminos/aceptar`, `GET /api/terminos/historial`.
+# Bajo `/api` como el resto de la API de este producto, y **sin gatear desde
+# afuera**: es el unico camino para salir del gate.
+app.include_router(build_terminos_router(prefix="/api/terminos"))
 app.include_router(api_dashboard_router.router)
 app.include_router(
     api_caja_router.router,
@@ -288,6 +302,18 @@ app.include_router(
 )
 app.include_router(
     api_config_router.router,
+    dependencies=[Depends(require_admin_json)],
+)
+# ARCA, del motor. Reemplaza al `PUT /api/config/arca` y al
+# `POST /api/config/arca/certificados` propios, y a los tres `GET /api/arca/*`
+# que vivian mas abajo en este archivo.
+#
+# 🔑 Lo que gana la pantalla: el par se valida ANTES de guardarse. Subir el
+# `.csr` en vez del `.crt`, cambiar de campo el certificado y la clave, o subir
+# un par que **no es pareja** se rechazan al subir, con el motivo escrito. Antes
+# los tres se aceptaban y fallaban al emitir el primer comprobante.
+app.include_router(
+    build_arca_router(prefix="/api/config/arca"),
     dependencies=[Depends(require_admin_json)],
 )
 # Datos / Backup, del motor (LibraCore). Reemplaza a la implementacion propia
@@ -464,61 +490,6 @@ async def api_auth_verify(request: Request):
     })
 
 
-@app.get("/api/arca/estado", include_in_schema=False)
-def arca_estado(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"configurado": False})
-    cfg = configs[0]
-    cert_path, clave_path = config_manager.resolve_cert_paths(
-        cfg.get("certificado_path", ""), cfg.get("clave_path", "")
-    )
-    tiene_cert  = bool(cert_path) and os.path.exists(cert_path)
-    tiene_clave = bool(clave_path) and os.path.exists(clave_path)
-    return JSONResponse({
-        "configurado": tiene_cert and tiene_clave,
-        "ambiente": cfg.get("ambiente", ""),
-        "cuit": cfg.get("cuit", ""),
-        "tiene_certificado": tiene_cert,
-        "tiene_clave": tiene_clave,
-    })
-
-
-@app.get("/api/arca/probar", include_in_schema=False)
-async def arca_probar(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"ok": False, "error": "ARCA no está configurado."}, status_code=400)
-
-    cfg        = configs[0]
-    cert_path, key_path = config_manager.resolve_cert_paths(
-        cfg.get("certificado_path", ""), cfg.get("clave_path", "")
-    )
-    ambiente   = cfg.get("ambiente", "homologacion")
-
-    # Validar archivos localmente primero
-    errores = arca_wsaa.validar_archivos(cert_path, key_path)
-    if errores:
-        return JSONResponse({"ok": False, "error": " | ".join(errores)}, status_code=400)
-
-    # Info del certificado
-    info = arca_wsaa.info_certificado(cert_path)
-
-    # Autenticar contra WSAA
-    try:
-        ta = await arca_wsaa.autenticar(cert_path, key_path, ambiente)
-        return JSONResponse({
-            "ok": True,
-            "ambiente": ambiente,
-            "expiracion": ta["expiracion"],
-            "cert_vencimiento": info.get("vencimiento"),
-            "cert_dias_restantes": info.get("dias_restantes"),
-            "cert_subject": info.get("subject"),
-        })
-    except RuntimeError as e:
-        return JSONResponse({"ok": False, "error": str(e), "cert": info}, status_code=502)
-
-
 @app.get("/api/email/probar", include_in_schema=False)
 async def email_probar(user: str = Depends(require_auth)):
     import smtplib
@@ -568,17 +539,6 @@ async def mp_probar(user: str = Depends(require_auth)):
         })
     except httpx.RequestError as e:
         return JSONResponse({"ok": False, "error": f"Sin conexión con MercadoPago: {e}"}, status_code=502)
-
-
-@app.get("/api/arca/certificado-info", include_in_schema=False)
-def arca_cert_info(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"error": "Sin configuracion"}, status_code=404)
-    cert_path, _ = config_manager.resolve_cert_paths(
-        configs[0].get("certificado_path", ""), configs[0].get("clave_path", "")
-    )
-    return JSONResponse(arca_wsaa.info_certificado(cert_path))
 
 
 @app.get("/api/consultar-cuit/{cuit}", include_in_schema=False)

@@ -11,10 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Calculator, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { enDiasISO, hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -36,12 +33,12 @@ export function PresupuestoForm() {
 
   const [clienteId, setClienteId] = useState('')
   const [clienteNombreLibre, setClienteNombreLibre] = useState('')
-  const [date, setDate] = useState(todayIso())
-  const [validUntil, setValidUntil] = useState(() => {
-    const plus30 = new Date()
-    plus30.setDate(plus30.getDate() + 30)
-    return plus30.toISOString().slice(0, 10)
-  })
+  const [date, setDate] = useState(hoyISO())
+  // 30 días desde hoy en Argentina. La cuenta vieja partía de `new Date()` y
+  // salía por `toISOString()`, así que arrastraba el mismo corrimiento a UTC
+  // que la fecha de emisión de acá arriba: de noche, un presupuesto emitido el
+  // 12 vencía el 12 del mes siguiente en vez del 11.
+  const [validUntil, setValidUntil] = useState(() => enDiasISO(30))
   const [taxRate, setTaxRate] = useState('0.21')
   const [observations, setObservations] = useState('')
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ITEM }])

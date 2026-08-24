@@ -26,10 +26,7 @@ import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-t
 import { formatEntero } from '@/lib/utils'
 import { ArrowDownCircle, ArrowUpCircle, Boxes, Check, History, Pencil, RefreshCw, TriangleAlert } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 // Portado desde el modelo real de Restolibra (web/routers/stock.py +
 // web/templates/stock/ajuste.html) -- NO desde Contalibra, que solo tiene
@@ -76,7 +73,7 @@ export function Stock() {
     resolver: zodResolver(ajusteSchema),
     defaultValues: {
       modo: 'absoluto' as AjusteFormValues['modo'], cantidad: 0, unidad_compra: '', factor: 1,
-      motivo: 'Otro', fecha: todayIso(), referencia: '',
+      motivo: 'Otro', fecha: hoyISO(), referencia: '',
     },
   })
 
@@ -106,7 +103,7 @@ export function Stock() {
     setFormError(null)
     form.reset({
       modo: 'absoluto', cantidad: p.stock_actual, unidad_compra: '', factor: 1,
-      motivo: 'Otro', fecha: todayIso(), referencia: '',
+      motivo: 'Otro', fecha: hoyISO(), referencia: '',
     })
   }
 

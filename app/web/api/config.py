@@ -25,7 +25,7 @@ from pydantic import BaseModel
 
 from app import config_manager
 from app import database as db
-from app.web.routers.config import CERTS_DIR, LOGO_DIR
+from app.web.routers.config import LOGO_DIR
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -128,59 +128,18 @@ def actualizar_email(payload: EmailPayload):
     return config_manager.load()
 
 
-class ArcaPayload(BaseModel):
-    empresa: str = "default"
-    cuit: str = ""
-    punto_venta: int = 1
-    ambiente: str = "homologacion"
-    alias: str = ""
-
-
-@router.put("/arca")
-def actualizar_arca(payload: ArcaPayload):
-    empresa = payload.empresa.strip() or "default"
-    existing = db.obtener_arca_config(empresa)
-    if existing:
-        db.actualizar_arca_config(
-            empresa, cuit=payload.cuit, punto_venta=payload.punto_venta,
-            ambiente=payload.ambiente, alias=payload.alias,
-        )
-    else:
-        db.crear_arca_config(
-            empresa=empresa, cuit=payload.cuit, punto_venta=payload.punto_venta,
-            clave_path="", certificado_path="", ambiente=payload.ambiente, alias=payload.alias,
-        )
-    return _arca_cfg()
-
-
-@router.post("/arca/certificados")
-async def subir_certificados_arca(
-    empresa: str = "default",
-    clave_privada: UploadFile | None = File(None),
-    certificado: UploadFile | None = File(None),
-):
-    empresa = empresa.strip() or "default"
-    os.makedirs(CERTS_DIR, exist_ok=True)
-    existing = db.obtener_arca_config(empresa) or {}
-    clave_path = existing.get("clave_path", "")
-    cert_path = existing.get("certificado_path", "")
-
-    if clave_privada is not None and clave_privada.filename:
-        clave_path = os.path.join(CERTS_DIR, "clave_privada.key")
-        with open(clave_path, "wb") as f:
-            f.write(await clave_privada.read())
-
-    if certificado is not None and certificado.filename:
-        cert_path = os.path.join(CERTS_DIR, "certificado.crt")
-        with open(cert_path, "wb") as f:
-            f.write(await certificado.read())
-
-    if existing:
-        db.actualizar_arca_config(empresa, clave_path=clave_path, certificado_path=cert_path)
-    else:
-        db.crear_arca_config(empresa=empresa, cuit="", punto_venta=1,
-                              clave_path=clave_path, certificado_path=cert_path)
-    return _arca_cfg()
+# 🔴 `PUT /arca` y `POST /arca/certificados` vivian aca y se fueron el
+# 2026-08-24, al montar `libracore.arca_router`.
+#
+# No fue solo mover codigo: los dos endpoints de aca **escribian el archivo sin
+# mirarlo**. Subir el `.csr` --el pedido-- en vez del `.crt` que ARCA devuelve
+# se aceptaba en pantalla y fallaba recien al emitir el primer comprobante, con
+# un error de ARCA que no habla de la causa. El router del motor valida el par
+# ANTES de tocar el disco, y ademas chequea que certificado y clave sean
+# pareja, que es el error que ningun nombre de archivo puede detectar.
+#
+# `GET /api/config` sigue devolviendo `arca` para que la pantalla cargue de una
+# sola vez; lo que se fue es la escritura.
 
 
 # 🔴 `PUT /servicio` vivia aca y se removio el 2026-08-12.

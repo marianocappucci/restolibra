@@ -25,6 +25,7 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, ArrowLeftRight, BarChart3, CheckCircle2, Eye, FileText, Inbox, Loader2, Pencil, Plus, Receipt, Search, Trash2, Truck, Undo2, Users, XCircle } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -546,7 +547,7 @@ export function ClienteDetalle() {
                       <tr key={f.id} className="border-b last:border-0">
                         <td className="p-3"><Badge variant="secondary">{TIPO_LABELS[f.tipo] ?? 'Cbte.'}</Badge></td>
                         <td className="p-3 font-mono text-xs">{String(f.punto_venta).padStart(4, '0')}-{String(f.numero).padStart(8, '0')}</td>
-                        <td className="p-3 text-muted-foreground">{f.fecha}</td>
+                        <td className="p-3 text-muted-foreground">{fecha(f.fecha)}</td>
                         <td className="p-3 text-right font-medium">{formatCurrency(f.total)}</td>
                         <td className="p-3 text-center">
                           {f.cae && f.cae !== 'PENDIENTE' ? (
@@ -587,8 +588,8 @@ export function ClienteDetalle() {
                     {cliente.presupuestos.map((p) => (
                       <tr key={p.id} className="border-b last:border-0">
                         <td className="p-3 font-mono text-xs">{p.number}</td>
-                        <td className="p-3 text-muted-foreground">{p.date}</td>
-                        <td className="p-3 text-muted-foreground">{p.valid_until || '—'}</td>
+                        <td className="p-3 text-muted-foreground">{fecha(p.date)}</td>
+                        <td className="p-3 text-muted-foreground">{fecha(p.valid_until) || '—'}</td>
                         <td className="p-3 text-right font-medium">{formatCurrency(p.total)}</td>
                         <td className="p-3 text-center">
                           <BadgeEstado tono={ESTADO_PRESUPUESTO_TONO[p.status] ?? 'neutro'}>
@@ -625,7 +626,7 @@ export function ClienteDetalle() {
                     {cliente.remitos.map((r) => (
                       <tr key={r.id} className="border-b last:border-0">
                         <td className="p-3 font-mono text-xs">{r.number}</td>
-                        <td className="p-3 text-muted-foreground">{r.date}</td>
+                        <td className="p-3 text-muted-foreground">{fecha(r.date)}</td>
                         <td className="p-3 text-right font-medium">{formatCurrency(r.total)}</td>
                         <td className="p-3 text-right">
                           <Button asChild size="icon" variant="outline"><Link to={`/remitos/${r.id}`}><Eye /></Link></Button>

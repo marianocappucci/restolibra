@@ -24,10 +24,7 @@ import {
   ShoppingCart, Receipt, User,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -51,7 +48,7 @@ export function CuentaCorrienteDetalle() {
 
   const [pagoOpen, setPagoOpen] = useState(false)
   const [monto, setMonto] = useState('')
-  const [fecha, setFecha] = useState(todayIso())
+  const [fecha, setFecha] = useState(hoyISO())
   const [concepto, setConcepto] = useState('Pago a cuenta')
   const [medioPago, setMedioPago] = useState('efectivo')
   const [cajaId, setCajaId] = useState('')
@@ -91,7 +88,7 @@ export function CuentaCorrienteDetalle() {
   function abrirPago() {
     setMonto(saldo > 0 ? String(saldo) : '')
     setReferencia('')
-    setFecha(todayIso())
+    setFecha(hoyISO())
     setConcepto('Pago a cuenta')
     const caja = cajas.find((c) => c.es_default) ?? cajas[0]
     setCajaId(caja ? String(caja.id) : '')

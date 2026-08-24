@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
-import { api, ApiError, type ArcaConfig, type Backup, type ConfigCfg } from '../api'
+import { api, ApiError, type ArcaConfig, type ArcaEstado, type Backup, type ConfigCfg } from '../api'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -17,6 +17,7 @@ import {
   Settings, ShieldCheck, Upload,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fechaHora } from '@/lib/fechas'
 
 // Portado desde Contalibra (frontend/src/pages/Config.tsx), mismo backend
 // libracore (config_manager/db_arca_config.py) -- ver web/api/config.py.
@@ -474,14 +475,28 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
 }) {
   const [probando, setProbando] = useState(false)
   const [resultado, setResultado] = useState<string | null>(null)
+  const [estado, setEstado] = useState<ArcaEstado | null>(null)
   const a: ArcaConfig = arca ?? { empresa: 'default', cuit: '', punto_venta: 1, ambiente: 'homologacion', alias: '', clave_path: '', certificado_path: '' }
+
+  // El vencimiento del certificado no viene en `/api/config`: se pide aparte.
+  // 🔑 Es el dato que evita la falla silenciosa --- duran dos años y el día que
+  // vencen la facturación deja de andar sin que nadie haya tocado nada.
+  useEffect(() => {
+    let vigente = true
+    api.get<ArcaEstado>('/api/config/arca/estado')
+      .then((e) => { if (vigente) setEstado(e) })
+      .catch(() => { if (vigente) setEstado(null) })
+    return () => { vigente = false }
+  }, [arca])
 
   async function probar() {
     setProbando(true)
     setResultado(null)
     try {
-      const r = await api.get<{ ok: boolean; ambiente?: string; error?: string }>('/api/arca/probar')
-      setResultado(r.ok ? `Autenticado OK (${r.ambiente})` : r.error ?? 'Error')
+      // POST y no GET: probar autentica de verdad contra ARCA, no es una
+      // lectura. Vivía en `GET /api/arca/probar`, que ya no existe.
+      const r = await api.post<{ ok: boolean; ambiente?: string }>('/api/config/arca/probar', {})
+      setResultado(`Autenticado OK (${r.ambiente})`)
     } catch (err) {
       setResultado(err instanceof ApiError ? err.detail : 'Error de conexión.')
     } finally {
@@ -542,6 +557,23 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
             <TutorialNote tone="info">Este servicio es distinto al de facturación (WSFE). Necesitás habilitarlos por separado usando el mismo certificado.</TutorialNote>
           </Tutorial>
         </div>
+        {estado?.vence && (
+          <div className="col-span-full">
+            {estado.vencido ? (
+              <BadgeEstado tono="negativo">
+                Certificado VENCIDO el {estado.vence} — la facturación no va a funcionar
+              </BadgeEstado>
+            ) : (estado.dias_para_vencer ?? 999) <= 30 ? (
+              <BadgeEstado tono="atencion">
+                El certificado vence el {estado.vence} — quedan {estado.dias_para_vencer} días
+              </BadgeEstado>
+            ) : (
+              <BadgeEstado tono="ok">
+                <CheckCircle2 />Certificado válido hasta el {estado.vence}
+              </BadgeEstado>
+            )}
+          </div>
+        )}
         <Field label="CUIT" value={a.cuit} onChange={(v) => setArca({ ...a, cuit: v })} />
         <Field label="Punto de venta" value={String(a.punto_venta)} onChange={(v) => setArca({ ...a, punto_venta: Number(v) || 1 })} />
         <div className="grid gap-2">
@@ -561,7 +593,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
             <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargado</BadgeEstado>
           )}
           <Input type="file" accept=".crt,.pem" disabled={saving}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificados?empresa=${a.empresa}`, 'certificado', f) }} />
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificado?empresa=${a.empresa}`, 'archivo', f) }} />
           {a.certificado_path && <p className="truncate text-xs text-muted-foreground">Actual: {a.certificado_path}</p>}
         </div>
         <div className="grid gap-2">
@@ -570,7 +602,7 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
             <BadgeEstado tono="ok" className="w-fit"><CheckCircle2 />Cargada</BadgeEstado>
           )}
           <Input type="file" accept=".key,.pem" disabled={saving}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/certificados?empresa=${a.empresa}`, 'clave_privada', f) }} />
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) subirArchivo(`/api/config/arca/clave?empresa=${a.empresa}`, 'archivo', f) }} />
           {a.clave_path && <p className="truncate text-xs text-muted-foreground">Actual: {a.clave_path}</p>}
         </div>
         <div className="col-span-full flex items-center gap-3">
@@ -579,9 +611,18 @@ function ArcaTab({ arca, setArca, saving, guardar, subirArchivo }: {
           })}>
             <Save />{saving ? 'Guardando…' : 'Guardar ARCA'}
           </Button>
-          {a.certificado_path && a.clave_path && (
+          {estado?.configurado && (
             <Button type="button" variant="outline" disabled={probando} onClick={probar}>
               <Send />{probando ? 'Probando…' : 'Probar conexión'}
+            </Button>
+          )}
+          {estado?.configurado && (
+            <Button type="button" variant="outline" disabled={saving}
+              onClick={async () => {
+                await api.del('/api/config/arca/credenciales')
+                window.location.reload()
+              }}>
+              Quitar certificado y clave
             </Button>
           )}
           {resultado && <span className="text-sm text-muted-foreground">{resultado}</span>}
@@ -824,7 +865,7 @@ function DatosTab({ saving, setSaving, setError, describeError }: {
                   <li key={b.filename} className="flex items-center justify-between py-2 text-sm">
                     <div>
                       <p className="font-mono font-medium">{b.filename}</p>
-                      <p className="text-muted-foreground">{b.mtime} — {b.size_mb} MB</p>
+                      <p className="text-muted-foreground">{fechaHora(b.mtime)} — {b.size_mb} MB</p>
                     </div>
                     <Button asChild size="sm" variant="outline">
                       <a href={`/api/config/backups/${b.filename}`} download><Download />Descargar</a>

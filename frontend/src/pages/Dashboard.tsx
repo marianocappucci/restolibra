@@ -6,6 +6,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
 import { ArrowDownCircle, ArrowUpCircle, Beer, CalendarClock, CheckCircle2, ClipboardList, Flame, Gauge, History, Hourglass, Inbox, LineChart, PiggyBank, Plus, Receipt, ShoppingBag, Truck as TruckIcon, UtensilsCrossed, Wallet } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
 
 const CANAL_LABEL: Record<string, string> = { salon: 'Salón', barra: 'Barra', takeaway: 'Takeaway', delivery: 'Delivery' }
 const CANAL_ICON: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -22,12 +23,7 @@ function formatCurrency(value: number): string {
 // `12/8/2026`: barra en vez de guion, y sin cero a la izquierda ni en el dia
 // ni en el mes.
 function formatDate(value: string): string {
-  const partes = new Intl.DateTimeFormat('es-AR', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
-  }).formatToParts(new Date(value))
-  const p: Record<string, string> = {}
-  for (const parte of partes) p[parte.type] = parte.value
-  return `${p.day}-${p.month}-${p.year}`
+  return fecha(value)
 }
 
 export function Dashboard() {

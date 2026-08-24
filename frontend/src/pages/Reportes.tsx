@@ -12,14 +12,9 @@ import {
   Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, AlertTriangle,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fecha } from '@/lib/fechas'
+import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
-function firstOfMonthIso(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
@@ -38,8 +33,8 @@ const MEDIO_ICONS: Record<string, typeof Banknote> = {
 // incluye los reportes gastronomicos de Salon/Pedidos/KDS (esos viven en
 // db_reportes_gastronomicos.py y salon/reportes.html, modulo aparte).
 export function Reportes() {
-  const [desde, setDesde] = useState(firstOfMonthIso())
-  const [hasta, setHasta] = useState(todayIso())
+  const [desde, setDesde] = useState(primerDiaDelMesISO())
+  const [hasta, setHasta] = useState(hoyISO())
   const [agrupacion, setAgrupacion] = useState('dia')
   const [data, setData] = useState<ReportesData | null>(null)
   const [loading, setLoading] = useState(true)
@@ -151,7 +146,7 @@ export function Reportes() {
                       <tbody>
                         {data.ventas_ts.map((v) => (
                           <tr key={v.periodo} className="border-b last:border-0">
-                            <td className="p-3">{v.periodo}</td>
+                            <td className="p-3">{fecha(v.periodo)}</td>
                             <td className="p-3 text-right">{v.cantidad}</td>
                             <td className="p-3 text-right font-semibold">{formatCurrency(v.total)}</td>
                           </tr>

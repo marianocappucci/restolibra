@@ -244,6 +244,13 @@ from app.db_mp import (  # noqa: F401
     crear_alias_facturacion,
     get_alias_facturacion_by_cliente,
     eliminar_alias_facturacion,
+    # 🔴 Estos dos FALTABAN, y con ellos faltaba el sistema entero de alias de
+    # facturacion: `db_mp.py` los re-exportaba desde el Tier 2 de LibraCore y
+    # `database.py` --que es la fachada que usa todo el producto-- no. Ningun
+    # camino podia llamarlos aunque quisiera. Es el mecanismo que en Contalibra
+    # emitio dos comprobantes al CUIT equivocado.
+    get_cliente_por_alias_pago,
+    resolver_cliente_pago,
     get_mp_movimiento_by_mp_id,
     create_mp_movimiento,
     get_mp_movimiento_by_id,

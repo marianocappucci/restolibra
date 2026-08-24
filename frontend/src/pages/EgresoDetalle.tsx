@@ -23,10 +23,8 @@ import {
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, CheckCircle2, CreditCard, Hourglass, ListChecks, ShoppingBag, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { fecha } from '@/lib/fechas'
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -60,7 +58,7 @@ export function EgresoDetalle() {
 
   const pagoForm = useForm({
     resolver: zodResolver(pagoSchema),
-    defaultValues: { monto: 0, medio_pago: '', caja_id: '', fecha: todayIso(), referencia: '' },
+    defaultValues: { monto: 0, medio_pago: '', caja_id: '', fecha: hoyISO(), referencia: '' },
   })
 
   useEffect(() => {
@@ -120,7 +118,7 @@ export function EgresoDetalle() {
       monto: pendiente || egreso.total,
       medio_pago: caja?.medios_pago[0] ?? '',
       caja_id: caja ? String(caja.id) : '',
-      fecha: todayIso(),
+      fecha: hoyISO(),
       referencia: '',
     })
     setPagoOpen(true)
@@ -210,7 +208,7 @@ export function EgresoDetalle() {
                   {pagos.map((p) => (
                     <div key={p.id} className="flex items-center justify-between border-b py-1 text-sm last:border-0">
                       <span className="text-muted-foreground">
-                        {p.fecha}
+                        {fecha(p.fecha)}
                         {p.medio_pago && <Badge variant="outline" className="ml-1.5">{MEDIOS_PAGO_LABELS[p.medio_pago] ?? p.medio_pago}</Badge>}
                         {p.referencia && <span className="ml-1.5">({p.referencia})</span>}
                       </span>
@@ -226,7 +224,7 @@ export function EgresoDetalle() {
             <Card>
               <CardHeader><CardTitle className="text-base">Datos del egreso</CardTitle></CardHeader>
               <CardContent className="grid gap-2 text-sm">
-                <p><span className="text-muted-foreground">Fecha:</span> {egreso.fecha}</p>
+                <p><span className="text-muted-foreground">Fecha:</span> {fecha(egreso.fecha)}</p>
                 {egreso.proveedor_nombre && <p><span className="text-muted-foreground">Proveedor:</span> {egreso.proveedor_nombre}</p>}
                 {egreso.categoria && <p><span className="text-muted-foreground">Categoría:</span> {egreso.categoria}</p>}
                 <p>

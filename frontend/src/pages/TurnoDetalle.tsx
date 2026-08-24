@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { ArrowDownCircle, ArrowLeft, ArrowUpCircle, CheckCircle2, Clock, Receipt, StopCircle } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { fechaHora } from '@/lib/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -84,8 +85,8 @@ export function TurnoDetalle() {
             <CardHeader><CardTitle className="text-base">Datos del turno</CardTitle></CardHeader>
             <CardContent className="grid gap-2 text-sm">
               <p><span className="text-muted-foreground">Cajero:</span> {turno.usuario_nombre}</p>
-              <p><span className="text-muted-foreground">Apertura:</span> {turno.apertura}</p>
-              {turno.cierre && <p><span className="text-muted-foreground">Cierre:</span> {turno.cierre}</p>}
+              <p><span className="text-muted-foreground">Apertura:</span> {fechaHora(turno.apertura)}</p>
+              {turno.cierre && <p><span className="text-muted-foreground">Cierre:</span> {fechaHora(turno.cierre)}</p>}
               <p><span className="text-muted-foreground">Fondo inicial:</span> {formatCurrency(turno.monto_inicial)}</p>
               {turno.notas && <p><span className="text-muted-foreground">Notas:</span> {turno.notas}</p>}
             </CardContent>
@@ -146,7 +147,7 @@ export function TurnoDetalle() {
                     {resumen.ventas.map((v) => (
                       <tr key={v.id} className="border-b last:border-0">
                         <td className="p-3"><Link to={`/ventas/${v.id}`} className="font-mono font-medium text-primary hover:underline">{v.numero}</Link></td>
-                        <td className="p-3 text-muted-foreground">{v.fecha}</td>
+                        <td className="p-3 text-muted-foreground">{fechaHora(v.fecha)}</td>
                         <td className="p-3">{v.cliente_nombre || '— Consumidor final —'}</td>
                         <td className="p-3 text-right font-medium">{formatCurrency(v.total)}</td>
                         <td className="p-3 text-center"><BadgeEstado tono={estadoVentaTono[v.estado] ?? 'neutro'}>{v.estado === 'cobrada' ? 'Cobrada' : v.estado === 'anulada' ? 'Anulada' : v.estado}</BadgeEstado></td>
