@@ -25,10 +25,7 @@ import {
   ShoppingCart, Plus, Eye, Printer, FileCheck, Ban, ReceiptText, ListChecks, UserPlus, X, CheckCircle2,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -190,7 +187,7 @@ export function Ventas() {
     setError(null)
     try {
       const venta = await api.post<Venta>('/api/ventas', {
-        fecha: todayIso(),
+        fecha: hoyISO(),
         items: items.filter((r) => r.nombre.trim() && Number(r.qty) > 0).map((r) => ({
           nombre: r.nombre, qty: Number(r.qty), precio: Number(r.precio) || 0, producto_id: r.producto_id,
         })),

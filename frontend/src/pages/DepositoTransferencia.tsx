@@ -14,10 +14,7 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, ArrowLeftRight, Info, Warehouse } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 // Portado desde Contalibra (frontend/src/pages/DepositoTransferencia.tsx),
 // mismo backend libracore. `/api/productos` aún no existe en Restolibra
@@ -32,7 +29,7 @@ export function DepositoTransferencia() {
   const [origenId, setOrigenId] = useState('')
   const [destinoId, setDestinoId] = useState('')
   const [cantidad, setCantidad] = useState('')
-  const [fecha, setFecha] = useState(todayIso())
+  const [fecha, setFecha] = useState(hoyISO())
   const [observaciones, setObservaciones] = useState('')
   const [stockOrigen, setStockOrigen] = useState<StockPorDeposito[]>([])
   const [transfiriendo, setTransfiriendo] = useState(false)

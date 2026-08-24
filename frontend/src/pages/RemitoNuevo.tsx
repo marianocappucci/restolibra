@@ -8,10 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FileText, Plus, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 type ItemRow = { description: string; qty: string }
 const EMPTY_ITEM: ItemRow = { description: '', qty: '1' }
@@ -23,7 +20,7 @@ export function RemitoNuevo() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [clienteId, setClienteId] = useState('')
   const [clienteNombreLibre, setClienteNombreLibre] = useState('')
-  const [date, setDate] = useState(todayIso())
+  const [date, setDate] = useState(hoyISO())
   const [observations, setObservations] = useState('')
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ITEM }])
   const [saving, setSaving] = useState(false)

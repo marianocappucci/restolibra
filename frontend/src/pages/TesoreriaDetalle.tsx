@@ -22,10 +22,7 @@ import {
   ArrowLeft, ArrowLeftRight, Archive, Check, Landmark, Pencil, Plus, Trash2,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -50,7 +47,7 @@ export function TesoreriaDetalle() {
   const [movOpen, setMovOpen] = useState(false)
   const [movTipo, setMovTipo] = useState('ingreso')
   const [movMonto, setMovMonto] = useState('')
-  const [movFecha, setMovFecha] = useState(todayIso())
+  const [movFecha, setMovFecha] = useState(hoyISO())
   const [movConcepto, setMovConcepto] = useState('')
   const [movReferencia, setMovReferencia] = useState('')
   const [saving, setSaving] = useState(false)
@@ -58,7 +55,7 @@ export function TesoreriaDetalle() {
   const [transferOpen, setTransferOpen] = useState(false)
   const [tDestino, setTDestino] = useState('')
   const [tMonto, setTMonto] = useState('')
-  const [tFecha, setTFecha] = useState(todayIso())
+  const [tFecha, setTFecha] = useState(hoyISO())
   const [tConcepto, setTConcepto] = useState('Transferencia entre cuentas')
   const [tReferencia, setTReferencia] = useState('')
   const [transfiriendo, setTransfiriendo] = useState(false)
@@ -98,7 +95,7 @@ export function TesoreriaDetalle() {
   }
 
   function abrirMovimiento() {
-    setMovTipo('ingreso'); setMovMonto(''); setMovFecha(todayIso()); setMovConcepto(''); setMovReferencia('')
+    setMovTipo('ingreso'); setMovMonto(''); setMovFecha(hoyISO()); setMovConcepto(''); setMovReferencia('')
     setMovOpen(true)
   }
 
@@ -130,7 +127,7 @@ export function TesoreriaDetalle() {
   }
 
   function abrirTransfer() {
-    setTDestino(''); setTMonto(''); setTFecha(todayIso())
+    setTDestino(''); setTMonto(''); setTFecha(hoyISO())
     setTConcepto('Transferencia entre cuentas'); setTReferencia('')
     setTransferOpen(true)
   }

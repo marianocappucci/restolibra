@@ -13,14 +13,8 @@ import {
   Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, Receipt,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
-function firstOfMonthIso(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
@@ -31,8 +25,8 @@ const MEDIO_ICONS: Record<string, typeof Banknote> = {
 }
 
 export function CajaMedios() {
-  const [desde, setDesde] = useState(firstOfMonthIso())
-  const [hasta, setHasta] = useState(todayIso())
+  const [desde, setDesde] = useState(primerDiaDelMesISO())
+  const [hasta, setHasta] = useState(hoyISO())
   const [cajaId, setCajaId] = useState('0')
   const [data, setData] = useState<CajaMediosData | null>(null)
   const [loading, setLoading] = useState(true)

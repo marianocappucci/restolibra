@@ -24,10 +24,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, CheckCircle2, CreditCard, Hourglass, ListChecks, ShoppingBag, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { fecha } from '@/lib/fechas'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
+import { hoyISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -61,7 +58,7 @@ export function EgresoDetalle() {
 
   const pagoForm = useForm({
     resolver: zodResolver(pagoSchema),
-    defaultValues: { monto: 0, medio_pago: '', caja_id: '', fecha: todayIso(), referencia: '' },
+    defaultValues: { monto: 0, medio_pago: '', caja_id: '', fecha: hoyISO(), referencia: '' },
   })
 
   useEffect(() => {
@@ -121,7 +118,7 @@ export function EgresoDetalle() {
       monto: pendiente || egreso.total,
       medio_pago: caja?.medios_pago[0] ?? '',
       caja_id: caja ? String(caja.id) : '',
-      fecha: todayIso(),
+      fecha: hoyISO(),
       referencia: '',
     })
     setPagoOpen(true)

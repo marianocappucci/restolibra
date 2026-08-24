@@ -27,15 +27,7 @@ import {
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { ArrowUpCircle, CheckCircle2, Eye, Filter, Hourglass, Plus, ShoppingBag, X } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function firstOfMonthIso(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
+import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -54,15 +46,15 @@ const egresoSchema = z.object({
 })
 type EgresoFormValues = z.infer<typeof egresoSchema>
 const EMPTY_VALUES: EgresoFormValues = {
-  fecha: todayIso(), proveedor_id: '', concepto: '', categoria: '',
+  fecha: hoyISO(), proveedor_id: '', concepto: '', categoria: '',
   tipo_comprobante: 'otro', numero: '', monto_neto: 0, iva_pct: 0, observaciones: '',
 }
 
 // Portado 1:1 desde Contalibra (frontend/src/pages/Egresos.tsx) -- mismo
 // backend libracore, ver web/api/egresos.py. Alta como Dialog inline.
 export function Egresos() {
-  const [desde, setDesde] = useState(firstOfMonthIso())
-  const [hasta, setHasta] = useState(todayIso())
+  const [desde, setDesde] = useState(primerDiaDelMesISO())
+  const [hasta, setHasta] = useState(hoyISO())
   const [categoriaFiltro, setCategoriaFiltro] = useState('')
   const [estadoFiltro, setEstadoFiltro] = useState('')
   const [egresos, setEgresos] = useState<Egreso[]>([])

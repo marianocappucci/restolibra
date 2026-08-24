@@ -18,15 +18,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
 import { ArrowDownCircle, ArrowUpCircle, Check, Filter, PiggyBank, Plus, Receipt, SquareStack, Trash2, Wallet, X } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function todayIso(): string {
-  return new Date().toISOString().slice(0, 10)
-}
-
-function firstOfMonthIso(): string {
-  const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().slice(0, 10)
-}
+import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
@@ -36,8 +28,8 @@ export function Caja() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const facturaId = searchParams.get('factura_id')
-  const [desde, setDesde] = useState(firstOfMonthIso())
-  const [hasta, setHasta] = useState(todayIso())
+  const [desde, setDesde] = useState(primerDiaDelMesISO())
+  const [hasta, setHasta] = useState(hoyISO())
   // Deep-link desde Cajas ("Ver movimientos" de una caja puntual): ?caja_id=X
   const [cajaId, setCajaId] = useState(() => searchParams.get('caja_id') ?? '')
   const [cajas, setCajas] = useState<CajaConfig[]>([])
@@ -50,7 +42,7 @@ export function Caja() {
   // --- Dialog "Nuevo movimiento" (antes página /caja/nuevo) ---
   const [nuevoOpen, setNuevoOpen] = useState(false)
   const [tipoMov, setTipoMov] = useState('ingreso')
-  const [fechaMov, setFechaMov] = useState(todayIso())
+  const [fechaMov, setFechaMov] = useState(hoyISO())
   const [conceptoMov, setConceptoMov] = useState('')
   const [montoMov, setMontoMov] = useState('')
   const [referenciaMov, setReferenciaMov] = useState('')
@@ -106,7 +98,7 @@ export function Caja() {
 
   function abrirNuevo() {
     setTipoMov('ingreso')
-    setFechaMov(todayIso())
+    setFechaMov(hoyISO())
     setConceptoMov('')
     setMontoMov('')
     setReferenciaMov('')
@@ -309,8 +301,8 @@ export function Caja() {
             </Select>
           )}
           <Button variant="outline" size="icon" onClick={load}><Filter /></Button>
-          {(cajaId || desde !== firstOfMonthIso() || hasta !== todayIso()) && (
-            <Button variant="outline" size="icon" onClick={() => { setDesde(firstOfMonthIso()); setHasta(todayIso()); setCajaId('') }} title="Limpiar filtros"><X /></Button>
+          {(cajaId || desde !== primerDiaDelMesISO() || hasta !== hoyISO()) && (
+            <Button variant="outline" size="icon" onClick={() => { setDesde(primerDiaDelMesISO()); setHasta(hoyISO()); setCajaId('') }} title="Limpiar filtros"><X /></Button>
           )}
         </CardContent>
       </Card>
