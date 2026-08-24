@@ -979,6 +979,28 @@ export type ArcaConfig = {
   alias: string
   clave_path: string
   certificado_path: string
+  /** Si el archivo esta realmente en el volumen, no solo si hay un path
+   *  guardado: un path que apunta a un archivo que ya no esta se lee igual. */
+  tiene_certificado?: boolean
+  tiene_clave?: boolean
+}
+
+/** `GET /api/config/arca/estado`.
+ *
+ *  🔑 `dias_para_vencer` es el dato que evita la falla silenciosa: los
+ *  certificados de ARCA duran dos anos y el dia que vencen la facturacion deja
+ *  de andar sin que nadie haya tocado nada. */
+export type ArcaEstado = {
+  configurado: boolean
+  ambiente: string
+  cuit: string
+  tiene_certificado: boolean
+  tiene_clave: boolean
+  vence?: string
+  dias_para_vencer?: number
+  vencido?: boolean
+  sujeto?: string
+  error_certificado?: string
 }
 
 export type ConfigData = { cfg: ConfigCfg; arca: ArcaConfig | Record<string, never> }

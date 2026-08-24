@@ -55,6 +55,7 @@ from app.web.api import stock as api_stock_router
 from app.web.api import listas_precio as api_listas_precio_router
 from app.web.api import productos as api_productos_router
 from app.web.api import config as api_config_router
+from libracore.arca_router import build_arca_router
 from app.web.api import salon as api_salon_router
 from app.web.api import pedidos as api_pedidos_router
 from app.web.api_auth import (  # noqa: F401
@@ -303,6 +304,18 @@ app.include_router(
     api_config_router.router,
     dependencies=[Depends(require_admin_json)],
 )
+# ARCA, del motor. Reemplaza al `PUT /api/config/arca` y al
+# `POST /api/config/arca/certificados` propios, y a los tres `GET /api/arca/*`
+# que vivian mas abajo en este archivo.
+#
+# 🔑 Lo que gana la pantalla: el par se valida ANTES de guardarse. Subir el
+# `.csr` en vez del `.crt`, cambiar de campo el certificado y la clave, o subir
+# un par que **no es pareja** se rechazan al subir, con el motivo escrito. Antes
+# los tres se aceptaban y fallaban al emitir el primer comprobante.
+app.include_router(
+    build_arca_router(prefix="/api/config/arca"),
+    dependencies=[Depends(require_admin_json)],
+)
 # Datos / Backup, del motor (LibraCore). Reemplaza a la implementacion propia
 # que vivia en `web/routers/config.py` y `web/api/config.py`, heredada de
 # Contalibra y migrada ahi primero (upstream), como manda el flujo del fork.
@@ -477,61 +490,6 @@ async def api_auth_verify(request: Request):
     })
 
 
-@app.get("/api/arca/estado", include_in_schema=False)
-def arca_estado(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"configurado": False})
-    cfg = configs[0]
-    cert_path, clave_path = config_manager.resolve_cert_paths(
-        cfg.get("certificado_path", ""), cfg.get("clave_path", "")
-    )
-    tiene_cert  = bool(cert_path) and os.path.exists(cert_path)
-    tiene_clave = bool(clave_path) and os.path.exists(clave_path)
-    return JSONResponse({
-        "configurado": tiene_cert and tiene_clave,
-        "ambiente": cfg.get("ambiente", ""),
-        "cuit": cfg.get("cuit", ""),
-        "tiene_certificado": tiene_cert,
-        "tiene_clave": tiene_clave,
-    })
-
-
-@app.get("/api/arca/probar", include_in_schema=False)
-async def arca_probar(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"ok": False, "error": "ARCA no está configurado."}, status_code=400)
-
-    cfg        = configs[0]
-    cert_path, key_path = config_manager.resolve_cert_paths(
-        cfg.get("certificado_path", ""), cfg.get("clave_path", "")
-    )
-    ambiente   = cfg.get("ambiente", "homologacion")
-
-    # Validar archivos localmente primero
-    errores = arca_wsaa.validar_archivos(cert_path, key_path)
-    if errores:
-        return JSONResponse({"ok": False, "error": " | ".join(errores)}, status_code=400)
-
-    # Info del certificado
-    info = arca_wsaa.info_certificado(cert_path)
-
-    # Autenticar contra WSAA
-    try:
-        ta = await arca_wsaa.autenticar(cert_path, key_path, ambiente)
-        return JSONResponse({
-            "ok": True,
-            "ambiente": ambiente,
-            "expiracion": ta["expiracion"],
-            "cert_vencimiento": info.get("vencimiento"),
-            "cert_dias_restantes": info.get("dias_restantes"),
-            "cert_subject": info.get("subject"),
-        })
-    except RuntimeError as e:
-        return JSONResponse({"ok": False, "error": str(e), "cert": info}, status_code=502)
-
-
 @app.get("/api/email/probar", include_in_schema=False)
 async def email_probar(user: str = Depends(require_auth)):
     import smtplib
@@ -581,17 +539,6 @@ async def mp_probar(user: str = Depends(require_auth)):
         })
     except httpx.RequestError as e:
         return JSONResponse({"ok": False, "error": f"Sin conexión con MercadoPago: {e}"}, status_code=502)
-
-
-@app.get("/api/arca/certificado-info", include_in_schema=False)
-def arca_cert_info(user: str = Depends(require_auth)):
-    configs = db.obtener_todas_arca_configs()
-    if not configs:
-        return JSONResponse({"error": "Sin configuracion"}, status_code=404)
-    cert_path, _ = config_manager.resolve_cert_paths(
-        configs[0].get("certificado_path", ""), configs[0].get("clave_path", "")
-    )
-    return JSONResponse(arca_wsaa.info_certificado(cert_path))
 
 
 @app.get("/api/consultar-cuit/{cuit}", include_in_schema=False)

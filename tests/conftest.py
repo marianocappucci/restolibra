@@ -98,6 +98,35 @@ def _reset_data_dir():
     tests "ven" datos que ya no existen en disco.
     """
     db_usuarios._engine.dispose()
+
+    # 🔴 Lo del FILESYSTEM se limpia ANTES de bifurcar por motor.
+    #
+    # Hasta el 2026-08-24 esto estaba despues del `return` de la rama de
+    # PostgreSQL, asi que **contra PostgreSQL no se limpiaba nada**: el
+    # `config.json` sobrevivia entre tests --- y con el, el token de
+    # MercadoPago, el SMTP y la condicion de IVA que un test hubiera dejado
+    # puestos. No es un detalle del reset de ARCA: es que la pasada de
+    # PostgreSQL del CI corria con estado compartido entre tests y la de SQLite
+    # no, que es la peor forma de que las dos pasadas no midan lo mismo.
+    #
+    # Lo destaparon los tests del router de ARCA: cinco fallas en PostgreSQL y
+    # cero en SQLite, todas diciendo "no esta configurado" --- que no se parece
+    # a la causa. El par de certificados que dejaba un test hacia que la subida
+    # del siguiente se rechazara con 422, porque el router del motor chequea
+    # que certificado y clave sean pareja.
+    for basura in (
+        os.path.join(_TMP, "config.json"),
+    ):
+        if os.path.exists(basura):
+            os.unlink(basura)
+    certs = os.path.join(_TMP, "arca_certs")
+    if os.path.isdir(certs):
+        for nombre in os.listdir(certs):
+            try:
+                os.unlink(os.path.join(certs, nombre))
+            except OSError:
+                pass
+
     if db_core.ES_POSTGRES:
         _vaciar_postgres()
         db_usuarios._AuthBase.metadata.create_all(db_usuarios._engine)
@@ -106,9 +135,6 @@ def _reset_data_dir():
         path = db_core.DB_PATH + suffix
         if os.path.exists(path):
             os.unlink(path)
-    config_json = os.path.join(_TMP, "config.json")
-    if os.path.exists(config_json):
-        os.unlink(config_json)
     # `password_reset_tokens` la crea db_usuarios AL IMPORTARSE (un
     # create_all de una sola vez), no init_db(). Borrar el archivo deja al
     # modulo ya importado creyendo que la tabla existe, y el flujo de
