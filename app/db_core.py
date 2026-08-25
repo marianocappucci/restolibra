@@ -21,6 +21,26 @@ DB_PATH = os.environ.get("RESTOLIBRA_DATABASE_URL") or os.path.join(
     _DATA_DIR, "restolibra.db"
 )
 
+# 🔴 **Este producto corre sobre PostgreSQL y nada mas.** La guarda va aca, en
+# el arranque del producto, y no dentro de `libracore.db.core`: el motor tiene
+# que poder abrir un SQLite igual, porque de eso vive la herramienta de
+# diagnostico `python -m libracore.db.schema_dump`, que vuelca el schema de un
+# archivo viejo o de la base de LibraEdge --- la excepcion permanente de la
+# familia. La regla "este producto no habla con otro motor" es del producto.
+#
+# El modo SQLite se retiro el 2026-08-12: no chequea las FK, tipa dinamicamente
+# y acepta cadenas donde la base pide enteros, asi que los defectos que
+# PostgreSQL rechaza de entrada llegaban a produccion.
+#
+# Salta al IMPORTAR, no al primer query: si el destino esta mal, el arranque
+# tiene que morir ahi y no a la mitad de la primera pantalla.
+if not _lc_core.es_url_postgres(DB_PATH):
+    raise RuntimeError(
+        "Restolibra corre solo sobre PostgreSQL y DB_PATH quedo en {!r}, que es "
+        "una ruta de archivo. Defini RESTOLIBRA_DATABASE_URL con la URL de "
+        "la base.".format(DB_PATH)
+    )
+
 _lc_core.configure(db_path=DB_PATH, timeout=15)
 
 #: Si el destino es PostgreSQL. Lo consultan `db_usuarios` —que arma su propio
