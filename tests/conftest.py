@@ -34,6 +34,27 @@ import tempfile
 # --- Entorno ANTES de tocar ningun import del producto -------------------
 _TMP = tempfile.mkdtemp(prefix="restolibra-tests-")
 os.environ["DATA_DIR"] = _TMP
+
+# --- El motor: PostgreSQL y nada mas -------------------------------------
+#
+# Sin esto la suite CAE A SQLITE en silencio: `db_core.py` deriva `DB_PATH` de
+# `DATA_DIR` y arma una ruta a un archivo, y `libracore.db.core.configure()`
+# decide el motor con `"://" in db_path` --- sin URL, SQLite. La suite quedaba
+# verde y no decia nada del motor real.
+#
+# El modo SQLite se retiro el 2026-08-12 para toda la familia: no chequea las
+# FK, tipa dinamicamente y acepta cadenas donde la base pide enteros. El CI
+# corria la suite DOS veces --- una sin URL, o sea SQLite --- y esa se saco
+# junto con este guard. Mismo criterio que LibraDesk y Contalibra.
+if not os.environ.get("RESTOLIBRA_DATABASE_URL"):
+    raise RuntimeError(
+        "La suite de Restolibra necesita PostgreSQL: defini "
+        "RESTOLIBRA_DATABASE_URL (ej. "
+        "postgresql://restolibra:restolibra-ci@localhost:5432/restolibra). "
+        "Sin esa variable la suite correria sobre SQLite, que es lo que se "
+        "retiro el 2026-08-12: una suite verde sobre SQLite no dice nada "
+        "sobre el motor real."
+    )
 # SessionAuth (libraauth) exige SECRET_KEY fuera de development y la app
 # no levanta sin el. Un valor fijo ademas hace deterministas las cookies.
 os.environ["SECRET_KEY"] = "suite-secret-no-productivo"
