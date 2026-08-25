@@ -52,6 +52,23 @@ configure(
     image_name="restolibra:latest",
     container_prefix="restolibra",
     db_filename="restolibra.db",
+    # 🔴 **Este producto no tiene cadena propia de Alembic, pero SÍ corre la
+    # del motor.** Su esquema lo crean `init_core_schema()` y
+    # `init_commerce_schema()` al conectar, que **crean tablas que no existen y
+    # no alteran las que sí**. Lo que Alembic gobierna acá es el schema de
+    # LibraCore, que hasta el 2026-08-25 **no lo corría nadie**: sus migraciones
+    # no viajaban en el wheel.
+    #
+    # Medido ese día: de las tres instancias de este producto, la de dev estaba
+    # en `0002`, y las otras en `0001_baseline` o **sin `alembic_version`
+    # ninguna** — o sea producción atrás de dev, y sin las cuatro columnas que
+    # la revisión `0002` le agrega a `clients`.
+    #
+    # `libracore-migrar` resuelve la base por `RESTOLIBRA_DATABASE_URL`. Acá el
+    # schema del core vive en la MISMA base que el dominio, así que la
+    # resolución cae a la del dominio a propósito — ver
+    # `libracore.migrar.url_de_core`.
+    migraciones=(("libracore-migrar", "upgrade", "--prefijo", "restolibra"),),
     repo_root=REPO_ROOT,
     base_port=8071,
 )
