@@ -12,6 +12,7 @@ compartida con Contalibra, parametrización de este script — ver
 wiki/entities/libracore.md). Solo fija las constantes propias de Restolibra;
 la lógica real vive en LibraCore.
 """
+import os
 from pathlib import Path
 
 from libracore.provisioning import configure, client_from_config, forward_host_from_config, le_email_from_config, npm_available
@@ -34,6 +35,18 @@ configure(
     # del backup: hasta el 2026-08-12 su pantalla filtraba por `.db`/`.dump` y
     # un ZIP le habria quedado invisible.
     backup_zip=True,
+    # 🔴 **Esto lo encontró `tests/test_provisioning.py` apenas se agregó.** Este
+    # archivo no pasaba `docs_auth_secret` y `nuevo_cliente.py` sí, y no es
+    # cosmético: el único que lo lee es el alta, que lo estampa como
+    # `DOCS_AUTH_SECRET=` en el `.env` de la instancia nueva. Como los dos pisan
+    # el mismo `_cfg` global y `libracore.admin.services` importa los dos
+    # módulos, un alta hecha desde el backoffice —donde este archivo puede ser
+    # el último import— habría creado la instancia con el secreto **vacío**.
+    #
+    # No se veía comparando las dos configuraciones en un entorno sin
+    # `DOCS_AUTH_SECRET` seteada: ahí las dos ramas dan `""` y el desvío
+    # desaparece. Aparece en el CI, que sí la setea.
+    docs_auth_secret=os.environ.get("DOCS_AUTH_SECRET", ""),
     postgres=True,
     product_name="RESTOLIBRA",
     image_name="restolibra:latest",
