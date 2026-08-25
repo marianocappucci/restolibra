@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { api, ApiError, MEDIOS_PAGO_LABELS, type ResumenTurno, type Turno } from '../api'
+import { api, ApiError, type ResumenTurno, type Turno } from '../api'
+import { useEtiquetaDeMedio } from '../lib/medios-pago'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -28,6 +29,7 @@ function DiferenciaBadge({ esperado, declarado }: { esperado: number | null; dec
 const estadoVentaTono: Record<string, TonoEstado> = { cobrada: 'ok', anulada: 'negativo' }
 
 export function TurnoDetalle() {
+  const etiquetaDeMedio = useEtiquetaDeMedio()
   const { id } = useParams<{ id: string }>()
   const turnoId = Number(id)
 
@@ -101,7 +103,7 @@ export function TurnoDetalle() {
                 <>
                   {Object.entries(resumen.pagos_por_medio).map(([medio, total]) => (
                     <div key={medio} className="flex justify-between">
-                      <Badge variant="outline">{MEDIOS_PAGO_LABELS[medio] ?? medio}</Badge>
+                      <Badge variant="outline">{etiquetaDeMedio(medio)}</Badge>
                       <span className="font-medium">{formatCurrency(total)}</span>
                     </div>
                   ))}

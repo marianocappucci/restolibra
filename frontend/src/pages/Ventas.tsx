@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
 import {
-  api, ApiError, IVA_CONDITIONS, MEDIOS_PAGO_LABELS, opcionesCliente,
+  api, ApiError, IVA_CONDITIONS, opcionesCliente,
   type Cliente, type ListaPrecio, type ProductoBusqueda, type Venta,
 } from '../api'
+import { useMediosPago } from '../lib/medios-pago'
 import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
@@ -49,6 +50,7 @@ const EMPTY_ITEM: ItemRow = { nombre: '', qty: '1', precio: '0', producto_id: nu
 const EMPTY_PAGO: PagoRow = { medio: 'efectivo', monto: '', referencia: '' }
 
 export function Ventas() {
+  const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
   const { user } = useAuth()
   const navigate = useNavigate()
   const [ventas, setVentas] = useState<Venta[]>([])
@@ -245,7 +247,7 @@ export function Ventas() {
           {row.original.pagos.length === 0
             ? <span className="text-muted-foreground">—</span>
             : row.original.pagos.map((p, i) => (
-              <Badge key={i} variant="outline" className="font-normal">{MEDIOS_PAGO_LABELS[p.medio] ?? p.medio}: {formatCurrency(p.monto)}</Badge>
+              <Badge key={i} variant="outline" className="font-normal">{etiquetaDeMedio(p.medio)}: {formatCurrency(p.monto)}</Badge>
             ))}
         </div>
       ),
@@ -400,7 +402,11 @@ export function Ventas() {
                     <Select value={row.medio} onValueChange={(v) => updatePago(i, 'medio', v)}>
                       <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        {Object.entries(MEDIOS_PAGO_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+                        {/* 🔴 Del motor. Esta lista era la copia TypeScript, y el backend
+                            ahora **valida** el medio: ofrecer uno que no esta
+                            en la canonica --`cheque`-- daba un 422 recien al
+                            guardar la venta, con el mostrador esperando. */}
+                        {medios.map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Input type="number" step="0.01" value={row.monto} onChange={(e) => updatePago(i, 'monto', e.target.value)} className="w-28" placeholder="Monto" />

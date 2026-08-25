@@ -4,9 +4,10 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import {
-  api, ApiError, MEDIOS_PAGO_LABELS, TIPOS_COMPROBANTE,
+  api, ApiError, TIPOS_COMPROBANTE,
   type Caja, type Egreso, type PagoEgreso,
 } from '../api'
+import { useMediosPago } from '../lib/medios-pago'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,6 +43,7 @@ type PagoFormValues = z.infer<typeof pagoSchema>
 // Portado 1:1 desde Contalibra (frontend/src/pages/EgresoDetalle.tsx) --
 // mismo backend libracore, ver web/api/egresos.py.
 export function EgresoDetalle() {
+  const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
   const { id } = useParams<{ id: string }>()
   const egresoId = Number(id)
   const navigate = useNavigate()
@@ -209,7 +211,7 @@ export function EgresoDetalle() {
                     <div key={p.id} className="flex items-center justify-between border-b py-1 text-sm last:border-0">
                       <span className="text-muted-foreground">
                         {fecha(p.fecha)}
-                        {p.medio_pago && <Badge variant="outline" className="ml-1.5">{MEDIOS_PAGO_LABELS[p.medio_pago] ?? p.medio_pago}</Badge>}
+                        {p.medio_pago && <Badge variant="outline" className="ml-1.5">{etiquetaDeMedio(p.medio_pago)}</Badge>}
                         {p.referencia && <span className="ml-1.5">({p.referencia})</span>}
                       </span>
                       <span className="font-semibold text-destructive">- {formatCurrency(p.monto)}</span>
@@ -301,8 +303,11 @@ export function EgresoDetalle() {
                         <Select value={field.value} onValueChange={field.onChange}>
                           <FormControl><SelectTrigger className="w-44"><SelectValue placeholder="Elegir medio…" /></SelectTrigger></FormControl>
                           <SelectContent>
-                            {(cajaSeleccionada?.medios_pago ?? Object.keys(MEDIOS_PAGO_LABELS)).map((m) => (
-                              <SelectItem key={m} value={m}>{MEDIOS_PAGO_LABELS[m] ?? m}</SelectItem>
+                            {/* El fallback sale del motor: la copia TypeScript ofrecia
+                                `cheque`, que el backend no tenia en su lista
+                                canonica, y escondia las tarjetas. */}
+                            {(cajaSeleccionada?.medios_pago ?? medios.map((x) => x.id)).map((m) => (
+                              <SelectItem key={m} value={m}>{etiquetaDeMedio(m)}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

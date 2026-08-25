@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { api, ApiError, MEDIOS_PAGO_LABELS, type Venta } from '../api'
+import { api, ApiError, type Venta } from '../api'
+import { useEtiquetaDeMedio } from '../lib/medios-pago'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
+import { esElectronico } from 'libra-ui/medios-pago'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Ban, CheckCircle2, FileCheck, PackageCheck, Printer, QrCode, ReceiptText, ShoppingCart } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
@@ -27,6 +29,7 @@ function estadoLabel(estado: string): string {
 }
 
 export function VentaDetalle() {
+  const etiquetaDeMedio = useEtiquetaDeMedio()
   const { id } = useParams<{ id: string }>()
   const ventaId = Number(id)
   const { user } = useAuth()
@@ -110,7 +113,7 @@ export function VentaDetalle() {
                     {detalle.pagos.map((p, i) => (
                       <div key={i} className="grid gap-0.5">
                         <div className="flex justify-between">
-                          <Badge variant="outline">{MEDIOS_PAGO_LABELS[p.medio] ?? p.medio}</Badge>
+                          <Badge variant="outline">{etiquetaDeMedio(p.medio)}</Badge>
                           <span className="font-medium">{formatCurrency(p.monto)}</span>
                         </div>
                         {p.referencia && <p className="flex items-center gap-1 text-xs text-muted-foreground"><CheckCircle2 className="size-3.5 text-emerald-600" />Ref: {p.referencia}</p>}
@@ -119,7 +122,7 @@ export function VentaDetalle() {
                     <div className="mt-1 flex justify-between border-t pt-1.5 font-semibold">
                       <span>Total cobrado</span><span>{formatCurrency(detalle.pagos.reduce((a, p) => a + p.monto, 0))}</span>
                     </div>
-                    {detalle.pagos.some((p) => ['mercadopago', 'billetera', 'cuenta_dni'].includes(p.medio)) && detalle.estado === 'cobrada' && (
+                    {detalle.pagos.some((p) => esElectronico(p.medio)) && detalle.estado === 'cobrada' && (
                       <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><QrCode className="size-3.5" />Cobro con QR dinámico de MercadoPago: alcance recortado deliberadamente en esta etapa (ver wiki/entities/contalibra.md, Etapa C).</p>
                     )}
                   </>

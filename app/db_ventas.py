@@ -32,8 +32,9 @@ Restolibra (mismo patrón que Contalibra), con `venta_id` = `sales.id`.
 import contextlib
 import sqlite3
 
-from libracore.db.caja import MEDIOS_PAGO_LABELS, create_caja_movimiento
-from libracore.db.core import _ar_now
+from libracore import medios_pago
+from libracore.db.caja import create_caja_movimiento
+from libracore.db.core import Conexion, _ar_now
 from libracore.db.cuenta_corriente import create_cc_pago
 from libracore.db.reversiones import revertir_cobro_venta
 from libracore.db.turnos import get_turno_activo
@@ -61,7 +62,7 @@ def _estado_de_row(status: str, status_detail: str | None) -> str:
     return status_detail or _STATUS_A_ESTADO.get(status, status)
 
 
-def get_next_venta_numero(conn: sqlite3.Connection | None = None) -> str:
+def get_next_venta_numero(conn: Conexion | None = None) -> str:
     """Si se pasa `conn`, calcula el número dentro de esa transacción (ya con el
     write-lock tomado por el caller) para no chocar con otro cobro concurrente.
     Sin `conn`, sigue siendo best-effort (uso legacy)."""
@@ -82,7 +83,7 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
                  descuento: float, total: float, cliente_id: int | None,
                  cliente_nombre: str, usuario_id: int | None,
                  observaciones: str = "", estado: str = "cobrada",
-                 conn: sqlite3.Connection | None = None) -> int:
+                 conn: Conexion | None = None) -> int:
     """Inserta el encabezado en `sales` y las líneas en `sale_items`.
 
     Las líneas ya no se guardan como JSON: cada ítem es una fila. Una línea
@@ -117,7 +118,7 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
 
 
 def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = "",
-                   conn: sqlite3.Connection | None = None):
+                   conn: Conexion | None = None):
     cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
     with cm as c:
         c.execute(
@@ -157,7 +158,7 @@ def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: flo
                 for p in pagos:
                     add_venta_pago(venta_id, p["medio"], p["monto"],
                                    p.get("referencia", ""), conn=conn)
-                    label = MEDIOS_PAGO_LABELS.get(p["medio"], p["medio"])
+                    label = medios_pago.label(p["medio"])
                     create_caja_movimiento(
                         fecha=fecha, tipo="ingreso",
                         concepto=f"Venta {numero} — {label}",
@@ -404,9 +405,13 @@ def get_venta_by_mp_order(mp_order_id: str) -> dict | None:
 def add_venta_pago_referencia_mp(venta_id: int, payment_id: str) -> None:
     """Actualiza la referencia del pago MP/billetera de la venta con el payment_id."""
     with get_connection() as conn:
+        # El criterio de "medio electronico" sale del motor: este mismo
+        # `IN (...)` estaba escrito a mano en tres repos, y era el unico lugar
+        # de la familia donde `qr` existia como valor. Ademas le faltaba
+        # `mercado_pago`, la grafia de VentaLibra.
         conn.execute(
-            """UPDATE ventas_pagos SET referencia=?
-               WHERE venta_id=? AND medio IN ('mercadopago','billetera','cuenta_dni','qr')
+            f"""UPDATE ventas_pagos SET referencia=?
+               WHERE venta_id=? AND {medios_pago.sql_es_electronico("medio")}
                AND (referencia IS NULL OR referencia='')""",
             (f"MP#{payment_id}", venta_id),
         )

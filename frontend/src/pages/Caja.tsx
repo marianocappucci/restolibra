@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { type ColumnDef } from '@tanstack/react-table'
-import { api, ApiError, MEDIOS_PAGO_LABELS, type CajaConfig, type CajaMovimiento, type ResumenCaja } from '../api'
+import { api, ApiError, type CajaConfig, type CajaMovimiento, type ResumenCaja } from '../api'
+import { useMediosPago } from '../lib/medios-pago'
 import { Card, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +26,7 @@ function formatCurrency(value: number): string {
 }
 
 export function Caja() {
+  const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const facturaId = searchParams.get('factura_id')
@@ -115,7 +117,10 @@ export function Caja() {
   const cajaSeleccionadaMov = cajas.find((c) => String(c.id) === cajaIdMov)
   const mediosDisponiblesMov = cajaSeleccionadaMov && cajaSeleccionadaMov.medios_pago.length > 0
     ? cajaSeleccionadaMov.medios_pago
-    : Object.keys(MEDIOS_PAGO_LABELS)
+    // El fallback salia de la copia TypeScript de la lista, que divergia de
+    // la del backend en las dos direcciones: ofrecia `cheque` --que la lista
+    // canonica no tenia-- y escondia las tarjetas. Ahora sale del motor.
+    : medios.map((m) => m.id)
 
   useEffect(() => {
     if (mediosDisponiblesMov.length > 0 && !mediosDisponiblesMov.includes(medioPagoMov)) {
@@ -183,7 +188,7 @@ export function Caja() {
         cell: ({ row }) => (
           <div className="text-sm">
             {row.original.caja_nombre && <div className="text-muted-foreground">{row.original.caja_nombre}</div>}
-            {row.original.medio_pago && <Badge variant="outline">{MEDIOS_PAGO_LABELS[row.original.medio_pago] ?? row.original.medio_pago}</Badge>}
+            {row.original.medio_pago && <Badge variant="outline">{etiquetaDeMedio(row.original.medio_pago)}</Badge>}
           </div>
         ),
       })
@@ -261,7 +266,7 @@ export function Caja() {
                 <Select value={medioPagoMov} onValueChange={setMedioPagoMov}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {mediosDisponiblesMov.map((k) => <SelectItem key={k} value={k}>{MEDIOS_PAGO_LABELS[k] ?? k}</SelectItem>)}
+                    {mediosDisponiblesMov.map((k) => <SelectItem key={k} value={k}>{etiquetaDeMedio(k)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>

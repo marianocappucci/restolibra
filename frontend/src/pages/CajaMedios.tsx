@@ -10,19 +10,21 @@ import {
 } from '@/components/ui/select'
 import {
   Wallet, Download, ArrowLeft, ArrowUp, ArrowDown,
-  Banknote, Landmark, Smartphone, CreditCard, WalletCards, ArrowRightLeft, Receipt,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { iconoDe } from 'libra-ui/medios-pago'
 import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
-const MEDIO_ICONS: Record<string, typeof Banknote> = {
-  efectivo: Banknote, transferencia: Landmark, mercadopago: Smartphone,
-  cuenta_dni: CreditCard, billetera: WalletCards, cuenta_corriente: ArrowRightLeft, cheque: Receipt,
-}
+// 🔴 Aca habia un `MEDIO_ICONS` propio, duplicado byte a byte en `Reportes.tsx`
+// y otras dos veces en Contalibra. Ahora sale de `libra-ui/medios-pago`, como
+// lookup PARCIAL con fallback: un medio nuevo en LibraCore se dibuja con el
+// icono generico en vez de romper la tabla.
+//
+// Las etiquetas ya venian del backend (`data.medio_label`), que es lo correcto.
 
 export function CajaMedios() {
   const [desde, setDesde] = useState(primerDiaDelMesISO())
@@ -125,7 +127,7 @@ export function CajaMedios() {
                     </thead>
                     <tbody>
                       {Object.entries(data.totales).map(([medio, vals]) => {
-                        const Icon = MEDIO_ICONS[medio] ?? Banknote
+                        const Icon = iconoDe(medio)
                         const p = pct(vals, granTotalIng)
                         const saldo = vals.ingresos - vals.egresos
                         return (
@@ -187,7 +189,7 @@ export function CajaMedios() {
                     </thead>
                     <tbody>
                       {Object.entries(caja.medios).sort(([a], [b]) => a.localeCompare(b)).map(([medio, vals]) => {
-                        const Icon = MEDIO_ICONS[medio] ?? Banknote
+                        const Icon = iconoDe(medio)
                         const saldoM = vals.ingresos - vals.egresos
                         return (
                           <tr key={medio} className="border-b last:border-0">

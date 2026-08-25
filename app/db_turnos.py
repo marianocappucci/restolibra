@@ -16,9 +16,8 @@ usara el de LibraCore leería la tabla vieja — **el arqueo de caja daría
 mal**.
 """
 import contextlib
-import sqlite3
 
-from libracore.db.core import _ar_now, get_connection
+from libracore.db.core import Conexion, _ar_now, get_connection
 from libracore.db.turnos import (  # noqa: F401
     create_turno,
     get_turno_activo,
@@ -74,7 +73,7 @@ def cerrar_turno(tid: int, monto_declarado: float, notas: str = ""):
         )
 
 
-def vincular_venta_turno(venta_id: int, turno_id: int, conn: sqlite3.Connection | None = None):
+def vincular_venta_turno(venta_id: int, turno_id: int, conn: Conexion | None = None):
     """El turno de una venta vive en `venta_links` (referencia cruzada entre
     el contexto de caja y el de ventas), no en la tabla `sales` genérica."""
     cm = contextlib.nullcontext(conn) if conn is not None else get_connection()

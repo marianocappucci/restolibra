@@ -12,6 +12,7 @@ compartida con Contalibra, parametrización de este script — ver
 wiki/entities/libracore.md). Solo fija las constantes propias de Restolibra;
 la lógica real vive en LibraCore.
 """
+import os
 from pathlib import Path
 
 from libracore.provisioning import configure, client_from_config, forward_host_from_config, le_email_from_config, npm_available
@@ -34,11 +35,40 @@ configure(
     # del backup: hasta el 2026-08-12 su pantalla filtraba por `.db`/`.dump` y
     # un ZIP le habria quedado invisible.
     backup_zip=True,
+    # 🔴 **Esto lo encontró `tests/test_provisioning.py` apenas se agregó.** Este
+    # archivo no pasaba `docs_auth_secret` y `nuevo_cliente.py` sí, y no es
+    # cosmético: el único que lo lee es el alta, que lo estampa como
+    # `DOCS_AUTH_SECRET=` en el `.env` de la instancia nueva. Como los dos pisan
+    # el mismo `_cfg` global y `libracore.admin.services` importa los dos
+    # módulos, un alta hecha desde el backoffice —donde este archivo puede ser
+    # el último import— habría creado la instancia con el secreto **vacío**.
+    #
+    # No se veía comparando las dos configuraciones en un entorno sin
+    # `DOCS_AUTH_SECRET` seteada: ahí las dos ramas dan `""` y el desvío
+    # desaparece. Aparece en el CI, que sí la setea.
+    docs_auth_secret=os.environ.get("DOCS_AUTH_SECRET", ""),
     postgres=True,
     product_name="RESTOLIBRA",
     image_name="restolibra:latest",
     container_prefix="restolibra",
     db_filename="restolibra.db",
+    # 🔴 **Este producto no tiene cadena propia de Alembic, pero SÍ corre la
+    # del motor.** Su esquema lo crean `init_core_schema()` y
+    # `init_commerce_schema()` al conectar, que **crean tablas que no existen y
+    # no alteran las que sí**. Lo que Alembic gobierna acá es el schema de
+    # LibraCore, que hasta el 2026-08-25 **no lo corría nadie**: sus migraciones
+    # no viajaban en el wheel.
+    #
+    # Medido ese día: de las tres instancias de este producto, la de dev estaba
+    # en `0002`, y las otras en `0001_baseline` o **sin `alembic_version`
+    # ninguna** — o sea producción atrás de dev, y sin las cuatro columnas que
+    # la revisión `0002` le agrega a `clients`.
+    #
+    # `libracore-migrar` resuelve la base por `RESTOLIBRA_DATABASE_URL`. Acá el
+    # schema del core vive en la MISMA base que el dominio, así que la
+    # resolución cae a la del dominio a propósito — ver
+    # `libracore.migrar.url_de_core`.
+    migraciones=(("libracore-migrar", "upgrade", "--prefijo", "restolibra"),),
     repo_root=REPO_ROOT,
     base_port=8071,
 )
