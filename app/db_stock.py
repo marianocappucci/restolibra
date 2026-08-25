@@ -23,10 +23,10 @@ movimiento, el stock siempre se calcula sumando.
 """
 import contextlib
 import json
-import sqlite3
 
 from app.db_core import get_connection
 from app.db_productos import get_default_deposito_id
+from libracore.db.core import Conexion
 
 # Tipo de Restolibra -> movement_type semántico de LibraCommerce. El tipo
 # original se guarda aparte en `reason_code`, así que este mapeo puede ser
@@ -66,7 +66,7 @@ def add_movimiento_stock(producto_id: int, tipo: str, cantidad: float,
                          venta_id: int | None = None,
                          usuario_id: int | None = None,
                          deposito_id: int | None = None,
-                         conn: sqlite3.Connection | None = None):
+                         conn: Conexion | None = None):
     """Agrega un movimiento de stock. cantidad positiva=entrada, negativa=salida.
 
     Un movimiento de cantidad 0 se ignora en vez de insertarse: `stock_movements`
@@ -191,7 +191,7 @@ def ajustar_stock(producto_id: int, stock_nuevo: float, referencia: str,
     )
 
 
-def _es_servicio(producto_id: int, conn: sqlite3.Connection | None = None) -> bool:
+def _es_servicio(producto_id: int, conn: Conexion | None = None) -> bool:
     cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
     with cm as c:
         row = c.execute("SELECT item_type FROM catalog_items WHERE id=?", (producto_id,)).fetchone()
@@ -226,7 +226,7 @@ def _resumen_modificadores(modificadores) -> str:
 
 def descontar_stock_venta(venta_id: int, items: list, fecha: str = "",
                           usuario_id: int | None = None,
-                          conn: sqlite3.Connection | None = None):
+                          conn: Conexion | None = None):
     """Descuenta stock por cada ítem de la venta que tenga producto_id y sea
     de tipo 'producto' — un servicio nunca genera movimiento de stock: no
     tiene inventario.

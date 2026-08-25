@@ -34,7 +34,7 @@ import sqlite3
 
 from libracore import medios_pago
 from libracore.db.caja import create_caja_movimiento
-from libracore.db.core import _ar_now
+from libracore.db.core import Conexion, _ar_now
 from libracore.db.cuenta_corriente import create_cc_pago
 from libracore.db.reversiones import revertir_cobro_venta
 from libracore.db.turnos import get_turno_activo
@@ -62,7 +62,7 @@ def _estado_de_row(status: str, status_detail: str | None) -> str:
     return status_detail or _STATUS_A_ESTADO.get(status, status)
 
 
-def get_next_venta_numero(conn: sqlite3.Connection | None = None) -> str:
+def get_next_venta_numero(conn: Conexion | None = None) -> str:
     """Si se pasa `conn`, calcula el número dentro de esa transacción (ya con el
     write-lock tomado por el caller) para no chocar con otro cobro concurrente.
     Sin `conn`, sigue siendo best-effort (uso legacy)."""
@@ -83,7 +83,7 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
                  descuento: float, total: float, cliente_id: int | None,
                  cliente_nombre: str, usuario_id: int | None,
                  observaciones: str = "", estado: str = "cobrada",
-                 conn: sqlite3.Connection | None = None) -> int:
+                 conn: Conexion | None = None) -> int:
     """Inserta el encabezado en `sales` y las líneas en `sale_items`.
 
     Las líneas ya no se guardan como JSON: cada ítem es una fila. Una línea
@@ -118,7 +118,7 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
 
 
 def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = "",
-                   conn: sqlite3.Connection | None = None):
+                   conn: Conexion | None = None):
     cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
     with cm as c:
         c.execute(
