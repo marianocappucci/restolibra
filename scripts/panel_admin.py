@@ -68,7 +68,32 @@ configure(
     # schema del core vive en la MISMA base que el dominio, así que la
     # resolución cae a la del dominio a propósito — ver
     # `libracore.migrar.url_de_core`.
-    migraciones=(("libracore-migrar", "upgrade", "--prefijo", "restolibra"),),
+    # 🔑 **DOS cadenas, y el orden no es decorativo.** Tiene que decir lo MISMO
+    # que el otro script de `scripts/` y que el `command:` de dev del compose;
+    # hay un test que ata las tres puntas.
+    #
+    # 1. `libracore-migrar` — el schema de LibraCore, que hasta el 2026-08-25
+    #    **no lo corría nadie**: sus migraciones no viajaban en el wheel.
+    #    Resuelve la base por `RESTOLIBRA_DATABASE_URL`: acá el schema del
+    #    core vive en la MISMA base que el dominio, así que la resolución cae a
+    #    la del dominio a propósito — ver `libracore.migrar.url_de_core`.
+    #
+    # 2. `alembic` — la cadena **propia**, agregada el 2026-08-25. Gobierna las
+    #    9 tablas que son de este producto; las otras son de los motores.
+    #    Va SEGUNDA porque las revisiones propias tienen FK contra tablas de
+    #    LibraCore: al revés, la baseline muere con `relation "..." does not
+    #    exist` en un alta nueva, donde las migraciones corren antes del primer
+    #    arranque.
+    #
+    #    Usa `alembic_version_restolibra`, no `alembic_version` — esa última es
+    #    la del motor y corre contra esta misma base. Ver `migrations/env.py`.
+    #
+    # Son dos comandos y no un `sh -c "a && b"` para que el `[ERROR]` del deploy
+    # diga **cuál de las dos** falló.
+    migraciones=(
+        ("libracore-migrar", "upgrade", "--prefijo", "restolibra"),
+        ("alembic", "upgrade", "head"),
+    ),
     repo_root=REPO_ROOT,
     base_port=8071,
 )

@@ -10,6 +10,7 @@ from libracore.db.schema import init_core_schema
 from libracore.db.clients import sincronizar_parties_de_clientes
 from libracommerce.db.schema import init_schema as init_commerce_schema
 from app.db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, ES_POSTGRES, get_connection, minutos_desde  # noqa: F401
+from app.schema_propio import init_schema_propio  # noqa: F401  (lo usa init_db)
 from app.db_usuarios import (  # noqa: F401
     _hash_password,
     _verify_password,
@@ -467,171 +468,18 @@ def init_db():
                 " VALUES ('Depósito principal', '', 1, 1)"
             )
 
-        # Referencias cruzadas entre la venta (LibraCommerce) y contextos que
-        # no son suyos: facturación/remitos y turno de caja (LibraCore) y
-        # MercadoPago. No van dentro de `sales` para no meter dominio ajeno en
-        # el motor genérico — ver db_ventas.py.
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS venta_links (
-                venta_id      INTEGER PRIMARY KEY REFERENCES sales(id) ON DELETE CASCADE,
-                factura_id    INTEGER REFERENCES facturas(id) ON DELETE SET NULL,
-                remito_id     INTEGER REFERENCES remitos(id) ON DELETE SET NULL,
-                turno_id      INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL,
-                mp_order_id   TEXT DEFAULT '',
-                mp_payment_id TEXT DEFAULT ''
-            )
-        """)
-
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS recetas (
-                id              INTEGER PRIMARY KEY AUTOINCREMENT,
-                producto_id     INTEGER NOT NULL UNIQUE REFERENCES catalog_items(id) ON DELETE CASCADE,
-                rinde           REAL NOT NULL DEFAULT 1,
-                rinde_unidad    TEXT NOT NULL DEFAULT 'u',
-                rendimiento_pct REAL NOT NULL DEFAULT 100,
-                activo          INTEGER NOT NULL DEFAULT 1,
-                notas           TEXT DEFAULT '',
-                created_at      TEXT DEFAULT (datetime('now')),
-                updated_at      TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS receta_items (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                receta_id      INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
-                ingrediente_id INTEGER NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
-                cantidad       REAL NOT NULL DEFAULT 0,
-                created_at     TEXT DEFAULT (datetime('now'))
-            );
-
-            -- ─────────────── Módulo Restaurant (salón / comandas) ───────────────
-            CREATE TABLE IF NOT EXISTS salones (
-                id     INTEGER PRIMARY KEY AUTOINCREMENT,
-                nombre TEXT NOT NULL,
-                orden  INTEGER NOT NULL DEFAULT 0,
-                activo INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS mesas (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                salon_id   INTEGER NOT NULL REFERENCES salones(id) ON DELETE CASCADE,
-                nombre     TEXT NOT NULL,
-                capacidad  INTEGER NOT NULL DEFAULT 4,
-                orden      INTEGER NOT NULL DEFAULT 0,
-                estado     TEXT NOT NULL DEFAULT 'libre',    -- libre | ocupada | cuenta
-                activo     INTEGER NOT NULL DEFAULT 1,
-                created_at TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS pedidos (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                numero         TEXT NOT NULL,
-                canal          TEXT NOT NULL DEFAULT 'salon', -- salon | barra | takeaway | delivery
-                mesa_id        INTEGER REFERENCES mesas(id) ON DELETE SET NULL,
-                estado         TEXT NOT NULL DEFAULT 'abierto', -- abierto | cobrado | anulado
-                comensales     INTEGER NOT NULL DEFAULT 1,
-                usuario_id     INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
-                cliente_id     INTEGER REFERENCES clients(id) ON DELETE SET NULL,
-                cliente_nombre TEXT DEFAULT '',
-                direccion      TEXT DEFAULT '',
-                telefono       TEXT DEFAULT '',
-                repartidor     TEXT DEFAULT '',
-                costo_envio    REAL NOT NULL DEFAULT 0,
-                hora_retiro    TEXT DEFAULT '',
-                observaciones  TEXT DEFAULT '',
-                venta_id       INTEGER REFERENCES sales(id) ON DELETE SET NULL,
-                created_at     TEXT DEFAULT (datetime('now')),
-                updated_at     TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS comandas (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                pedido_id      INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-                estacion       TEXT NOT NULL,                     -- cocina | barra
-                numero         INTEGER NOT NULL DEFAULT 0,        -- ronda dentro del pedido
-                estado         TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | preparacion | listo | entregado
-                preparacion_at TEXT,                              -- timestamps de transición (tiempos)
-                listo_at       TEXT,
-                entregado_at   TEXT,
-                created_at     TEXT DEFAULT (datetime('now')),
-                updated_at     TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS pedido_items (
-                id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                pedido_id   INTEGER NOT NULL REFERENCES pedidos(id) ON DELETE CASCADE,
-                comanda_id  INTEGER REFERENCES comandas(id) ON DELETE SET NULL,
-                -- catalog_items (LibraCommerce) y no `productos`: el catálogo
-                -- se migró en P8 y esta FK quedó apuntando a la tabla vieja.
-                -- Las instancias existentes ya se repuntaron en la migración
-                -- de P8, pero este CREATE seguía naciendo con la FK vieja, así
-                -- que una instancia NUEVA no podía cargar un ítem a un pedido
-                -- (FOREIGN KEY constraint failed). Lo encontró la suite el
-                -- 2026-07-30. Ver `recetas` más arriba, ya repuntada entonces.
-                producto_id INTEGER REFERENCES catalog_items(id) ON DELETE SET NULL,
-                nombre      TEXT NOT NULL,
-                qty         REAL NOT NULL DEFAULT 1,
-                precio      REAL NOT NULL DEFAULT 0,
-                subtotal    REAL NOT NULL DEFAULT 0,
-                estacion    TEXT DEFAULT '',                  -- cocina | barra | '' (sin comanda)
-                nota        TEXT DEFAULT '',
-                estado      TEXT NOT NULL DEFAULT 'nuevo',     -- nuevo | enviado | anulado
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS reservas (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                mesa_id        INTEGER NOT NULL REFERENCES mesas(id) ON DELETE CASCADE,
-                fecha          TEXT NOT NULL,                  -- YYYY-MM-DD
-                hora           TEXT NOT NULL,                  -- HH:MM
-                cliente_nombre TEXT NOT NULL DEFAULT '',
-                telefono       TEXT DEFAULT '',
-                comensales     INTEGER NOT NULL DEFAULT 1,
-                notas          TEXT DEFAULT '',
-                estado         TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | cumplida | cancelada
-                created_at     TEXT DEFAULT (datetime('now'))
-            );
-        """)
-        # Índices — agregados en la auditoría 2026-07-12 (wiki/analyses/restolibra-auditoria-produccion).
-        # Antes de crear el índice único de "una mesa, un pedido abierto", limpiamos
-        # cualquier duplicado que ya exista (ej. de la condición de carrera que este
-        # mismo índice viene a prevenir) para no romper el arranque de la app.
-        dups = conn.execute("""
-            SELECT mesa_id FROM pedidos WHERE estado='abierto' AND mesa_id IS NOT NULL
-            GROUP BY mesa_id HAVING COUNT(*) > 1
-        """).fetchall()
-        for d in dups:
-            rows = conn.execute(
-                "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' ORDER BY id DESC",
-                (d["mesa_id"],),
-            ).fetchall()
-            for old in rows[1:]:
-                conn.execute(
-                    "UPDATE pedidos SET estado='abierto_duplicado', updated_at=? WHERE id=?",
-                    (_ar_now(), old["id"]),
-                )
-        conn.executescript("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_pedido_mesa_abierta
-                ON pedidos(mesa_id) WHERE estado='abierto';
-            CREATE INDEX IF NOT EXISTS idx_pedidos_estado ON pedidos(estado);
-            CREATE INDEX IF NOT EXISTS idx_comandas_estacion_estado ON comandas(estacion, estado);
-            CREATE INDEX IF NOT EXISTS idx_pedido_items_pedido ON pedido_items(pedido_id);
-            CREATE INDEX IF NOT EXISTS idx_pedido_items_comanda ON pedido_items(comanda_id);
-            CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha);
-            CREATE INDEX IF NOT EXISTS idx_caja_movimientos_fecha ON caja_movimientos(fecha);
-        """)
-        # Migraciones específicas del módulo restaurant (tablas de extensión,
-        # no cubiertas por libracore.db.schema.init_core_schema).
-        ped_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedidos)").fetchall()]
-        if ped_cols and "hora_retiro" not in ped_cols:
-            conn.execute("ALTER TABLE pedidos ADD COLUMN hora_retiro TEXT DEFAULT ''")
-        com_cols = [r[1] for r in conn.execute("PRAGMA table_info(comandas)").fetchall()]
-        for _col in ("preparacion_at", "listo_at", "entregado_at"):
-            if com_cols and _col not in com_cols:
-                conn.execute(f"ALTER TABLE comandas ADD COLUMN {_col} TEXT")
-        pi_cols = [r[1] for r in conn.execute("PRAGMA table_info(pedido_items)").fetchall()]
-        if pi_cols and "modificadores" not in pi_cols:
-            conn.execute("ALTER TABLE pedido_items ADD COLUMN modificadores TEXT DEFAULT ''")
+        # Las 9 tablas propias de este producto, con sus índices y los tres
+        # ALTER históricos. El DDL vive en `app/schema_propio.py` y no acá desde
+        # el 2026-08-25, porque la baseline de Alembic
+        # (`migrations/versions/0001_baseline_restolibra.py`) llama a esa MISMA
+        # función: si el DDL siguiera suelto acá, la revisión tendría que
+        # re-expresarlo y serían dos fuentes de verdad que se desincronizan en
+        # el primer cambio.
+        #
+        # 🔴 Desde esa revisión la función es de **sólo lectura**: una columna
+        # nueva va como revisión de Alembic, no como línea agregada ahí. Ver su
+        # docstring para el reparto completo de las 67 tablas.
+        init_schema_propio(conn)
 
         # Seed de módulos: inserta sólo los que no existen aún
         _MODULOS_DEFAULT = [
