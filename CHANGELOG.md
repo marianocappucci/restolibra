@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.0.1 — 2026-08-29
+
+Deploy a producción de lo acumulado en `develop`. **Nueve commits**, no siete:
+las dos instancias de producción venían de una imagen construida antes del
+último merge a `main`, así que el rango real se midió desde el commit que la
+imagen declara (`org.libra.commit`) y no desde `main`.
+
+### Caja
+
+- **Un movimiento de caja se anula, no se borra.** Borrar dejaba el arqueo con
+  un agujero que nadie puede auditar. Los anulados quedan tachados **y** con la
+  palabra «anulado» —sólo el tachado se pierde en una impresión en blanco y
+  negro y no lo lee un lector de pantalla—, y el botón de anular desaparece en
+  esas filas en vez de quedar deshabilitado.
+  > La columna `caja_movimientos.anulado` **la agrega el arranque**
+  > (`init_core_schema`), de forma idempotente y también sobre PostgreSQL.
+  > Verificado antes del deploy: ninguna de las instancias la tenía, y la de
+  > LibraClub —que ya corre el motor nuevo— sí.
+
+### Comprobantes
+
+- Los comprobantes salen **del motor** y no de una copia local.
+- El listado de comprobantes y la bandeja de MercadoPago pasan a `libra-ui`
+  (v0.43.0); acá queda un shim con lo que es propio del producto. La bandeja
+  bajó de 509 líneas a 14.
+
+### Motor
+
+- `libracore` v1.54.0 → **v1.59.0**. Sin migraciones nuevas del motor en ese
+  salto (sólo existen `0001_baseline` y `0002`, las dos anteriores a v1.54.0).
+- `libraauth` v0.34.0 — la demo deja de estar frenada por el gate de Términos.
+
+---
+
 ## v1.3.0 — 2026-05-27
 
 ### Nuevos módulos

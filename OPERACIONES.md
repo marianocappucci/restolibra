@@ -57,23 +57,54 @@ docker compose up -d --build    # usa docker-compose.yml → puerto 8071
 
 ### Promover cambios a producción
 
-Cuando los cambios están listos para producción, ejecutar el script de deploy **desde la rama `develop`**:
+> 🔴 **`scripts/deploy-prod.sh` NO EXISTE, y no es que se perdió: se borró a
+> propósito** el 2026-07-01 (commit `ccb3137`), junto con
+> `docker-compose.prod.yml`, al deprecar el deploy de un solo tenant. Esta
+> sección lo siguió documentando durante casi dos meses y mandó a una sesión a
+> buscarlo. Producción **son instancias de cliente** bajo `clientes/<slug>/`,
+> gestionadas con `panel_admin.py` igual que cualquier otra.
+
+El deploy a producción es `panel_admin.py actualizar`, **desde el VPS**:
+
+> ⚠️ El resto de esta guía dice `contalibra` en casi todos lados: es una copia
+> del archivo de Contalibra que llegó con el fork y nunca se renombró. Los
+> comandos de **esta** sección son los de Restolibra.
 
 ```bash
-# Sin bump de versión (usa la versión actual en version.py)
-./scripts/deploy-prod.sh
+cd /root/restolibra
+# Primero, ver qué se va a construir sin construir nada:
+python3 scripts/panel_admin.py actualizar --dry-run
 
-# Con bump de versión (actualiza version.py, commitea, mergea y tagea)
-./scripts/deploy-prod.sh 1.3.0
+# El deploy real: construye una imagen nueva y mueve a ella las instancias.
+python3 scripts/panel_admin.py actualizar            # todas las que estén corriendo
+python3 scripts/panel_admin.py actualizar <slug>     # una sola
 ```
 
-El script hace automáticamente:
-1. Verifica que estás en `develop` y no hay cambios sin commitear
-2. (Opcional) Actualiza `version.py` y commitea el bump
-3. Hace merge `develop → main` con `--no-ff`
-4. Crea el git tag `vX.Y.Z`
-5. Construye la imagen de producción y reinicia el contenedor `contalibra`
-6. Vuelve a `develop` y pushea ambas ramas + el tag a origin
+Lo que hace:
+
+1. Construye la imagen desde **`main`** — o sea lo promovido, no lo que el
+   checkout tenga puesto. El checkout lo comparten el build de dev y el de
+   cada cliente; atarle el deploy convertiría a la rama que necesita dev en la
+   que decide qué se le despliega al cliente.
+2. Corre las migraciones declaradas en `configure(migraciones=...)` **antes de
+   mover cada instancia**, con el compose ya pineado a la imagen nueva.
+3. Repinea el compose de cada cliente y lo reinicia. Un cliente que no esté
+   corriendo **se saltea sin repinear**, así que arrancarlo más tarde no lo
+   salta a código que no se desplegó para él.
+
+Antes de correrlo, en el checkout local:
+
+1. Bumpear `app/version.py` en `develop` y agregar la entrada al CHANGELOG.
+2. Promover `develop → main` con un Pull Request.
+3. Taguear `vX.Y.Z` sobre `main`.
+
+> ⚠️ **La versión vive en `app/version.py`, no en `version.py`.** Esta guía
+> decía lo segundo y ese archivo no existe.
+
+> ⚠️ **El exit code de `actualizar` fue mentira hasta el 2026-08-17**: devolvía
+> 0 aunque el build fallara. Ya está arreglado, pero la forma de verificar un
+> deploy sigue siendo **comparar la imagen del contenedor contra la que se
+> construyó**, no leer el código de salida.
 
 ### Versionado
 
