@@ -209,12 +209,34 @@ def test_quedan_mesas_libres_y_ocupadas(api):
 
 
 def test_hay_una_reserva_para_hoy(api):
-    """La pantalla de reservas existe y sin ninguna se ve siempre vacía."""
-    from datetime import date
+    """La pantalla de reservas existe y sin ninguna se ve siempre vacía.
 
-    sembrar(api)
+    ⚠️ **Se pregunta por la fecha que devolvió `sembrar()`, no por
+    `date.today()`.** Este test se puso rojo el 2026-08-29 a las 00:04 de
+    Argentina, con el mismo código que había pasado en verde una hora antes, y
+    no era inestabilidad: `HOY` se resolvía **al importar** el módulo del seed,
+    la suite tarda seis minutos, y la corrida cruzó la medianoche. Sembró para
+    el 28 y preguntó por el 29.
 
-    reservas = _lista(api.get(f"/api/salon/reservas?fecha={date.today().isoformat()}"))
+    Preguntarle a `date.today()` de nuevo acá reproduce el mismo defecto con una
+    ventana más chica: entre que `sembrar()` devuelve y el assert corre, el día
+    puede cambiar igual. La fecha con la que se sembró es el único dato correcto.
+    """
+    from datetime import date, timedelta
+
+    fecha = sembrar(api)
+
+    # 🔑 Control de que la fecha devuelta es realmente «hoy» y no cualquier
+    # cosa: sin esto, un `sembrar()` que devolviera una fecha inventada ---y
+    # sembrara en esa--- pasaría el assert de abajo sin que la demo tenga nada
+    # el día que el operador la abre. Se admite un día de juego por el cruce de
+    # medianoche, que es justo lo que este test dejó de mirar mal.
+    assert abs((fecha - date.today()).days) <= 1, (
+        f"sembrar() dijo haber sembrado para {fecha}, y hoy es {date.today()}"
+    )
+    assert fecha >= date.today() - timedelta(days=1)
+
+    reservas = _lista(api.get(f"/api/salon/reservas?fecha={fecha.isoformat()}"))
     assert len(reservas) >= 1
 
 
@@ -289,3 +311,41 @@ def test_donde_si_se_puede_sembrar(url):
 ])
 def test_donde_NO(url):
     assert url_no_productiva(url) is False
+
+
+def test_LA_FECHA_NO_SE_RESUELVE_AL_IMPORTAR(monkeypatch):
+    """🔴 La guarda del defecto que puso el CI en rojo el 2026-08-29.
+
+    `HOY` era un `date.today()` a nivel de módulo: quedaba congelado en el
+    instante del import. Un proceso que importa antes de medianoche y siembra
+    después ---la suite tarda seis minutos, y el cron de la demo vive días---
+    siembra para AYER, y después la pantalla de reservas se ve vacía el día que
+    alguien la abre.
+
+    No se prueba llamando a `sembrar()`: eso es una corrida entera contra la
+    base. Se prueba la pieza que decide la fecha, que es donde vivía el defecto.
+    """
+    import datetime
+
+    import scripts.seed_demo as seed
+
+    # Se mueve el reloj DESPUÉS de que el módulo ya está importado, que es
+    # exactamente el cruce de medianoche a mitad de corrida.
+    otro_dia = datetime.date(2031, 7, 4)
+
+    class RelojMovido(datetime.date):
+        @classmethod
+        def today(cls):
+            return otro_dia
+
+    monkeypatch.setattr(seed, "date", RelojMovido)
+
+    assert seed._fijar_hoy() == otro_dia, (
+        "la fecha sigue viniendo del import: mover el reloj no la cambió"
+    )
+    # Y deja el módulo consistente: los diez lugares que siembran datos del día
+    # leen `seed.HOY`, no el valor devuelto.
+    assert seed.HOY == otro_dia, (
+        "`_fijar_hoy` devolvió la fecha nueva pero no actualizó `HOY`, que es "
+        "la que usan los sembradores"
+    )
