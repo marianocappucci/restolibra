@@ -2,6 +2,16 @@
 
 ## v1.0.1 — 2026-08-29
 
+> 🔑 **Este es el primer tag propio de Restolibra.** Los `v1.2.0`, `v1.3.0`,
+> `v1.5.0` y `v1.5.1` que hay en este repo **son de Contalibra**: llegaron con
+> el fork y apuntan a commits anteriores a la bifurcación (`v1.5.1` es
+> `2c09cb5`, el mismo commit en los dos repos). Restolibra nunca tagueó una
+> release suya, y por eso el sidebar venía diciendo `1.0.0` mientras
+> `git tag` mostraba cinco releases: no era un desfasaje, eran los tags de
+> otro producto. Leerlos como propios lleva a creer que este repo va por la
+> 1.5 cuando recién ahora sale su 1.0.1.
+
+
 Deploy a producción de lo acumulado en `develop`. **Nueve commits**, no siete:
 las dos instancias de producción venían de una imagen construida antes del
 último merge a `main`, así que el rango real se midió desde el commit que la
