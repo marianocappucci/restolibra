@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { anchoColumnaAcciones, DataTable, sortableHeader } from 'libra-ui/data-table'
-import { ArrowDownCircle, ArrowUpCircle, Check, Filter, PiggyBank, Plus, Receipt, SquareStack, Trash2, Wallet, X } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, Check, Filter, PiggyBank, Plus, Receipt, SquareStack, Ban, Wallet, X } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
@@ -169,7 +169,15 @@ export function Caja() {
         header: 'Concepto',
         cell: ({ row }) => (
           <span className="flex items-center gap-1.5 font-medium">
-            {row.original.concepto}
+            {/* 🔴 Tachado **y** con la palabra. Sólo el tachado se pierde en una
+                impresión en blanco y negro y no lo lee un lector de pantalla;
+                sólo la palabra se pierde entre veinte filas. */}
+            <span className={row.original.anulado ? 'line-through text-muted-foreground' : undefined}>
+              {row.original.concepto}
+            </span>
+            {row.original.anulado ? (
+              <span className="rounded border px-1 text-xs font-normal text-muted-foreground">anulado</span>
+            ) : null}
             {row.original.factura_id && (
               <Link to={`/facturas/${row.original.factura_id}`} className="text-muted-foreground hover:text-primary" title="Ver factura">
                 <Receipt className="size-3.5" />
@@ -198,7 +206,11 @@ export function Caja() {
         accessorKey: 'monto',
         header: () => <div className="text-right">Monto</div>,
         cell: ({ row }) => (
-          <div className={`text-right font-semibold ${row.original.tipo === 'ingreso' ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
+          <div className={
+            row.original.anulado
+              ? 'text-right font-semibold text-muted-foreground line-through'
+              : `text-right font-semibold ${row.original.tipo === 'ingreso' ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`
+          }>
             {row.original.tipo === 'ingreso' ? '+' : '−'} {formatCurrency(row.original.monto)}
           </div>
         ),
@@ -210,7 +222,11 @@ export function Caja() {
         minSize: anchoColumnaAcciones(1),
         cell: ({ row }) => (
           <div className="flex justify-end">
-            <Button size="icon" variant="ghost" title="Eliminar movimiento" aria-label="Eliminar movimiento" onClick={() => setConfirmDelete(row.original)}><Trash2 /></Button>
+            {/* Un anulado no se vuelve a anular: el botón desaparece en vez de
+                quedar deshabilitado, que invita a apretarlo. */}
+            {row.original.anulado ? null : (
+              <Button size="icon" variant="ghost" title="Anular movimiento" aria-label="Anular movimiento" onClick={() => setConfirmDelete(row.original)}><Ban /></Button>
+            )}
           </div>
         ),
       },
@@ -325,7 +341,8 @@ export function Caja() {
       <ConfirmDialog
         open={!!confirmDelete}
         onOpenChange={(o) => !o && setConfirmDelete(null)}
-        title="¿Eliminar este movimiento?"
+        title="¿Anular este movimiento?"
+        description="La fila queda en la lista, marcada como anulada, y sale de los totales del arqueo. Un movimiento de caja no se borra."
         onConfirm={() => { if (confirmDelete) { eliminar(confirmDelete); setConfirmDelete(null) } }}
       />
     </div>

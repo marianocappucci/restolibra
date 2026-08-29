@@ -472,6 +472,9 @@ export type CajaMovimiento = {
   caja_nombre: string | null
   usuario_nombre: string | null
   medio_pago: string
+  /** 1 = anulado. La fila **queda** y sale de los totales del arqueo: un
+   *  movimiento de caja se anula, no se borra. */
+  anulado?: number
 }
 
 export type ResumenCaja = { ingresos: number; egresos: number; saldo_periodo: number; saldo_total: number }
