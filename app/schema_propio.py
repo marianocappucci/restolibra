@@ -74,8 +74,8 @@ def init_schema_propio(conn) -> None:
             rendimiento_pct REAL NOT NULL DEFAULT 100,
             activo          INTEGER NOT NULL DEFAULT 1,
             notas           TEXT DEFAULT '',
-            created_at      TEXT DEFAULT (datetime('now')),
-            updated_at      TEXT DEFAULT (datetime('now'))
+            created_at      TEXT DEFAULT (datetime('now','-3 hours')),
+            updated_at      TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS receta_items (
@@ -83,7 +83,7 @@ def init_schema_propio(conn) -> None:
             receta_id      INTEGER NOT NULL REFERENCES recetas(id) ON DELETE CASCADE,
             ingrediente_id INTEGER NOT NULL REFERENCES catalog_items(id) ON DELETE CASCADE,
             cantidad       REAL NOT NULL DEFAULT 0,
-            created_at     TEXT DEFAULT (datetime('now'))
+            created_at     TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         -- ─────────────── Módulo Restaurant (salón / comandas) ───────────────
@@ -92,7 +92,7 @@ def init_schema_propio(conn) -> None:
             nombre TEXT NOT NULL,
             orden  INTEGER NOT NULL DEFAULT 0,
             activo INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
+            created_at TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS mesas (
@@ -103,7 +103,7 @@ def init_schema_propio(conn) -> None:
             orden      INTEGER NOT NULL DEFAULT 0,
             estado     TEXT NOT NULL DEFAULT 'libre',    -- libre | ocupada | cuenta
             activo     INTEGER NOT NULL DEFAULT 1,
-            created_at TEXT DEFAULT (datetime('now'))
+            created_at TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS pedidos (
@@ -123,8 +123,8 @@ def init_schema_propio(conn) -> None:
             hora_retiro    TEXT DEFAULT '',
             observaciones  TEXT DEFAULT '',
             venta_id       INTEGER REFERENCES sales(id) ON DELETE SET NULL,
-            created_at     TEXT DEFAULT (datetime('now')),
-            updated_at     TEXT DEFAULT (datetime('now'))
+            created_at     TEXT DEFAULT (datetime('now','-3 hours')),
+            updated_at     TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS comandas (
@@ -136,8 +136,8 @@ def init_schema_propio(conn) -> None:
             preparacion_at TEXT,                              -- timestamps de transición (tiempos)
             listo_at       TEXT,
             entregado_at   TEXT,
-            created_at     TEXT DEFAULT (datetime('now')),
-            updated_at     TEXT DEFAULT (datetime('now'))
+            created_at     TEXT DEFAULT (datetime('now','-3 hours')),
+            updated_at     TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS pedido_items (
@@ -159,7 +159,7 @@ def init_schema_propio(conn) -> None:
             estacion    TEXT DEFAULT '',                  -- cocina | barra | '' (sin comanda)
             nota        TEXT DEFAULT '',
             estado      TEXT NOT NULL DEFAULT 'nuevo',     -- nuevo | enviado | anulado
-            created_at  TEXT DEFAULT (datetime('now'))
+            created_at  TEXT DEFAULT (datetime('now','-3 hours'))
         );
 
         CREATE TABLE IF NOT EXISTS reservas (
@@ -172,7 +172,7 @@ def init_schema_propio(conn) -> None:
             comensales     INTEGER NOT NULL DEFAULT 1,
             notas          TEXT DEFAULT '',
             estado         TEXT NOT NULL DEFAULT 'pendiente', -- pendiente | cumplida | cancelada
-            created_at     TEXT DEFAULT (datetime('now'))
+            created_at     TEXT DEFAULT (datetime('now','-3 hours'))
         );
     """)
     # Índices — agregados en la auditoría 2026-07-12 (wiki/analyses/restolibra-auditoria-produccion).
