@@ -57,5 +57,16 @@ def crear(payload: MovimientoPayload, user: dict = Depends(get_current_user_json
 
 @router.delete("/{mov_id}")
 def eliminar(mov_id: int):
-    db.delete_caja_movimiento(mov_id)
+    """Anula el movimiento. **La fila queda.**
+
+    🔴 **Hasta el 2026-08-28 esto borraba de verdad**, y borrar deja un agujero
+    en el arqueo que nadie puede auditar: no queda rastro de que alguien cargó
+    plata y la sacó. Lo pidió el humano mirando LibraClub —*"no deberían poder
+    borrarse, tienen que quedar registrados"*— y el defecto era el mismo acá.
+
+    La ruta sigue siendo `DELETE` para no romper al frontend, pero lo que hace es
+    marcar `anulado=1`: sale de los totales del arqueo y la lista lo sigue
+    mostrando. Ver `libracore.db.caja.anular_caja_movimiento`.
+    """
+    db.anular_caja_movimiento(mov_id)
     return {"ok": True}

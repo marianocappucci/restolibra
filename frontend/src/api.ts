@@ -28,6 +28,24 @@ export type {
 // este modulo, y aca abajo hay tipos propios que usan `Factura` y `Caja`.
 import type { Caja, Factura } from 'libra-ui/facturas'
 
+// La bandeja de MercadoPago: sus tipos viven en `libra-ui/mp` desde la v0.45.0,
+// junto a la pantalla que los muestra. Estaban declarados aca y, palabra por
+// palabra, tambien en Contalibra -- con UNA diferencia real, que este cambio
+// corrige: `MpMovimiento.payer_id_number` estaba tipado `string` y es
+// `string | null`, porque una transferencia puede llegar sin identificacion del
+// emisor. El tipo del kit toma el de Contalibra, que era el correcto.
+//
+// El `export type ... from` re-exporta pero NO trae el nombre al ambito de este
+// modulo, y aca abajo hay tipos propios que usan `Cliente` -- de ahi el
+// `import type` de al lado. Mismo cuidado que con `Caja` y `Factura`.
+export type { Cliente, MpMovimiento, MpPago } from 'libra-ui/mp'
+import type { Cliente } from 'libra-ui/mp'
+
+// La lista de condiciones frente al IVA la fija ARCA, no el producto: vive en
+// `libra-ui/facturas` desde la v0.45.0.
+export { IVA_CONDITIONS } from 'libra-ui/facturas'
+
+
 // role incluye 'mozo' -- rol especifico de Restolibra sin equivalente en
 // Contalibra (ve solo la seccion Salon del sidebar, ver Layout.tsx).
 export type User = {
@@ -304,33 +322,12 @@ export type DashboardData = {
 // la Etapa B) y el alias de facturacion MP (`AliasFacturacion`), portados
 // del estado actual de Contalibra -- ver web/api/clientes.py.
 
-export type Cliente = {
-  id: number
-  name: string
-  address: string
-  cuit_dni: string
-  email: string
-  phone: string
-  iva_condition: string
-  auto_facturar: number
-  activo: number
-}
-
 export type AliasFacturacion = {
   id: number
   tipo: 'cuit' | 'email'
   valor: string
   cliente_id: number
 }
-
-export const IVA_CONDITIONS = [
-  'Responsable Inscripto',
-  'Monotributista',
-  'IVA Exento',
-  'Consumidor Final',
-  'No Alcanzado',
-  'IVA No Responsable',
-] as const
 
 export type ConsultaCuit = {
   nombre?: string
@@ -475,6 +472,9 @@ export type CajaMovimiento = {
   caja_nombre: string | null
   usuario_nombre: string | null
   medio_pago: string
+  /** 1 = anulado. La fila **queda** y sale de los totales del arqueo: un
+   *  movimiento de caja se anula, no se borra. */
+  anulado?: number
 }
 
 export type ResumenCaja = { ingresos: number; egresos: number; saldo_periodo: number; saldo_total: number }
@@ -688,23 +688,6 @@ export type Venta = {
   factura_id: number | null
   factura_display: string | null
   remito_id: number | null
-}
-
-export type MpPago = {
-  id: number
-  mp_payment_id: string
-  monto: number
-  payer_email: string
-  payer_name: string
-  payment_type: string | null
-  payment_method: string | null
-  descripcion_mp: string | null
-  payer_id_type: string | null
-  payer_id_number: string | null
-  estado_factura: string
-  factura_id: number | null
-  created_at: string
-  cliente: Cliente | null
 }
 
 // --- opciones para los selects con busqueda (libra-ui/SelectBuscable) ------
@@ -1013,22 +996,3 @@ export type ConfigData = { cfg: ConfigCfg; arca: ArcaConfig | Record<string, nev
 
 export type Backup = { filename: string; size_mb: number; mtime: string }
 
-export type MpMovimiento = {
-  id: number
-  mp_movement_id: string
-  tipo: string
-  monto: number
-  fecha: string
-  descripcion: string
-  origen_nombre: string
-  origen_banco: string | null
-  origen_cbu: string | null
-  payer_email: string
-  payer_name: string
-  payer_id_type: string | null
-  payer_id_number: string
-  estado_factura: string
-  factura_id: number | null
-  created_at: string
-  cliente: Cliente | null
-}

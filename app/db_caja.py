@@ -13,5 +13,6 @@ from libracore.db.caja import (  # noqa: F401
     get_caja_resumen,
     get_cobro_factura,
     get_cobros_factura,
+    anular_caja_movimiento,
     delete_caja_movimiento,
 )
