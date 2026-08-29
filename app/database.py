@@ -434,7 +434,7 @@ def _migrar_ventas_pagos_a_sales(conn):
                 medio      TEXT NOT NULL,
                 monto      REAL NOT NULL,
                 referencia TEXT DEFAULT '',
-                created_at TEXT DEFAULT (datetime('now'))
+                created_at TEXT DEFAULT (datetime('now','-3 hours'))
             )
         """)
         conn.execute("""

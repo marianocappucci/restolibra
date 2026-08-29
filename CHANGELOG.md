@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.0.2 — 2026-08-29
+
+### El reloj de la base
+
+- **Los `created_at` dejan de estampar UTC.** El DEFAULT de las columnas con
+  reloj era `datetime('now')`, que en SQLite es UTC y que el adaptador de
+  PostgreSQL traduce a UTC **a propósito**, para que las dos bases guarden el
+  mismo texto. O sea que las dos guardaban la hora equivocada, y de la misma
+  manera. Pasa a `datetime('now','-3 hours')`, el mismo offset fijo de
+  `_ar_now()`.
+  > Se entró buscando el cron nocturno de MercadoPago, porque ahí se veía
+  > (`03:00:06` cuando en Argentina eran las `00:00:06`). **El cron no tenía
+  > nada**: ninguna ruta de código pasa `created_at`, lo pone el DEFAULT. Las
+  > filas escritas a mano estaban igual de corridas y sólo pasaban por buenas
+  > porque una operación de las 12:56 guardada como `15:56` sigue pareciendo
+  > horario de trabajo. Se confirmó cruzando el log del contenedor con los
+  > movimientos que ese click escribió.
+  > Es la mitad que faltaba del barrido de huso del 2026-08-23: aquél movió los
+  > relojes de los **procesos**, éste el que estampa **la base**.
+- **Presupuestos vencidos, un día antes.** `date('now')` también era UTC, así
+  que entre las 21:00 y la medianoche marcaba vencido un presupuesto que todavía
+  valía.
+- **Las nueve tablas del módulo restaurante entran también** (`pedidos`,
+  `comandas`, `reservas`, `recetas`, ...), con la revisión `0002`: sobre una
+  base que ya existe el `CREATE TABLE IF NOT EXISTS` no cambia ningún DEFAULT.
+
+> ⚠️ **Las filas ya escritas no se tocan.** Quedan 3 h adelantadas y hay una
+> discontinuidad a partir de este deploy, igual que la que dejó el 2026-08-23 y
+> por el mismo motivo. Decisión del humano el 2026-08-29.
+
+### Motores
+
+- `libracore` a `v1.60.1` y `libracommerce` a `v0.9.1`.
+
 ## v1.0.1 — 2026-08-29
 
 > 🔑 **Este es el primer tag propio de Restolibra.** Los `v1.2.0`, `v1.3.0`,

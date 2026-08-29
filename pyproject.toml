@@ -83,14 +83,14 @@ dependencies = [
     # que este producto NO tenía en su contenedor (medido) y que
     # `libracore-migrar` necesita para aplicar la cadena del motor. Sin él, el
     # paso del deploy muere con un `ModuleNotFoundError` en vez de correr.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.59.0",
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.60.1",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
     # dos defectos: no eran atomicas y el chequeo corria en otra conexion antes
     # de escribir. v0.7.1 agrega el `reason_code` por pata, sin el cual
     # adoptarlas degradaba `db_logs` de `transferencia_salida` a `transfer_out`.
-    "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.7.2",
+    "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.9.1",
     "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.34.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
