@@ -116,7 +116,13 @@ dependencies = [
 # producto monta para exponer /sync/v1/*, y el fix del handler --sin el, el
 # router rechazaba TODAS las operaciones y cada venta de cada nodo terminaba
 # en revision manual con el nodo reportandose en linea--.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.4.1",
+#
+# v0.4.1 -> v0.5.0 (2026-08-30): las pruebas de desastre encontraron que una
+# operacion colgada en estado sending --por un corte a mitad del envio-- no la
+# reintentaba NADIE nunca. La venta que el nodo cobro no llegaba al central, no
+# habia error, y se descubria en el arqueo. Estuvo ahi desde la primera version
+# del worker.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.5.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
