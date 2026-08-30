@@ -172,7 +172,9 @@ def test_emite_facturas_pero_no_configura_ARCA(api):
 
     facturas = _lista(api.get("/api/facturas"))
     assert facturas, "la pantalla de facturación no puede quedar vacía"
-    assert not api.get("/api/config")["arca"], (
+    # `GET /api/config/arca` y no `/api/config`: el segundo se fue el 2026-08-30
+    # con la pantalla que lo consumia. Devuelve `null` si no hay fila.
+    assert not api.get("/api/config/arca"), (
         "el seed dejó ARCA configurado: una demo pública con certificado "
         "emitiría comprobantes fiscales de verdad"
     )
