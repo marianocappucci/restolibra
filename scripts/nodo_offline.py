@@ -193,6 +193,54 @@ def espejo_del_nodo(conn) -> dict[str, str]:
     }
 
 
+class SegundoNodoEnLaSucursal(RuntimeError):
+    """Se intentó registrar un segundo nodo activo en una sucursal que ya tiene."""
+
+
+def _rechazar_segundo_nodo(conn, node_id: str, branch_id: str) -> None:
+    """🔴 Una sucursal tiene UN nodo. Los demás POS son terminales suyas.
+
+    La topología es un nodo por local y N terminales apuntándole por la red —los
+    POS son navegadores, no instalaciones—. Dos nodos en el mismo salón no es una
+    variante soportada: es el escenario que rompe.
+
+    **Y rompe de la peor manera.** Los dos nodos numeran ventas desde su propia
+    base local, así que tarde o temprano emiten el mismo número. Cuando la
+    segunda llega al central, el `UNIQUE` de `sales.number` la rechaza — y el
+    handler la manda a revisión manual porque eso ya está previsto, pero recién
+    ahí, con el ticket impreso y el cliente en la puerta. Nadie se entera hasta
+    el arqueo.
+
+    **Re-registrar el MISMO `node_id` sí es legítimo** y no se toca: es cómo se
+    reemplaza una PC robada o dada de baja, y emite un secreto nuevo que invalida
+    el anterior.
+
+    La guarda es del lado del central a propósito. El instalador corre en la PC
+    del cliente y no puede saber qué otras PC hay; el central es el único que ve
+    la sucursal entera.
+    """
+    fila = conn.execute(
+        """SELECT node_id FROM node_identity
+            WHERE branch_id = ? AND active = 1 AND node_id <> ?
+            ORDER BY node_id LIMIT 1""",
+        (branch_id, node_id),
+    ).fetchone()
+    if fila is None:
+        return
+    raise SegundoNodoEnLaSucursal(
+        f"La sucursal {branch_id!r} ya tiene un nodo activo: {fila[0]!r}.\n"
+        f"\n"
+        f"Una sucursal tiene UN nodo; los demás POS son terminales que le apuntan\n"
+        f"por la red interna, sin instalar nada. Dos nodos numeran ventas en\n"
+        f"paralelo desde su propia base y terminan chocando en el central, con el\n"
+        f"ticket ya impreso.\n"
+        f"\n"
+        f"Si de verdad se reemplaza el nodo, dar de baja el anterior primero.\n"
+        f"Si es la MISMA PC, registrar con el mismo node_id ({fila[0]!r}): eso\n"
+        f"emite un secreto nuevo e invalida el viejo, que es lo que corresponde."
+    )
+
+
 def registrar(node_id: str, branch_id: str) -> int:
     """Da de alta el nodo y **muestra su secreto una sola vez**.
 
@@ -203,6 +251,7 @@ def registrar(node_id: str, branch_id: str) -> int:
     from libraedge.db.repository import NodeRepository
 
     with _conexion() as conn:
+        _rechazar_segundo_nodo(conn, node_id, branch_id)
         secreto = NodeRepository(conn).register_node(node_id, branch_id=branch_id)
         conn.commit()
         espejo = espejo_del_nodo(conn)
@@ -217,6 +266,31 @@ def registrar(node_id: str, branch_id: str) -> int:
     print("🔴 El secreto se muestra UNA SOLA VEZ: sólo se guarda su hash.")
     print("   Copiarlo ahora al archivo de entorno del nodo. Si se pierde, hay")
     print("   que volver a registrar el nodo, lo que invalida el anterior.")
+    return 0
+
+
+def dar_de_baja(node_id: str) -> int:
+    """Revoca un nodo: su secreto deja de servir de inmediato.
+
+    Es lo que hay que correr antes de registrar un nodo **distinto** en la misma
+    sucursal —la guarda lo exige— y también cuando una PC se roba o se
+    desafecta. No borra nada: el outbox y el histórico del nodo quedan.
+    """
+    from libraedge.db.repository import NodeRepository
+
+    with _conexion() as conn:
+        existe = conn.execute(
+            "SELECT active FROM node_identity WHERE node_id = ?", (node_id,)
+        ).fetchone()
+        if existe is None:
+            print(f"No hay ningún nodo {node_id!r}. Ver `estado` para la lista.")
+            return 1
+        if not existe[0]:
+            print(f"El nodo {node_id!r} ya estaba dado de baja.")
+            return 0
+        NodeRepository(conn).deactivate_node(node_id)
+        conn.commit()
+    print(f"Nodo {node_id!r} dado de baja: su secreto deja de verificar.")
     return 0
 
 
@@ -258,13 +332,24 @@ def main(argv: list[str] | None = None) -> int:
     reg = sub.add_parser("registrar", help="da de alta un nodo y emite su secreto")
     reg.add_argument("node_id")
     reg.add_argument("--sucursal", default="principal")
+    baja = sub.add_parser("dar-de-baja", help="revoca un nodo (PC robada o reemplazada)")
+    baja.add_argument("node_id")
     sub.add_parser("estado", help="que hay publicado y que nodos existen")
 
     args = parser.parse_args(argv)
     if args.comando == "publicar":
         return publicar()
     if args.comando == "registrar":
-        return registrar(args.node_id, args.sucursal)
+        try:
+            return registrar(args.node_id, args.sucursal)
+        except SegundoNodoEnLaSucursal as choque:
+            # Se imprime y se sale con 1 en vez de dejar el traceback: quien
+            # corre esto está instalando en un local, y un stack trace no le
+            # dice qué hacer. El mensaje sí.
+            print(f"\nERROR: {choque}\n")
+            return 1
+    if args.comando == "dar-de-baja":
+        return dar_de_baja(args.node_id)
     return estado()
 
 

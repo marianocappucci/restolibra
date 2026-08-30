@@ -436,3 +436,120 @@ def test_un_cambio_posterior_en_el_central_llega_al_nodo(admin_client, monkeypat
     assert "dulce" in str(despues[0]), "el cambio del central no bajó al nodo"
 
     nodo_conn.close()
+
+
+# ── Un solo nodo por sucursal ────────────────────────────────────────────
+
+def test_una_sucursal_con_un_nodo_se_registra_sin_problema(admin_client, capsys):
+    """El positivo, primero: sin esto el test de abajo no probaría nada."""
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "centro"]) == 0
+    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+
+
+def test_un_segundo_nodo_en_la_misma_sucursal_se_rechaza(admin_client, capsys):
+    """🔴 Dos nodos en el mismo salón es el escenario que rompe.
+
+    Los dos numeran ventas desde su propia base local y tarde o temprano emiten
+    el mismo número. El `UNIQUE` de `sales.number` lo detiene en el central —eso
+    ya está previsto— pero recién ahí, con el ticket impreso y el cliente en la
+    puerta. La guarda lo corta al instalar, que es cuando todavía se puede.
+    """
+    provisionar(["registrar", "nodo-1", "--sucursal", "centro"])
+    capsys.readouterr()
+
+    codigo = provisionar(["registrar", "nodo-2", "--sucursal", "centro"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1, "tiene que salir distinto de cero"
+    assert "ya tiene un nodo activo" in salida
+    assert "nodo-1" in salida, "tiene que decir CUÁL es el que ya está"
+    assert "LIBRAEDGE_NODE_SECRET=" not in salida, (
+        "no puede haber emitido un secreto para el nodo rechazado"
+    )
+
+
+def test_el_nodo_rechazado_no_queda_registrado(admin_client, capsys):
+    """Rechazar y dejar la fila escrita sería peor que no rechazar."""
+    from app.db_core import get_connection
+
+    provisionar(["registrar", "nodo-1", "--sucursal", "centro"])
+    provisionar(["registrar", "nodo-2", "--sucursal", "centro"])
+    capsys.readouterr()
+
+    with get_connection() as conn:
+        nodos = [f[0] for f in conn.execute(
+            "SELECT node_id FROM node_identity ORDER BY node_id").fetchall()]
+    assert nodos == ["nodo-1"]
+
+
+def test_re_registrar_el_mismo_nodo_sigue_permitido(admin_client, capsys):
+    """🔴 Es cómo se reemplaza una PC robada, y la guarda no puede romperlo.
+
+    Emite un secreto nuevo que invalida el anterior. Si la guarda mirara sólo la
+    sucursal, este caso legítimo quedaría bloqueado y la única salida sería
+    tocar la base a mano.
+    """
+    provisionar(["registrar", "nodo-1", "--sucursal", "centro"])
+    primero = capsys.readouterr().out
+
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "centro"]) == 0
+    segundo = capsys.readouterr().out
+
+    def secreto(salida):
+        linea = next(l for l in salida.splitlines() if "LIBRAEDGE_NODE_SECRET=" in l)
+        return linea.split("=", 1)[1]
+
+    assert secreto(segundo) != secreto(primero), "tiene que emitir uno nuevo"
+
+
+def test_otra_sucursal_si_puede_tener_su_nodo(admin_client, capsys):
+    """La guarda es por sucursal, no global: un cliente con dos locales tiene
+    dos nodos, y eso es exactamente lo previsto."""
+    provisionar(["registrar", "nodo-centro", "--sucursal", "centro"])
+    capsys.readouterr()
+
+    assert provisionar(["registrar", "nodo-norte", "--sucursal", "norte"]) == 0
+    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+
+
+def test_dar_de_baja_libera_la_sucursal(admin_client, capsys):
+    """El camino que el mensaje de error indica: dar de baja y volver a
+    registrar. Si no funcionara, el error mandaría a una vía muerta."""
+    provisionar(["registrar", "nodo-viejo", "--sucursal", "centro"])
+    capsys.readouterr()
+
+    assert provisionar(["dar-de-baja", "nodo-viejo"]) == 0
+    assert "deja de verificar" in capsys.readouterr().out
+
+    assert provisionar(["registrar", "nodo-nuevo", "--sucursal", "centro"]) == 0
+    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+
+
+def test_dar_de_baja_un_nodo_que_no_existe_lo_dice(admin_client, capsys):
+    assert provisionar(["dar-de-baja", "no-existe"]) == 1
+    assert "No hay ningún nodo" in capsys.readouterr().out
+
+
+def test_un_nodo_dado_de_baja_no_puede_sincronizar(admin_client):
+    """La baja tiene que cortar el acceso de verdad, no sólo la lista.
+
+    Es el caso de la PC robada: el secreto que tenía adentro no puede seguir
+    escribiendo en el central.
+    """
+    from libraedge.db.repository import NodeRepository
+
+    from app.db_core import get_connection
+
+    with get_connection() as conn:
+        secreto = NodeRepository(conn).register_node("nodo-1", branch_id="centro")
+        conn.commit()
+
+    antes = admin_client.get("/sync/v1/pull", params={"node_id": "nodo-1"},
+                             headers={"Authorization": f"Bearer {secreto}"})
+    assert antes.status_code == 200, "el control: antes de la baja tiene que andar"
+
+    provisionar(["dar-de-baja", "nodo-1"])
+
+    despues = admin_client.get("/sync/v1/pull", params={"node_id": "nodo-1"},
+                               headers={"Authorization": f"Bearer {secreto}"})
+    assert despues.status_code == 401
