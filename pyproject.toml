@@ -83,7 +83,7 @@ dependencies = [
     # que este producto NO tenía en su contenedor (medido) y que
     # `libracore-migrar` necesita para aplicar la cadena del motor. Sin él, el
     # paso del deploy muere con un `ModuleNotFoundError` en vez de correr.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.63.0",
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.64.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -92,6 +92,26 @@ dependencies = [
     # adoptarlas degradaba `db_logs` de `transferencia_salida` a `transfer_out`.
     "libracommerce @ git+https://github.com/marianocappucci/libracommerce.git@v0.9.1",
     "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.34.0",
+    # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
+    # razon es el schema: las tablas de LibraEdge se crean en la cadena de
+    # Alembic, y una revision que las creara solo cuando el paquete estuviera
+    # instalado dejaria el schema de unas instancias distinto del de otras, en
+    # silencio -- exactamente lo que la baseline dice que hay que evitar con las
+    # FK condicionales.
+    #
+    # Ademas el CENTRAL las necesita aunque el mismo no sea un nodo:
+    # `node_identity` para autenticar a los nodos que le pushean, `sync_inbox`
+    # para deduplicar, y `sync_changelog` para publicar la bajada.
+    #
+    # El costo es bajo: el paquete declara `dependencies = []`, es Python puro y
+    # no arrastra ninguna transitiva.
+    #
+    # 🔴 Pinneado a un TAG y no a `@develop`, que es como lo consumia el otro
+    # motor. Un pin a la rama trae lo que haya ahi en el momento del build, y con
+    # las tablas de LibraEdge dentro de esta cadena de Alembic un cambio de
+    # schema no anunciado llegaria al proximo deploy. `v0.2.0` es el primer tag
+    # que ese repo tuvo: se corto el 2026-08-30, junto con este piloto.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.2.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
