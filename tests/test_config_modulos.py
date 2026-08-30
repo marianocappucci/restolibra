@@ -3,9 +3,51 @@ from app import config_manager
 from app import db_core
 
 
-def test_get_config(admin_client):
-    resp = admin_client.get("/api/config")
-    assert resp.status_code == 200
+def test_la_config_ya_no_se_lee_entera_por_un_solo_endpoint(admin_client):
+    """🔴 `GET /api/config` se fue el 2026-08-30, y era una fuga.
+
+    Devolvia `config_manager.load()` ENTERO: el token de MercadoPago y la
+    contrasena de SMTP en claro, en el JSON de una pantalla. Existia porque el
+    `Config.tsx` propio cargaba las siete secciones de una sola vez; al pasar a
+    la pantalla compartida, cada seccion pide lo suyo.
+
+    No se asierta el codigo de estado: con el `dist/` del frontend construido el
+    catch-all del SPA matchea la ruta y devuelve 200 con el `index.html`, y sin
+    construir devuelve 404 --o sea que dependeria de si alguien corrio
+    `npm run build` antes de la suite. Lo que se mide es que la ruta no este en
+    el esquema de la app.
+    """
+    assert "/api/config" not in admin_client.app.openapi()["paths"]
+
+
+def test_las_lecturas_acotadas_no_traen_secretos(admin_client):
+    """El reemplazo: cada seccion lee lo suyo, y ningun secreto vuelve en claro.
+
+    Sin este control, sacar `GET /api/config` seria solo mover la fuga de
+    lugar --que es exactamente lo que pasaria si el `GET /email` devolviera
+    `config_manager.load()` filtrado a ojo.
+    """
+    cfg = config_manager.load()
+    cfg["email_smtp_password"] = "clave-de-aplicacion-16"
+    cfg["mp_access_token"] = "APP_USR-token-entero-del-cliente"
+    config_manager.save(cfg)
+    try:
+        correo = admin_client.get("/api/config/email").json()
+        assert "clave-de-aplicacion-16" not in str(correo)
+        # Pero la pantalla igual sabe que hay una cargada, para decirlo.
+        assert correo["email_smtp_password_definida"] is True
+
+        mp = admin_client.get("/api/config/mercadopago").json()
+        assert "APP_USR-token-entero-del-cliente" not in str(mp)
+        assert mp["mp_access_token_cargado"] is True
+
+        # Y el ticket, que no tiene secretos, si trae sus cinco campos.
+        assert admin_client.get("/api/config/ticket").json()["ticket_ancho_mm"]
+    finally:
+        cfg = config_manager.load()
+        cfg["email_smtp_password"] = ""
+        cfg["mp_access_token"] = ""
+        config_manager.save(cfg)
 
 
 def test_actualizar_empresa_persiste(admin_client):

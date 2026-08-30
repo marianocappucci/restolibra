@@ -154,12 +154,16 @@ def test_guardar_y_leer(admin_client):
     assert leido["tiene_certificado"] is False
 
 
-def test_el_get_de_config_sigue_trayendo_arca(admin_client):
-    """La SPA carga toda la pantalla de una sola vez desde `/api/config`. Sacar
-    el `PUT` de ahí no puede haberse llevado la lectura."""
+def test_la_configuracion_de_arca_se_relee_por_su_propio_endpoint(admin_client):
+    """Sacar el `PUT` de `/api/config` no puede haberse llevado la lectura.
+
+    🔴 Hasta el 2026-08-30 esto se leia de `GET /api/config`, que devolvia
+    `config_manager.load()` ENTERO --token de MercadoPago y contrasena de SMTP
+    incluidos-- porque la pantalla vieja cargaba todo de una. Ese endpoint se
+    fue con ella: cada seccion pide lo suyo.
+    """
     admin_client.put(RUTA, json={"cuit": "20289933604", "punto_venta": 3})
-    datos = admin_client.get("/api/config").json()
-    assert datos["arca"]["cuit"] == "20289933604"
+    assert admin_client.get(RUTA).json()["cuit"] == "20289933604"
 
 
 # ── Lo que ahora se rechaza al subir ────────────────────────────────────────
