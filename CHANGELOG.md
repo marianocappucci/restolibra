@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.0.4 — 2026-08-30
+
+### La pantalla dice de qué ambiente es el token de MercadoPago
+
+- 🔴 **MercadoPago no tiene homologación como ARCA.** No hay host de sandbox:
+  es el mismo `api.mercadopago.com` para los dos y **lo que define el ambiente
+  es el token**. Hasta ahora la pantalla no lo decía en ningún lado, y las dos
+  fallas son mudas — un token de producción en una instancia `dev` **cobra
+  plata de verdad**, y uno de prueba en la instancia de un cliente **no cobra
+  nada**. Las dos se ven igual: el QR se genera y la orden se crea.
+  > Ahora la tarjeta muestra `Ambiente de prueba`, `Ambiente de producción` o
+  > `Ambiente sin verificar`, con la fecha en que se determinó.
+- **Mirar el prefijo del token no alcanza**: un *usuario de prueba* de
+  MercadoPago entrega credenciales `APP_USR-` igual que las reales, y lo único
+  que lo delata es el `nickname` de `/users/me`. Por eso quien clasifica es
+  **Probar conexión** — que además ahora recarga la sección, porque probar es
+  justamente lo que averigua el ambiente.
+- La clasificación guardada lleva la **huella** del token sobre el que se
+  determinó: si la credencial cambia por cualquier vía —la pantalla,
+  `panel_admin`, restaurar un backup— se descarta sola.
+
+### Pines
+
+- `libracore` v1.64.0 → **v1.65.0**
+- `libra-ui` v0.53.0 → **v0.54.0**
+
+Los dos saltos son de una versión: lo que entra es exactamente lo de arriba.
+
 ## v1.0.3 — 2026-08-30
 
 ### Una sola configuración de correo
