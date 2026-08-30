@@ -1,5 +1,49 @@
 # Changelog
 
+## v1.0.5 — 2026-08-30
+
+### El central habla con los nodos offline de LibraEdge
+
+- **`/sync/v1/*` montado siempre**, no detrás de un flag. Es el endpoint que el
+  nodo usa para subir lo que cobró mientras estuvo sin internet (`push`) y para
+  bajar el espejo de los datos de referencia (`pull`). El router lo arma
+  `libraedge.sync.api.create_sync_router` con una conexión **por request**.
+- Las operaciones que sube el nodo entran por `aplicar_pedido_cobrado`, que
+  antes de insertar chequea colisión de `sales.number`. Es lo que hace que
+  reenviar la misma venta dos veces —el caso normal cuando se corta a mitad del
+  envío— no la duplique.
+
+### Un solo nodo por sucursal; los demás POS son terminales
+
+- `scripts/nodo_offline.py` con `publicar`, `registrar`, `dar-de-baja` y
+  `estado`. `registrar` **rechaza el segundo nodo de la misma sucursal**
+  (`SegundoNodoEnLaSucursal`): en un salón con varios mostradores hay una sola
+  instancia de LibraEdge y el resto apunta a ella, porque dos espejos de la
+  misma sucursal cobrando en paralelo no tienen forma de reconciliarse.
+- La siembra del espejo ordena las tablas **topológicamente por FK**, no
+  alfabéticamente. Alfabético mandaba `catalog_items` antes que `categories` y
+  la carga moría contra la foreign key.
+
+### El punto de venta de ARCA se puede cargar por caja
+
+- 🔴 **Cada mostrador factura con su propio punto de venta.** Dos POS en el
+  mismo salón comparten instancia pero **no** numeración fiscal: si emiten con
+  el mismo punto de venta, los comprobantes se pisan.
+- `cajas.punto_venta` es opcional; vacío significa "usar el de la instancia",
+  que es como venía funcionando. La pantalla manda `null`, **no `0`** — un cero
+  es un punto de venta inválido que ARCA rechaza.
+- Repetir un punto de venta entre cajas devuelve **409**, no un 500.
+
+### Pines
+
+- `libracore` v1.64.0 → **v1.66.0** — trae `cajas.punto_venta`. Sin este salto
+  la columna no existe y la pantalla manda un campo que el motor no conoce.
+- `libraedge` v0.2.0 → **v0.5.0** — trae `create_sync_router` (v0.4.1: sin el
+  arreglo del handler el router rechazaba **todas** las operaciones) y el
+  reclamo de operaciones colgadas en `sending` (v0.5.0: sin eso, una venta
+  cortada a mitad del envío no la reintentaba nadie nunca).
+- `libra-ui` v0.53.0 → **v0.54.0**.
+
 ## v1.0.4 — 2026-08-30
 
 ### La pantalla dice de qué ambiente es el token de MercadoPago
