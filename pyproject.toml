@@ -83,7 +83,10 @@ dependencies = [
     # que este producto NO tenía en su contenedor (medido) y que
     # `libracore-migrar` necesita para aplicar la cadena del motor. Sin él, el
     # paso del deploy muere con un `ModuleNotFoundError` en vez de correr.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.64.0",
+    # v1.65.0 → v1.66.0 (2026-08-30): trae `cajas.punto_venta`, el punto de venta
+    # de ARCA por mostrador. Sin este bump la columna no existe y la pantalla de
+    # Cajas manda un campo que el motor no conoce.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.66.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -111,7 +114,18 @@ dependencies = [
     # las tablas de LibraEdge dentro de esta cadena de Alembic un cambio de
     # schema no anunciado llegaria al proximo deploy. `v0.2.0` es el primer tag
     # que ese repo tuvo: se corto el 2026-08-30, junto con este piloto.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.2.0",
+#
+# v0.2.0 -> v0.4.1 (2026-08-30): trae create_sync_router, que es lo que este
+# producto monta para exponer /sync/v1/*, y el fix del handler --sin el, el
+# router rechazaba TODAS las operaciones y cada venta de cada nodo terminaba
+# en revision manual con el nodo reportandose en linea--.
+#
+# v0.4.1 -> v0.5.0 (2026-08-30): las pruebas de desastre encontraron que una
+# operacion colgada en estado sending --por un corte a mitad del envio-- no la
+# reintentaba NADIE nunca. La venta que el nodo cobro no llegaba al central, no
+# habia error, y se descubria en el arqueo. Estuvo ahi desde la primera version
+# del worker.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.5.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",

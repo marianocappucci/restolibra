@@ -37,6 +37,7 @@ export function Cajas() {
   const [descripcion, setDescripcion] = useState('')
   const [mediosPago, setMediosPago] = useState<string[]>([])
   const [activo, setActivo] = useState(true)
+  const [puntoVenta, setPuntoVenta] = useState('')
   const [saving, setSaving] = useState(false)
 
   useEffect(() => { load() }, [])
@@ -91,6 +92,7 @@ export function Cajas() {
     setEditingCaja(c)
     setNombre(c.nombre)
     setDescripcion(c.descripcion ?? '')
+    setPuntoVenta(c.punto_venta == null ? '' : String(c.punto_venta))
     setMediosPago(c.medios_pago)
     setActivo(!!c.activo)
     setFormOpen(true)
@@ -105,7 +107,13 @@ export function Cajas() {
     setSaving(true)
     setError(null)
     try {
-      const payload = { nombre, descripcion, medios_pago: mediosPago, activo }
+      // Vacio significa 'usa el de la empresa', que NO es lo mismo que cero:
+      // por eso null y no Number('') --que daria 0 y seria un punto de venta
+      // real e invalido--.
+      const payload = {
+        nombre, descripcion, medios_pago: mediosPago, activo,
+        punto_venta: puntoVenta.trim() === '' ? null : Number(puntoVenta),
+      }
       if (editingCaja) {
         await api.put(`/api/cajas/${editingCaja.id}`, payload)
       } else {
@@ -186,6 +194,18 @@ export function Cajas() {
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2"><Label>Nombre</Label><Input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Caja mostrador, Caja online…" /></div>
               <div className="grid gap-2"><Label>Descripción</Label><Input value={descripcion} onChange={(e) => setDescripcion(e.target.value)} /></div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Punto de venta de ARCA</Label>
+              <Input
+                type="number" min={1} value={puntoVenta}
+                onChange={(e) => setPuntoVenta(e.target.value)}
+                placeholder="Vacío: usa el de la empresa"
+              />
+              <p className="text-xs text-muted-foreground">
+                Sólo hace falta si este mostrador factura con su propia numeración.
+                Dejarlo vacío es lo normal cuando hay un único punto de cobro.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label>Medios de pago habilitados</Label>
