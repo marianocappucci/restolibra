@@ -458,6 +458,9 @@ export type CajaConfig = {
   medios_pago: string[]
   es_default: number
   activo: number
+  // El punto de venta de ARCA de este mostrador. null = usa el de la empresa,
+  // que es el caso de toda instancia con un solo POS.
+  punto_venta: number | null
 }
 
 export type CajaMovimiento = {
