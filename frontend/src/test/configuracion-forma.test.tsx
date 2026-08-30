@@ -10,13 +10,15 @@
 // producto conserva propias y que un cambio bien intencionado rompería sin dar
 // error:
 //
-//  1. 🔴 **El correo apunta a `/api/config/email`, no al del kit.** Esta
-//     instancia tiene DOS configuraciones de SMTP: la de `config.json` —que lee
-//     `helpers/email_helper.py`, o sea la que manda los mails— y la de
-//     libraauth, detrás de `/api/config/smtp`, que acá no la lee nadie para
-//     enviar. Apuntar al del kit dejaría la pantalla configurando un SMTP que
-//     no envía nada: el cliente carga su contraseña de aplicación, la pantalla
-//     dice "Guardado", y los comprobantes siguen sin salir.
+//  1. 🔴 **El correo apunta a `/api/config/smtp` y a ningún otro lado.** Hasta
+//     el 2026-08-30 esta instancia tenía DOS configuraciones de SMTP: la de
+//     `config.json` —que mandaba los comprobantes— y la de libraauth, que
+//     mandaba la recuperación de contraseña. Cuál mandaba qué no se veía: el
+//     cliente cargaba su contraseña de aplicación en una pantalla, la pantalla
+//     decía "Guardado", y los mails seguían saliendo por la otra. El test mira
+//     las dos direcciones —que use `/api/config/smtp` y que **no** vuelva a
+//     `/api/config/email`—, porque volver a escribir la segunda no rompería
+//     nada visible: rompería el envío.
 //  2. 🔴 **La contraseña de SMTP no vuelve del servidor.** Hasta el 2026-08-30
 //     salía en claro por `GET /api/config`, junto con el token de MercadoPago.
 import { render, screen } from '@testing-library/react'
@@ -42,11 +44,11 @@ beforeEach(() => {
     pedidos.push({ url: u, metodo, cuerpo: init?.body ?? null })
 
     if (u.includes('/logo')) return Promise.resolve(new Response('', { status: 404 }))
-    if (u.includes('/api/config/email')) {
+    if (u.includes('/api/config/smtp')) {
       return Promise.resolve(json({
-        email_smtp_host: 'smtp.gmail.com', email_smtp_port: '587',
-        email_smtp_user: 'ventas@ferre.com.ar', email_from: '', email_from_name: '',
-        email_smtp_password_definida: true,
+        origen: 'base', host: 'smtp.gmail.com', port: 587,
+        user: 'ventas@ferre.com.ar', from_email: '', from_name: '',
+        password_definida: true, password_indescifrable: false, configurado: true,
       }))
     }
     if (u.includes('/api/config/ticket')) {
@@ -134,15 +136,23 @@ describe('la Configuración de Restolibra', () => {
       .toBeInTheDocument()
   })
 
-  it('🔴 el correo apunta a `/api/config/email`, que es el SMTP que manda', async () => {
-    // El del kit apunta a `/api/config/smtp`, que en este producto no lo lee
-    // nadie para enviar. Ver el encabezado de este archivo.
+  it('🔴 el correo apunta a `/api/config/smtp`, el único SMTP del producto', async () => {
+    // Las DOS direcciones. Ver el encabezado de este archivo: escribir de
+    // nuevo en `/api/config/email` no rompería nada visible en la pantalla.
     montar('/config?seccion=integraciones&integracion=email')
 
-    await screen.findByLabelText(/Host SMTP/)
-    expect(pedidos.some((p) => p.url.includes('/api/config/email'))).toBe(true)
-    expect(pedidos.some((p) => p.url.includes('/api/config/smtp'))).toBe(false)
+    await screen.findByLabelText(/Servidor/)
+    expect(pedidos.some((p) => p.url.includes('/api/config/smtp'))).toBe(true)
+    expect(pedidos.some((p) => p.url.includes('/api/config/email'))).toBe(false)
     expect(pedidos.some((p) => p.url.includes('/admin/smtp'))).toBe(false)
+  })
+
+  it('el botón de probar sigue estando, y es el que este producto tiene propio', async () => {
+    // `GET /api/email/probar` existe acá y en Contalibra, y en los otros seis
+    // no. Por eso no subió al kit. Prueba el mismo SMTP que la sección
+    // configura, porque el endpoint resuelve por el mismo camino que el envío.
+    montar('/config?seccion=integraciones&integracion=email')
+    expect(await screen.findByRole('button', { name: /Probar conexión/ })).toBeInTheDocument()
   })
 
   it('🔴 la contraseña de SMTP no vuelve del servidor, y guardar sin tocarla no la borra', async () => {
@@ -151,16 +161,18 @@ describe('la Configuración de Restolibra', () => {
 
     const clave = await screen.findByLabelText(/^Contraseña$/)
     expect(clave).toHaveValue('')
-    expect(clave).toHaveAttribute('placeholder', expect.stringContaining('Guardada'))
 
-    await usuario.click(screen.getByRole('button', { name: /Guardar email/ }))
+    await usuario.click(screen.getByRole('button', { name: /Guardar/ }))
 
-    const put = pedidos.find((p) => p.url.includes('/api/config/email') && p.metodo === 'PUT')
+    const put = pedidos.find((p) => p.url.includes('/api/config/smtp') && p.metodo === 'PUT')
     expect(put, 'no llegó ningún PUT al correo').toBeTruthy()
-    // Vacío = "no la toqués", que es lo que el backend entiende.
-    expect(JSON.parse(String(put!.cuerpo)).email_smtp_password).toBe('')
+    // 🔑 La contraseña se OMITE, que es como el backend distingue "no la
+    // toqués" de "borrala" — con `model_fields_set`, no por el valor.
+    // Mandarla vacía la borraría.
+    const cuerpo = JSON.parse(String(put!.cuerpo))
+    expect('password' in cuerpo).toBe(false)
     // Y lo demás sí viaja, o guardar no guardaría nada.
-    expect(JSON.parse(String(put!.cuerpo)).email_smtp_user).toBe('ventas@ferre.com.ar')
+    expect(cuerpo.user).toBe('ventas@ferre.com.ar')
   })
 
   it('🔴 el token de MercadoPago tampoco vuelve en claro', async () => {

@@ -15,8 +15,8 @@
  *  producto, arreglarla no arreglaba a los otros siete.
  */
 import { useEffect, useState } from 'react'
-import { Check, Mail, Printer, Save, Send } from 'lucide-react'
-import { TutorialGmail } from 'libra-ui/Configuracion'
+import { Check, Printer, Send } from 'lucide-react'
+import { EmailCard as EmailDelKit } from 'libra-ui/Configuracion'
 import { PasswordInput } from 'libra-ui/PasswordInput'
 
 import { api, ApiError } from '../api'
@@ -59,80 +59,30 @@ function Campo({ label, value, onChange, type = 'text', marcador }: {
 }
 
 
-/** El correo saliente de ESTE producto.
+/** El correo saliente: **la sección del kit**, sin nada propio salvo el botón
+ *  de probar.
  *
- *  🔴 **No se usa la sección de correo del kit, y es a propósito.** Esta
- *  instancia tiene DOS configuraciones de SMTP y no son la misma:
+ *  🔴 Hasta el 2026-08-30 esto era una tarjeta escrita a mano contra
+ *  `/api/config/email`, porque este producto tenía DOS configuraciones de SMTP:
+ *  la de `config.json` —que mandaba los comprobantes— y la de libraauth,
+ *  detrás de `/api/config/smtp`, que mandaba la recuperación de contraseña.
+ *  Cuál mandaba qué no se veía en ningún lado: el cliente cargaba su contraseña
+ *  de aplicación en una, la pantalla decía "Guardado", y los mails seguían
+ *  saliendo por la otra —o no salían.
  *
- *  - `config.json` (`email_smtp_*`), que es la que lee `helpers/email_helper.py`
- *    — o sea **la que de verdad manda los mails** — y la que prueba
- *    `GET /api/email/probar`;
- *  - la base de libraauth, detrás de `/api/config/smtp`, que en este producto
- *    no la lee nadie para enviar.
+ *  Hoy hay una sola, y es la que resuelve `libracore.facturas_router.smtp_efectivo`
+ *  para los tres envíos del producto. Ver `smtp_config` en `app/db_usuarios.py`.
  *
- *  La sección del kit apunta a la segunda. Cambiarla acá dejaría la pantalla
- *  configurando un SMTP que no envía nada: el cliente carga su contraseña de
- *  aplicación, la pantalla dice "Guardado", y los comprobantes siguen sin
- *  salir.
- *
- *  Unificar los dos stores es un trabajo aparte, decidido con el humano el
- *  2026-08-30: primero se normaliza el resto de la pantalla en los ocho
- *  productos, y después se ve si los dos se pueden juntar.
- *
- *  Lo que sí viene del kit es el **tutorial**, que es lo que faltaba en los
- *  otros seis y acá ya estaba: ahora es el mismo texto para todos.
+ *  ⚠️ **El botón de probar sí queda propio.** `GET /api/email/probar` existe en
+ *  este producto y en Contalibra, y en los otros seis no: subirlo al kit
+ *  pondría en pantalla un botón que en seis productos daría 404. Prueba el
+ *  mismo SMTP que el kit configura, porque el endpoint resuelve por el mismo
+ *  camino que el envío.
  */
-type Correo = {
-  email_smtp_host: string
-  email_smtp_port: string
-  email_smtp_user: string
-  email_from: string
-  email_from_name: string
-  /** Si hay una guardada. La contrasena NO vuelve del servidor. */
-  email_smtp_password_definida: boolean
-}
-
 export function EmailCard() {
-  const [cfg, setCfg] = useState<Correo | null>(null)
-  // 🔴 Aparte del resto y arrancando vacia: la contrasena no vuelve del
-  // servidor, y vacia significa "no la toques" del lado del `PUT`. Si viviera
-  // en `cfg` y se mandara tal como se ve, guardar el remitente la borraria.
-  const [password, setPassword] = useState('')
-  const [guardando, setGuardando] = useState(false)
   const [probando, setProbando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
-
-  useEffect(() => { void cargar() }, [])
-
-  async function cargar() {
-    try {
-      setCfg(await api.get<Correo>('/api/config/email'))
-    } catch (err) {
-      setError(describeError(err))
-    }
-  }
-
-  async function guardar() {
-    if (!cfg) return
-    setGuardando(true)
-    setError(null)
-    setAviso(null)
-    try {
-      await api.put('/api/config/email', {
-        email_smtp_host: cfg.email_smtp_host, email_smtp_port: cfg.email_smtp_port,
-        email_smtp_user: cfg.email_smtp_user, email_smtp_password: password,
-        email_from: cfg.email_from, email_from_name: cfg.email_from_name,
-      })
-      setPassword('')
-      setAviso('Guardado.')
-      await cargar()
-    } catch (err) {
-      setError(describeError(err))
-    } finally {
-      setGuardando(false)
-    }
-  }
 
   async function probar() {
     setProbando(true)
@@ -149,44 +99,17 @@ export function EmailCard() {
     }
   }
 
-  if (!cfg) {
-    return <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
-  }
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-base">
-          <Mail className="size-4" />Email (SMTP)
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
-        <div className="col-span-full"><TutorialGmail producto="Restolibra" /></div>
-        <Campo label="Host SMTP" value={cfg.email_smtp_host} onChange={(v) => setCfg({ ...cfg, email_smtp_host: v })} />
-        <Campo label="Puerto" value={cfg.email_smtp_port} onChange={(v) => setCfg({ ...cfg, email_smtp_port: v })} />
-        <Campo label="Usuario" value={cfg.email_smtp_user} onChange={(v) => setCfg({ ...cfg, email_smtp_user: v })} />
-        <Campo
-          label="Contraseña" type="password" value={password} onChange={setPassword}
-          marcador={cfg.email_smtp_password_definida
-            ? 'Guardada — dejala vacía para no cambiarla'
-            : 'La contraseña de aplicación de 16 caracteres'}
-        />
-        <Campo label="Remitente" value={cfg.email_from} onChange={(v) => setCfg({ ...cfg, email_from: v })} />
-        <Campo label="Nombre del remitente" value={cfg.email_from_name} onChange={(v) => setCfg({ ...cfg, email_from_name: v })} />
-        <div className="col-span-full flex flex-wrap items-center gap-3">
-          <Button disabled={guardando} onClick={() => void guardar()}>
-            <Save />{guardando ? 'Guardando…' : 'Guardar email'}
-          </Button>
-          {cfg.email_smtp_host && cfg.email_smtp_user && (
-            <Button type="button" variant="outline" disabled={probando} onClick={() => void probar()}>
-              <Send />{probando ? 'Probando…' : 'Probar conexión'}
-            </Button>
-          )}
-          {error && <span className="text-sm text-destructive">{error}</span>}
-          {aviso && <span className="text-sm text-muted-foreground">{aviso}</span>}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="grid gap-4">
+      <EmailDelKit producto="Restolibra" basePath="/api/config/smtp" />
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" variant="outline" disabled={probando} onClick={() => void probar()}>
+          <Send />{probando ? 'Probando…' : 'Probar conexión'}
+        </Button>
+        {error && <span className="text-sm text-destructive">{error}</span>}
+        {aviso && <span className="text-sm text-muted-foreground">{aviso}</span>}
+      </div>
+    </div>
   )
 }
 

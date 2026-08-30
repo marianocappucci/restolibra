@@ -216,3 +216,85 @@ def test_borrar_es_admin_only(admin_client):
     admin_client.post("/api/logout")
     admin_client.post("/api/login", json={"username": "cajero9", "password": "clave-123456"})
     assert admin_client.delete(f"/api/facturas/{fid}").status_code == 403
+
+
+# ── De dónde sale el SMTP con el que se manda ─────────────────────────────
+
+
+def test_el_comprobante_sale_por_el_SMTP_de_la_pantalla_y_no_por_config_json(
+    admin_client, monkeypatch,
+):
+    """🔴 Hasta el 2026-08-30 este producto tenía DOS configuraciones de SMTP.
+
+    La de la pantalla escribía la base cifrada de libraauth; la que mandaba los
+    comprobantes leía `email_smtp_*` de `config.json`. El síntoma era mudo: el
+    cliente cargaba su contraseña de aplicación, la pantalla decía "Guardado", y
+    los comprobantes seguían saliendo por la otra —o no salían.
+
+    🔑 **Los dos stores se cargan, y con datos distintos.** Con `config.json`
+    vacío las dos ramas darían lo mismo y este test pasaría igual sin el
+    arreglo: la única forma de ver cuál ganó es que digan cosas diferentes.
+
+    Es el control de que ESTE producto le pasa el resolver al router. Que el
+    router le haga caso lo prueba LibraCore; que acá se lo pasen, sólo esto.
+    """
+    from libracore import facturas_router as fr
+
+    from app import config_manager
+    from app import db_usuarios as db
+
+    db.guardar_config_smtp(
+        host="smtp.la-de-la-pantalla", port=465, user="cliente@ferre.com.ar",
+        password="la-buena", from_email="facturas@ferre.com.ar", from_name="Ventas",
+    )
+    cfg = config_manager.load()
+    cfg["email_smtp_host"] = "smtp.el-viejo"
+    cfg["email_smtp_user"] = "viejo@ferre.com.ar"
+    config_manager.save(cfg)
+
+    llamado = {}
+    monkeypatch.setattr(fr.email_sender, "enviar_comprobante", lambda **kw: llamado.update(kw))
+
+    try:
+        factura = _factura(admin_client)
+        fid = factura.get("factura", factura)["id"]
+        r = admin_client.post(f"/api/facturas/{fid}/enviar-email",
+                              json={"email": "cliente@example.com"})
+        assert r.status_code == 200, r.text
+
+        assert llamado["smtp_host"] == "smtp.la-de-la-pantalla"
+        assert llamado["smtp_port"] == 465
+        assert llamado["smtp_user"] == "cliente@ferre.com.ar"
+        assert llamado["from_email"] == "facturas@ferre.com.ar"
+    finally:
+        db.borrar_config_smtp()
+        cfg = config_manager.load()
+        cfg["email_smtp_host"] = ""
+        cfg["email_smtp_user"] = ""
+        config_manager.save(cfg)
+
+
+def test_el_presupuesto_resuelve_el_SMTP_por_el_mismo_camino(monkeypatch):
+    """El otro envío del producto. Son dos endpoints distintos y una sola
+    configuración: si divergen, vuelve el problema que este cambio cierra."""
+    from app import db_usuarios as db
+    from app.web.helpers import email_helper
+
+    db.guardar_config_smtp(
+        host="smtp.la-de-la-pantalla", port=465, user="cliente@ferre.com.ar",
+        password="la-buena", from_email="", from_name="",
+    )
+    llamado = {}
+    monkeypatch.setattr(email_helper.email_sender, "enviar_comprobante",
+                        lambda **kw: llamado.update(kw))
+    try:
+        assert email_helper.smtp_configurado() is True
+        email_helper.send_comprobante(
+            to_email="c@example.com", to_name="Cliente", pdf_path="/tmp/x.pdf",
+            factura_label="PRESUPUESTO 1", total=1000.0,
+        )
+        assert llamado["smtp_host"] == "smtp.la-de-la-pantalla"
+        # Sin remitente propio, cae al usuario del SMTP — igual que `from_env()`.
+        assert llamado["from_email"] == "cliente@ferre.com.ar"
+    finally:
+        db.borrar_config_smtp()

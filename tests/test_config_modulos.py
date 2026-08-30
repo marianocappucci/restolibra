@@ -1,5 +1,6 @@
 """Configuracion, gating de modulos por plan y corte de servicio."""
 from app import config_manager
+from app import db_usuarios as db
 from app import db_core
 
 
@@ -20,6 +21,25 @@ def test_la_config_ya_no_se_lee_entera_por_un_solo_endpoint(admin_client):
     assert "/api/config" not in admin_client.app.openapi()["paths"]
 
 
+def test_el_correo_ya_no_se_escribe_por_config_json(admin_client):
+    """🔴 `GET/PUT /api/config/email` se fueron el 2026-08-30.
+
+    Escribian `email_smtp_*` en `config.json` mientras `/api/config/smtp`
+    escribia la base cifrada de libraauth. Dos stores, dos servidores de correo
+    y ningun sintoma: el cliente cargaba su contrasena de aplicacion en una
+    pantalla, la pantalla decia "Guardado", y los mails seguian saliendo por la
+    otra --o no salian--.
+
+    Se mide por el esquema y no por el codigo de estado, por lo mismo que el
+    test de arriba: con el `dist/` construido el catch-all del SPA contesta 200
+    con el `index.html`.
+    """
+    assert "/api/config/email" not in admin_client.app.openapi()["paths"]
+    # El control: el que SI tiene que estar. Sin esto, un prefijo mal escrito
+    # dejaria pasar el assert de arriba sin que nadie se entere.
+    assert "/api/config/smtp" in admin_client.app.openapi()["paths"]
+
+
 def test_las_lecturas_acotadas_no_traen_secretos(admin_client):
     """El reemplazo: cada seccion lee lo suyo, y ningun secreto vuelve en claro.
 
@@ -28,14 +48,22 @@ def test_las_lecturas_acotadas_no_traen_secretos(admin_client):
     `config_manager.load()` filtrado a ojo.
     """
     cfg = config_manager.load()
-    cfg["email_smtp_password"] = "clave-de-aplicacion-16"
     cfg["mp_access_token"] = "APP_USR-token-entero-del-cliente"
     config_manager.save(cfg)
     try:
-        correo = admin_client.get("/api/config/email").json()
+        # 🔴 El correo ya no vive en `config.json`: desde el 2026-08-30 hay UNA
+        # sola configuracion de SMTP, la de libraauth, y la contrasena esta
+        # cifrada en la base. Lo que se controla acá es lo mismo de antes --que
+        # el secreto no vuelva-- contra el endpoint que la pantalla usa hoy.
+        db.guardar_config_smtp(
+            host="smtp.gmail.com", port=587, user="ventas@ferre.com.ar",
+            password="clave-de-aplicacion-16", from_email="", from_name="",
+        )
+        correo = admin_client.get("/api/config/smtp").json()
         assert "clave-de-aplicacion-16" not in str(correo)
         # Pero la pantalla igual sabe que hay una cargada, para decirlo.
-        assert correo["email_smtp_password_definida"] is True
+        assert correo["password_definida"] is True
+
 
         mp = admin_client.get("/api/config/mercadopago").json()
         assert "APP_USR-token-entero-del-cliente" not in str(mp)
@@ -45,9 +73,9 @@ def test_las_lecturas_acotadas_no_traen_secretos(admin_client):
         assert admin_client.get("/api/config/ticket").json()["ticket_ancho_mm"]
     finally:
         cfg = config_manager.load()
-        cfg["email_smtp_password"] = ""
         cfg["mp_access_token"] = ""
         config_manager.save(cfg)
+        db.borrar_config_smtp()
 
 
 def test_actualizar_empresa_persiste(admin_client):
