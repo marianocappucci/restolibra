@@ -8,6 +8,8 @@ Ventas/Salon."""
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from libracore.db.caja import PuntoDeVentaRepetido
+
 from libracore import medios_pago
 
 from app import database as db
@@ -25,6 +27,10 @@ class CajaPayload(BaseModel):
     nombre: str
     descripcion: str = ""
     medios_pago: list[str] = []
+    # El punto de venta de ARCA de este mostrador. `None` —el default— deja la
+    # caja usando el de la empresa, que es como funcionan las instancias de un
+    # solo POS: el campo aparece vacío y no hay que tocarlo.
+    punto_venta: int | None = None
 
 
 class CajaUpdatePayload(CajaPayload):
@@ -46,7 +52,15 @@ def crear(payload: CajaPayload):
     nombre = payload.nombre.strip()
     if not nombre:
         raise HTTPException(422, "El nombre es obligatorio.")
-    cid = db.create_caja_config(nombre, payload.descripcion.strip(), payload.medios_pago)
+    try:
+        cid = db.create_caja_config(
+            nombre, payload.descripcion.strip(), payload.medios_pago,
+            punto_venta=payload.punto_venta,
+        )
+    except PuntoDeVentaRepetido as choque:
+        # 409 y no 422: no es que el dato este mal escrito, es que ya lo tiene
+        # otra caja. El mensaje del motor nombra cual, y la pantalla lo muestra.
+        raise HTTPException(409, str(choque)) from choque
     return db.get_caja_config(cid)
 
 
@@ -57,7 +71,13 @@ def actualizar(cid: int, payload: CajaUpdatePayload):
     nombre = payload.nombre.strip()
     if not nombre:
         raise HTTPException(422, "El nombre es obligatorio.")
-    db.update_caja_config(cid, nombre, payload.descripcion.strip(), payload.medios_pago, 1 if payload.activo else 0)
+    try:
+        db.update_caja_config(
+            cid, nombre, payload.descripcion.strip(), payload.medios_pago,
+            1 if payload.activo else 0, punto_venta=payload.punto_venta,
+        )
+    except PuntoDeVentaRepetido as choque:
+        raise HTTPException(409, str(choque)) from choque
     return db.get_caja_config(cid)
 
 
