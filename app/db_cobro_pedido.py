@@ -8,6 +8,7 @@ comportamiento — ver wiki/entities/libracore.md). Dominio propio de
 Restolibra, sin equivalente en Contalibra.
 """
 from app.db_core import get_connection, _ar_now
+from app.libraedge_integration import encolar_pedido_cobrado
 from app.db_modulos import get_modulos
 from app.db_pedidos import get_pedido
 from app.db_ventas import get_next_venta_numero, create_venta, add_venta_pago
@@ -105,10 +106,12 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             if stock_habilitado:
                 descontar_stock_venta(venta_id, items, fecha=fecha, usuario_id=usuario_id, conn=conn)
 
+            turno_id = None
             if usuario_id:
                 turno = get_turno_activo(usuario_id, conn=conn)
                 if turno:
-                    vincular_venta_turno(venta_id, turno["id"], conn=conn)
+                    turno_id = turno["id"]
+                    vincular_venta_turno(venta_id, turno_id, conn=conn)
 
             conn.execute(
                 "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
@@ -116,6 +119,23 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             )
             if pedido.get("mesa_id"):
                 conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
+
+            # Nodo offline: la operación de outbox entra **en esta misma
+            # transacción**, justo antes del commit. Es lo que hace que la venta
+            # y su registro de sincronización vivan o mueran juntos — si esto
+            # commiteara por su cuenta publicaría una venta a medio hacer, y si
+            # fuera después del commit una caída acá dejaría una venta que
+            # nunca se sincroniza. No hace nada si la instancia no es un nodo.
+            encolar_pedido_cobrado(
+                conn, occurred_at=_ar_now(), pedido=pedido, venta_id=venta_id,
+                numero=numero, fecha=fecha, items=items, pagos=pagos,
+                subtotal=subtotal, descuento=descuento, total=total,
+                estado=estado, cliente_id=cliente_id,
+                cliente_nombre=cliente_nombre, usuario_id=usuario_id,
+                observaciones=obs, stock_descontado=stock_habilitado,
+                turno_id=turno_id,
+            )
+
             conn.commit()
         except Exception:
             conn.rollback()

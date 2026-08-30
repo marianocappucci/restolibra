@@ -9,6 +9,8 @@ import os
 from libracore.db.schema import init_core_schema
 from libracore.db.clients import sincronizar_parties_de_clientes
 from libracommerce.db.schema import init_schema as init_commerce_schema
+from libraedge.db.changelog import init_changelog_schema
+from libraedge.db.schema import init_schema as init_edge_schema
 from app.db_core import _AR_TZ, _ar_now, _DATA_DIR, DB_PATH, ES_POSTGRES, get_connection, minutos_desde  # noqa: F401
 from app.schema_propio import init_schema_propio  # noqa: F401  (lo usa init_db)
 from app.db_usuarios import (  # noqa: F401
@@ -481,6 +483,20 @@ def init_db():
         # nueva va como revisión de Alembic, no como línea agregada ahí. Ver su
         # docstring para el reparto completo de las 67 tablas.
         init_schema_propio(conn)
+
+        # Las tablas del nodo offline (LibraEdge). Van acá **y** en la revisión
+        # `0003_libraedge` de Alembic, que llama a estas mismas dos funciones:
+        # el trato que sostiene `test_schema_propio_congelado` es que el arranque
+        # y la cadena dejen el MISMO schema, y ese test compara la base
+        # resultante, no el texto de la revisión.
+        #
+        # Se crean en toda instancia, sea nodo o no: el central las necesita
+        # igual — `node_identity` para autenticar a los nodos que le pushean,
+        # `sync_inbox` para deduplicar y `sync_changelog` para publicar la
+        # bajada. Crearlas sólo en los nodos dejaría dos schemas distintos en
+        # silencio, que es lo que la baseline advierte de las FK condicionales.
+        init_edge_schema(conn)
+        init_changelog_schema(conn)
 
         # Seed de módulos: inserta sólo los que no existen aún
         _MODULOS_DEFAULT = [
