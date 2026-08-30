@@ -62,7 +62,10 @@ from app.web.api_auth import (  # noqa: F401
     get_current_user_json, require_admin_json, require_admin_o_servicio_json, require_role_json,
 )
 from app.web.modules_gate import require_module  # noqa: F401
-from libracore.config_router import build_backup_router
+from libracore.config_router import (
+    build_backup_router, build_empresa_admin_router, build_empresa_router,
+)
+from libracore.mp_config_router import build_mp_config_router
 from libracore.respaldo import Instancia
 
 app = FastAPI(title="Restolibra")
@@ -302,6 +305,28 @@ app.include_router(
 )
 app.include_router(
     api_config_router.router,
+    dependencies=[Depends(require_admin_json)],
+)
+# Datos de la empresa y logo, del motor. Reemplazan al `GET /api/config`
+# --que devolvia `config_manager.load()` ENTERO, o sea el token de MercadoPago
+# y la contrasena de SMTP en el JSON de una pantalla--, al
+# `PUT /api/config/empresa` y al `POST /api/config/empresa/logo` propios.
+#
+# 🔑 El del motor ademas BORRA los logos anteriores al subir uno nuevo. El
+# propio no: dejaba convivir `logo.png` y `logo.jpg`, y `resolve_logo_path`
+# elige por fecha de modificacion cuando el path guardado no existe --o sea que
+# el logo viejo puede volver solo, en el comprobante.
+app.include_router(build_empresa_router(), dependencies=[Depends(require_admin_json)])
+app.include_router(build_empresa_admin_router(), dependencies=[Depends(require_admin_json)])
+# MercadoPago, del motor. Reemplaza al `PUT /api/config/mp` propio.
+#
+# 🔴 Lo que cambia y no es cosmetico: el token vuelve ENMASCARADO. El
+# `GET /api/config` que se va lo devolvia entero, y con el la contrasena de
+# SMTP. Ademas suma el boton que le pregunta a MercadoPago si el token sirve, y
+# una puerta para desconectar la cuenta --con "vacio = no lo toques" no habia
+# otra forma.
+app.include_router(
+    build_mp_config_router(prefix="/api/config/mercadopago"),
     dependencies=[Depends(require_admin_json)],
 )
 # ARCA, del motor. Reemplaza al `PUT /api/config/arca` y al

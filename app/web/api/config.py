@@ -4,10 +4,12 @@ mismo patron que Contalibra (ver wiki/entities/contalibra.md, Etapa B).
 Admin-only en su totalidad (gateado en web/app.py con require_admin_json).
 
 Los backups de la DB (`GET /config/backup-db[/{filename}]`, descargas de
-archivo autenticadas por cookie) y el logo de empresa
-(`GET /config/empresa/logo`) siguen sirviendose desde
+archivo autenticadas por cookie) siguen sirviendose desde
 `web/routers/config.py` sin tocar -- la SPA los linkea directo (misma
 cookie, mismo origen), no hace falta una version JSON de un download.
+
+El logo salio de aca el 2026-08-30: lo sirve `libracore.config_router`, en
+`/api/config/empresa/logo`, que es la ruta que consume la pantalla compartida.
 `_listar_backups`/`BACKUPS_DIR`/`_hacer_backup_automatico` tambien se
 reusan de ahi en vez de duplicar la logica.
 
@@ -20,12 +22,11 @@ módulo; portarlas es tarea de los módulos Productos/Egresos, no de Config.
 """
 import os
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import config_manager
 from app import database as db
-from app.web.routers.config import LOGO_DIR
 
 router = APIRouter(prefix="/api/config", tags=["config"])
 
@@ -35,74 +36,17 @@ def _arca_cfg() -> dict:
     return configs[0] if configs else {}
 
 
-@router.get("")
-def obtener():
-    return {"cfg": config_manager.load(), "arca": _arca_cfg()}
-
-
-class EmpresaPayload(BaseModel):
-    empresa_nombre: str = ""
-    empresa_direccion: str = ""
-    empresa_cuit: str = ""
-    empresa_telefono: str = ""
-    empresa_email: str = ""
-    empresa_iibb: str = ""
-    empresa_iva_condition: str = ""
-    empresa_inicio_actividades: str = ""
-
-
-@router.put("/empresa")
-def actualizar_empresa(payload: EmpresaPayload):
-    # 🔴 Se guarda SOBRE la config existente, no un dict armado de cero.
-    #
-    # `config_manager.save()` mergea contra los DEFAULTS, no contra el archivo:
-    # toda clave que no venga en `data` vuelve a su valor por defecto. Esta
-    # funcion mandaba solo los campos de empresa (mas `logo_path`), asi que
-    # guardar la razon social resetaba `servicio_estado` a "activo" y borraba
-    # `servicio_mensaje`, `mp_access_token`, la config de ticket y el SMTP.
-    #
-    # O sea: **un cliente suspendido se reactivaba solo guardando el nombre de
-    # su empresa**, y de paso perdia el token de MercadoPago. Verificado
-    # ejecutando el caso, no leyendo el codigo.
-    #
-    # `/ticket` y el resto ya hacian el `load()` + pisar claves; esta era la
-    # unica que no.
-    cfg = config_manager.load()
-    cfg.update(payload.model_dump())
-    config_manager.save(cfg)
-    return config_manager.load()
-
-
-@router.post("/empresa/logo")
-async def subir_logo(logo: UploadFile = File(...)):
-    ext = os.path.splitext(logo.filename or "")[1].lower()
-    if ext not in (".png", ".jpg", ".jpeg"):
-        raise HTTPException(422, "El logo debe ser PNG o JPG.")
-    os.makedirs(LOGO_DIR, exist_ok=True)
-    logo_path = os.path.join(LOGO_DIR, f"logo{ext}")
-    with open(logo_path, "wb") as f:
-        f.write(await logo.read())
-    cfg = config_manager.load()
-    cfg["logo_path"] = logo_path
-    config_manager.save(cfg)
-    return config_manager.load()
-
-
-class MercadoPagoPayload(BaseModel):
-    mp_access_token: str = ""
-    mp_webhook_secret: str = ""
-    mp_concepto_descripcion: str = ""
-    mp_iva_rate: str = "0"
-    mp_user_id: str = ""
-    mp_pos_id: str = ""
-
-
-@router.put("/mp")
-def actualizar_mp(payload: MercadoPagoPayload):
-    cfg = config_manager.load()
-    cfg.update(payload.model_dump())
-    config_manager.save(cfg)
-    return config_manager.load()
+# 🔴 `GET ""` se fue el 2026-08-30, y no era solo un endpoint de mas: devolvia
+# `config_manager.load()` ENTERO --el token de MercadoPago y la contrasena de
+# SMTP en el JSON de una pantalla--. Su unico consumidor era el `Config.tsx`
+# propio, que tambien se fue: la pantalla es ahora la compartida de
+# `libra-ui/Configuracion`, que pide cada seccion por su endpoint y recibe los
+# secretos enmascarados.
+#
+# Con el se fueron `PUT /empresa` y `POST /empresa/logo`, que los sirve ahora
+# `libracore.config_router` --y el del motor ademas borra los logos anteriores
+# al subir uno nuevo, cosa que este no hacia--, y `PUT /mp`, que lo sirve
+# `libracore.mp_config_router` en `/api/config/mercadopago`.
 
 
 class EmailPayload(BaseModel):
@@ -112,6 +56,36 @@ class EmailPayload(BaseModel):
     email_smtp_password: str = ""
     email_from: str = ""
     email_from_name: str = ""
+
+
+#: Los campos del correo que la pantalla edita. La CONTRASENA no esta:
+#: sale aparte, como un booleano.
+CAMPOS_EMAIL = (
+    "email_smtp_host", "email_smtp_port", "email_smtp_user",
+    "email_from", "email_from_name",
+)
+
+
+@router.get("/email")
+def obtener_email():
+    """🔴 **La contrasena no vuelve, ni enmascarada.**
+
+    Hasta el 2026-08-30 estos datos salian por `GET /api/config`, que devolvia
+    `config_manager.load()` entero --contrasena de SMTP y token de MercadoPago
+    en claro, en el JSON de una pantalla--. Ese endpoint se fue con el
+    `Config.tsx` propio, y lo que lo reemplaza devuelve solo lo suyo.
+
+    `email_smtp_password_definida` es lo unico que la pantalla necesita saber:
+    si hay una cargada, para decirlo en el placeholder. Mandar el campo vacio al
+    guardar significa "no la toques" --lo hace el `PUT` de abajo--, asi que no
+    hace falta tenerla para editar el resto.
+    """
+    cfg = config_manager.load()
+    salida = {k: cfg.get(k, "") for k in CAMPOS_EMAIL}
+    salida["email_smtp_password_definida"] = bool(
+        (cfg.get("email_smtp_password") or "").strip()
+    )
+    return salida
 
 
 @router.put("/email")
@@ -161,6 +135,19 @@ class TicketPayload(BaseModel):
     ticket_mostrar_logo: bool = False
     ticket_linea_corte: bool = True
     ticket_pie: str = ""
+
+
+@router.get("/ticket")
+def obtener_ticket():
+    """Los cinco campos del ticket. Salian por `GET /api/config`, que se fue."""
+    cfg = config_manager.load()
+    return {
+        "ticket_ancho_mm": cfg.get("ticket_ancho_mm", "80"),
+        "ticket_fuente_size": cfg.get("ticket_fuente_size", "9"),
+        "ticket_mostrar_logo": cfg.get("ticket_mostrar_logo", "1"),
+        "ticket_linea_corte": cfg.get("ticket_linea_corte", "1"),
+        "ticket_pie": cfg.get("ticket_pie", ""),
+    }
 
 
 @router.put("/ticket")
