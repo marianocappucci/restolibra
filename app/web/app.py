@@ -24,6 +24,7 @@ from app.web.routers import ventas as ventas_router
 from app.web.routers import logs as logs_router
 from app.web.routers import reportes as reportes_router
 from app.web.routers import libros_iva as libros_iva_router
+from app.web.routers import sincronizacion_offline
 from app.web.routers import kds as kds_router
 from app import db_usuarios
 from app.web import auth as web_auth
@@ -260,6 +261,15 @@ app.include_router(logs_router.router)
 app.include_router(reportes_router.router)
 app.include_router(libros_iva_router.router)
 app.include_router(kds_router.router)
+
+# La sincronización del nodo offline: `/sync/v1/push` y `/sync/v1/pull`. Se monta
+# SIEMPRE y no sólo en las instancias con nodos, porque el gateo está del otro
+# lado: sin `register_node()` no existe ningún secreto válido, así que acá las
+# dos rutas responden 401 a todo. Una bandera de más sólo agregaría un lugar
+# donde equivocarse, y el modo de fallar sería el peor posible —un nodo
+# instalado que no puede sincronizar contra un central que debería tener el
+# endpoint—.
+app.include_router(sincronizacion_offline.router)
 
 # --- API JSON para la SPA React (ver wiki/entities/restolibra.md, migracion
 # a React) -- ahora es la interfaz real, ya no convive con paginas HTML

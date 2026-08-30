@@ -111,7 +111,12 @@ dependencies = [
     # las tablas de LibraEdge dentro de esta cadena de Alembic un cambio de
     # schema no anunciado llegaria al proximo deploy. `v0.2.0` es el primer tag
     # que ese repo tuvo: se corto el 2026-08-30, junto con este piloto.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.2.0",
+#
+# v0.2.0 -> v0.4.1 (2026-08-30): trae create_sync_router, que es lo que este
+# producto monta para exponer /sync/v1/*, y el fix del handler --sin el, el
+# router rechazaba TODAS las operaciones y cada venta de cada nodo terminaba
+# en revision manual con el nodo reportandose en linea--.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.4.1",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
