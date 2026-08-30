@@ -49,57 +49,24 @@ def _arca_cfg() -> dict:
 # `libracore.mp_config_router` en `/api/config/mercadopago`.
 
 
-class EmailPayload(BaseModel):
-    email_smtp_host: str = ""
-    email_smtp_port: str = "587"
-    email_smtp_user: str = ""
-    email_smtp_password: str = ""
-    email_from: str = ""
-    email_from_name: str = ""
-
-
-#: Los campos del correo que la pantalla edita. La CONTRASENA no esta:
-#: sale aparte, como un booleano.
-CAMPOS_EMAIL = (
-    "email_smtp_host", "email_smtp_port", "email_smtp_user",
-    "email_from", "email_from_name",
-)
-
-
-@router.get("/email")
-def obtener_email():
-    """🔴 **La contrasena no vuelve, ni enmascarada.**
-
-    Hasta el 2026-08-30 estos datos salian por `GET /api/config`, que devolvia
-    `config_manager.load()` entero --contrasena de SMTP y token de MercadoPago
-    en claro, en el JSON de una pantalla--. Ese endpoint se fue con el
-    `Config.tsx` propio, y lo que lo reemplaza devuelve solo lo suyo.
-
-    `email_smtp_password_definida` es lo unico que la pantalla necesita saber:
-    si hay una cargada, para decirlo en el placeholder. Mandar el campo vacio al
-    guardar significa "no la toques" --lo hace el `PUT` de abajo--, asi que no
-    hace falta tenerla para editar el resto.
-    """
-    cfg = config_manager.load()
-    salida = {k: cfg.get(k, "") for k in CAMPOS_EMAIL}
-    salida["email_smtp_password_definida"] = bool(
-        (cfg.get("email_smtp_password") or "").strip()
-    )
-    return salida
-
-
-@router.put("/email")
-def actualizar_email(payload: EmailPayload):
-    cfg = config_manager.load()
-    cfg["email_smtp_host"] = payload.email_smtp_host
-    cfg["email_smtp_port"] = payload.email_smtp_port
-    cfg["email_smtp_user"] = payload.email_smtp_user
-    cfg["email_from"] = payload.email_from
-    cfg["email_from_name"] = payload.email_from_name
-    if payload.email_smtp_password:
-        cfg["email_smtp_password"] = payload.email_smtp_password
-    config_manager.save(cfg)
-    return config_manager.load()
+# 🔴 `GET /email` y `PUT /email` vivian aca y se fueron el 2026-08-30, al dejar
+# UNA sola configuracion de SMTP en el producto.
+#
+# Escribian `email_smtp_*` en `config.json`, que era la config que mandaba los
+# comprobantes y los presupuestos. Al lado, `/api/config/smtp` escribia la base
+# cifrada de libraauth, que mandaba la recuperacion de contrasena. Dos
+# pantallas, dos servidores de correo, y ningun sintoma: el cliente cargaba su
+# contrasena de aplicacion en una, la pantalla decia "Guardado", y los mails
+# seguian saliendo por la otra --o no salian--.
+#
+# Hoy la pantalla usa la seccion de correo del kit contra `/api/config/smtp`,
+# igual que los otros siete productos, y el envio resuelve por
+# `libracore.facturas_router.smtp_efectivo`. Ver `smtp_config` en
+# `app/db_usuarios.py`.
+#
+# Las claves `email_smtp_*` de `config.json` **siguen leyendose** como red de
+# seguridad --el resolver cae ahi si no hay ni base ni entorno--, pero ya no las
+# escribe nadie.
 
 
 # 🔴 `PUT /arca` y `POST /arca/certificados` vivian aca y se fueron el

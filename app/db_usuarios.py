@@ -96,6 +96,24 @@ _password_reset = PasswordResetService(
 # comparte con el motor es una decision explicita, no lo que quedo accesible.
 
 
+def smtp_config():
+    """El SMTP efectivo de esta instancia: el de la base si hay algo guardado,
+    el del entorno si no.
+
+    🔴 **Es el mismo que manda la recuperación de contraseña.** Hasta el
+    2026-08-30 este producto tenía DOS configuraciones de SMTP: ésta y la de
+    `config.json` (`email_smtp_*`), que era la que mandaba los comprobantes.
+    No era un diseño: la de comprobantes nació antes. El síntoma era mudo —el
+    cliente cargaba su contraseña de aplicación en una pantalla, la pantalla
+    decía "Guardado", y los mails seguían saliendo por la otra.
+
+    Se pasa **como callable** a quien la necesite, nunca como valor: resuelta
+    una sola vez, guardar el SMTP por pantalla no tendría efecto hasta recrear
+    el contenedor.
+    """
+    return resolver_smtp_config(_sessions)
+
+
 def sessions():
     """El `session_factory` donde vive `usuarios` — y desde v0.28.0 tambien
     `demo_codigos` y `auth_log`."""

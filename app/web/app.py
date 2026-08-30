@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import httpx
 
 from app import database as db
+from libracore.facturas_router import smtp_efectivo
 from app import config_manager
 from app import arca_wsaa
 from app import arca_wspadron
@@ -518,11 +519,16 @@ async def api_auth_verify(request: Request):
 @app.get("/api/email/probar", include_in_schema=False)
 async def email_probar(user: str = Depends(require_auth)):
     import smtplib
-    cfg = config_manager.load()
-    host     = cfg.get("email_smtp_host", "").strip()
-    port     = int(cfg.get("email_smtp_port", 587) or 587)
-    smtp_user = cfg.get("email_smtp_user", "").strip()
-    password = cfg.get("email_smtp_password", "").strip()
+
+    # 🔴 Resuelto por el MISMO camino que el envío real. Antes esto leía
+    # `config.json` mientras la pantalla escribía en la base de libraauth: la
+    # prueba decía "Conectado" contra un servidor y los mails salían por otro
+    # —o no salían—. Ver `smtp_config` en `app/db_usuarios.py`.
+    cfg = smtp_efectivo(db_usuarios.smtp_config)
+    host = (cfg["host"] or "").strip()
+    port = cfg["port"]
+    smtp_user = (cfg["user"] or "").strip()
+    password = (cfg["password"] or "").strip()
     if not host or not smtp_user or not password:
         return JSONResponse({"ok": False, "error": "Completá host, usuario y contraseña antes de probar."}, status_code=400)
     try:

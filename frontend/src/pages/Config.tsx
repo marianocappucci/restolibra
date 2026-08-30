@@ -18,12 +18,12 @@
  *  - **MercadoPago no factura solo al acreditarse el pago**: acá el `PUT` no
  *    tiene ese campo, así que el interruptor no se muestra. Uno que no hace
  *    nada es peor que no tenerlo.
- *  - **El correo es el propio**, contra `/api/config/email`. Esta instancia
- *    tiene DOS configuraciones de SMTP: la de `config.json`, que lee
- *    `helpers/email_helper.py` —la que manda los mails—, y la de libraauth,
- *    detrás de `/api/config/smtp`, que acá no la lee nadie para enviar.
- *    Unificarlas quedó como trabajo aparte, decidido con el humano el
- *    2026-08-30. El **tutorial** sí es el del kit.
+ *  - **Del correo, sólo el botón de probar.** La sección es la del kit desde el
+ *    2026-08-30, cuando se unificaron los dos SMTP que tenía este producto
+ *    —ver `EmailCard` en `config-secciones.tsx`—. Lo que queda propio es
+ *    *Probar conexión*: `GET /api/email/probar` existe acá y en Contalibra y en
+ *    los otros seis no, así que subirlo al kit pondría en pantalla un botón que
+ *    en seis productos daría 404.
  *
  *  ## Lo que cambió del lado del backend
  *

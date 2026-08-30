@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.0.3 — 2026-08-30
+
+### Una sola configuración de correo
+
+- 🔴 **Este producto tenía DOS configuraciones de SMTP, y no se veía cuál
+  mandaba qué.** La de la pantalla escribía la base cifrada de libraauth
+  (`/api/config/smtp`); la que mandaba **comprobantes y presupuestos** leía
+  `email_smtp_*` de `config.json`. El síntoma era mudo: el cliente cargaba su
+  contraseña de aplicación, la pantalla decía "Guardado", y los mails seguían
+  saliendo por la otra —o no salían—. No fue un diseño: la de comprobantes
+  nació antes y quedó donde estaba.
+  > Ahora hay una sola. La sección de correo es la del kit, contra
+  > `/api/config/smtp`, igual que en los otros siete productos, y los **tres**
+  > envíos —comprobantes, presupuestos y `GET /api/email/probar`— resuelven por
+  > `libracore.facturas_router.smtp_efectivo` (LibraCore v1.64.0). Que los tres
+  > lo resolvieran por su cuenta es exactamente como aparecieron los dos stores.
+- **`GET` y `PUT /api/config/email` se retiraron.** Eran el único escritor del
+  store viejo. Las claves `email_smtp_*` de `config.json` **se siguen leyendo**
+  como red de seguridad, pero ya no las escribe nadie.
+- **No hubo migración de datos, y se verificó por qué no hacía falta.** Se
+  relevaron las instancias de este producto: `restolibra-demo` y
+  `restolibra-dev` tienen `config.json` **vacío** y el SMTP en el entorno —o sea
+  que hasta hoy **no podían mandar un comprobante por mail**, con un servidor
+  perfectamente usable configurado.
+- **El botón *Probar conexión* queda propio.** `GET /api/email/probar` existe
+  acá y en Contalibra y en los otros seis no; subirlo al kit pondría en pantalla
+  un botón que en seis productos daría 404.
+
 ## v1.0.2 — 2026-08-29
 
 ### El reloj de la base
