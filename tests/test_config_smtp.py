@@ -83,3 +83,56 @@ def test_borrar_vuelve_al_entorno(admin_client):
 
 def test_host_vacio_da_422(admin_client):
     assert admin_client.put("/api/config/smtp", json={"host": "   "}).status_code == 422
+
+
+# ------------------------------------------------------- probar la conexion
+
+def test_probar_esta_montado(admin_client):
+    """`POST /api/config/smtp/probar`, del motor (libracore v1.69.0).
+
+    Reemplaza al `GET /api/email/probar` que este producto tenia escrito a
+    mano. Sin SMTP cargado contesta 400 y dice que falta completar la pantalla
+    --pero contesta. 🔑 Ese 400 es la prueba de que la ruta existe: sin la
+    linea de montaje seria 404 o 405 y la app arrancaria igual.
+    """
+    r = admin_client.post("/api/config/smtp/probar")
+
+    assert r.status_code == 400, r.text
+    assert "Complet" in r.json()["detail"]
+
+
+def test_una_ruta_inventada_al_lado_no_contesta(admin_client):
+    """El control del de arriba: distingue "esta montado" de "cualquier cosa
+    colgada de /api/config/smtp contesta"."""
+    assert admin_client.post("/api/config/smtp/inventado").status_code in (404, 405)
+
+
+def test_probar_es_de_administrador(client):
+    """Abre una sesion SMTP con las credenciales del cliente."""
+    assert client.post("/api/config/smtp/probar").status_code in (401, 403)
+
+
+def test_el_endpoint_viejo_de_probar_ya_no_esta(admin_client):
+    """🔴 `GET /api/email/probar` se retiro en el mismo cambio.
+
+    Era uno de los dos unicos productos que podian probar su correo; ahora el
+    boton sale del kit y lo tienen los ocho. Dejarlo vivo seria mantener dos
+    caminos para lo mismo, y el viejo resolvia igual pero por su cuenta.
+
+    🔴 **No se mide con un 404**, y ese fue el primer intento: este producto
+    sirve una SPA con catch-all, asi que **cualquier GET que no matchee una ruta
+    devuelve 200 con el `index.html`**. El 404 nunca llega. Lo que distingue es
+    el tipo de contenido: la ruta retirada cae en el catch-all y contesta HTML,
+    no el JSON que contestaba antes.
+    """
+    r = admin_client.get("/api/email/probar")
+
+    assert "text/html" in r.headers.get("content-type", ""), (
+        "sigue contestando algo que no es el index del SPA: la ruta vieja "
+        f"parece viva ({r.status_code} {r.headers.get('content-type')})"
+    )
+
+    # Control del metodo: el endpoint NUEVO si contesta JSON por el mismo
+    # cliente. Sin esto, "todo es HTML" pasaria igual con la app rota.
+    nuevo = admin_client.post("/api/config/smtp/probar")
+    assert "application/json" in nuevo.headers.get("content-type", "")
