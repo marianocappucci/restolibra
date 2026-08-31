@@ -22,6 +22,12 @@ function formatCurrency(value: number): string {
 
 type PagoRow = { monto: string; referencia: string }
 
+//: El medio que el QR de MercadoPago cobra. El backend rebota con 422 un
+//: `cobrar_con_qr` en cualquier otro: nada acredita un pago en efectivo, así
+//: que el pedido quedaría esperando para siempre con la plata en el cajón.
+const MEDIO_DEL_QR = 'mercadopago'
+
+
 // Pantalla canónica de "pedido abierto" -- compartida por mesas
 // (canal='salon', montada en /salon/pedido/:id) y por canales sin mesa
 // (barra/takeaway/delivery, montada en /pedidos/:id). Backend único:
@@ -55,6 +61,7 @@ export function PedidoDetalle() {
   const [medios, setMedios] = useState<MedioPago[]>([])
   const [showCobro, setShowCobro] = useState(false)
   const [pagos, setPagos] = useState<Record<string, PagoRow>>({})
+  const [cobrarConQr, setCobrarConQr] = useState(false)
   const [descuento, setDescuento] = useState('0')
   const [descPct, setDescPct] = useState('')
   const [clienteCobro, setClienteCobro] = useState('')
@@ -219,7 +226,12 @@ export function PedidoDetalle() {
   async function confirmarCobro() {
     const pagosPayload = Object.entries(pagos)
       .filter(([, p]) => Number(p.monto) > 0)
-      .map(([medio, p]) => ({ medio, monto: Number(p.monto), referencia: p.referencia }))
+      .map(([medio, p]) => ({
+        medio, monto: Number(p.monto), referencia: p.referencia,
+        // Viaja SIEMPRE, también en `false`: el estado del pago se declara, no
+        // se deja al default de la base.
+        cobrar_con_qr: medio === MEDIO_DEL_QR && cobrarConQr,
+      }))
     if (pagosPayload.length === 0) {
       setCobroError('Registrá al menos un medio de pago.')
       return
@@ -453,6 +465,18 @@ export function PedidoDetalle() {
                   <Input type="number" step="0.01" value={pagos[m.id]?.monto ?? ''} onChange={(e) => setPago(m.id, 'monto', e.target.value)} placeholder="0,00" className="w-24" />
                   <Button size="sm" variant="outline" title="Poner el importe restante" onClick={() => ponerExacto(m.id)}><Check /></Button>
                   <Input value={pagos[m.id]?.referencia ?? ''} onChange={(e) => setPago(m.id, 'referencia', e.target.value)} placeholder="Ref." className="w-20" />
+                  {m.id === MEDIO_DEL_QR && (
+                    <label className="flex items-center gap-1 text-xs">
+                      <input
+                        type="checkbox"
+                        id="cobrar-con-qr"
+                        checked={cobrarConQr}
+                        onChange={(e) => setCobrarConQr(e.target.checked)}
+                        className="size-3.5"
+                      />
+                      Cobrar con QR ahora
+                    </label>
+                  )}
                 </div>
               ))}
 

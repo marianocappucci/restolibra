@@ -1,7 +1,8 @@
 """
 Cobro de un pedido: cierra el pedido generando una venta con sus ítems y
-pagos en una única transacción — mueve caja, descuenta stock, vincula al
-turno y libera la mesa, reusando el flujo del POS (db_ventas.py). Extraído
+pagos en una única transacción — mueve caja, descuenta stock y vincula al
+turno, reusando el flujo del POS (db_ventas.py). **No libera la mesa**: ningún
+evento financiero lo hace, ver el comentario largo más abajo. Extraído
 de database.py como parte del split en módulos lógicos (Fase 3 de
 LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
@@ -56,13 +57,20 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
     descuento = min(max(0.0, descuento), subtotal)
     total = round(subtotal - descuento, 2)
 
-    total_pagado = round(sum(float(p["monto"]) for p in pagos), 2)
+    # 🔴 Lo **acreditado**, no la suma de las líneas. Con la suma, un pedido
+    # cobrado por QR nace "cobrada" antes de que el cliente escanee — que es
+    # exactamente el defecto que este modelo vino a cerrar en el mostrador.
+    total_pagado = float(acreditacion.acreditado(pagos))
     if total_pagado >= total:
         estado = "cobrada"
     elif total_pagado > 0:
         estado = "parcial"
     else:
         estado = "pendiente"
+
+    # ¿Queda algo esperando que MercadoPago diga que entró?
+    hay_pendientes = any(
+        acreditacion.estado_de(p) not in acreditacion.ACREDITAN for p in pagos)
 
     if not cliente_id and pedido.get("cliente_id"):
         cliente_id = pedido["cliente_id"]
@@ -95,12 +103,18 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             for i, p in enumerate(pagos):
                 monto = float(p["monto"])
                 referencia = p.get("referencia") or f"pedido:{pedido_id}:venta:{venta_id}:pago:{i}"
-                # Declarado `aprobado`: el cobro del salón es plata que ya
-                # está —efectivo, tarjeta—. El camino del QR, donde el pago
-                # nace pendiente, es el de `crear_venta_directa`; traerlo acá
-                # es el paso siguiente y necesita el modelo del salón.
+                # El estado lo trae la línea de pago. Sin `estado` levanta:
+                # los dos defaults posibles mueven plata en silencio y en
+                # direcciones opuestas.
+                estado_del_pago = acreditacion.estado_de(p)
                 add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn,
-                               estado=acreditacion.EstadoAcreditacion.APROBADO.value)
+                               estado=estado_del_pago.value)
+                # 🔴 **La caja se escribe al ACREDITAR, no al declarar.** Un
+                # pago por QR que todavía nadie escaneó queda registrado como
+                # línea y no toca la caja: escribirlo acá infla el arqueo con
+                # plata que no entró.
+                if estado_del_pago not in acreditacion.ACREDITAN:
+                    continue
                 create_caja_movimiento(
                     fecha=fecha, tipo="ingreso",
                     concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
@@ -119,9 +133,21 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
                     turno_id = turno["id"]
                     vincular_venta_turno(venta_id, turno_id, conn=conn)
 
+            # 🔑 **El pedido queda en `cobrando` mientras el QR no acredite.**
+            #
+            # `cobrando` ya existía como el candado de concurrencia dentro de
+            # esta transacción —lo pone el UPDATE condicional de arriba—; acá
+            # pasa a ser también el estado **durable** de "la cuenta se cerró y
+            # falta que entre la plata". No hace falta un estado nuevo: es
+            # literalmente lo que significa.
+            #
+            # Y es lo que hace que el mapa del salón NO diga "cobrada, liberar"
+            # sobre una mesa cuyo pago todavía no entró — ver
+            # `db_mesas._esperando_pago`.
             conn.execute(
-                "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
-                (venta_id, _ar_now(), pedido_id),
+                "UPDATE pedidos SET estado=?, venta_id=?, updated_at=? WHERE id=?",
+                ("cobrando" if hay_pendientes else "cobrado",
+                 venta_id, _ar_now(), pedido_id),
             )
             # 🔴 **Ningún evento financiero libera una mesa.** Hasta el
             # 2026-08-31 acá iba un `UPDATE mesas SET estado='libre'`, en la

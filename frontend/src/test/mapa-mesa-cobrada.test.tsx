@@ -22,7 +22,7 @@ function mesa(extra: Record<string, unknown> = {}) {
     id: 7, salon_id: 1, salon_nombre: 'Salón principal', nombre: 'Mesa 1',
     capacidad: 4, orden: 1, activo: 1, estado: 'libre',
     pedido_id: null, pedido_numero: null, pedido_creado_at: null,
-    pedido_total: 0, mins_ocupada: 0, falta_liberar: false,
+    pedido_total: 0, mins_ocupada: 0, falta_liberar: false, esperando_pago: false,
     ...extra,
   }
 }
@@ -175,5 +175,60 @@ describe('el mapa del salón con una mesa cobrada', () => {
 
     expect(cobrada).toContain('border-amber-500')
     expect(comiendo).not.toContain('border-amber-500')
+  })
+
+  it('el borde de una mesa que espera el pago tampoco es el de ocupada', async () => {
+    // 🔑 El mismo hueco que el de arriba, para el otro estado: una mutacion que
+    // dejaba el borde rojo en `esperando_pago` sobrevivia porque nadie lo
+    // miraba. Las dos situaciones piden atencion, y las dos van en ambar.
+    backend(mesa({ estado: 'ocupada', esperando_pago: true }))
+    const { unmount } = montar()
+    await screen.findByText(/Esperando pago/)
+    const esperando = screen.getByRole('button', { name: /Mesa 1/ }).innerHTML
+    unmount()
+
+    backend(mesa({ estado: 'ocupada', pedido_id: 42, pedido_total: 15000, mins_ocupada: 20 }))
+    montar()
+    await screen.findByRole('button', { name: /Mesa 1/ })
+    const comiendo = screen.getByRole('button', { name: /Mesa 1/ }).innerHTML
+
+    expect(esperando).toContain('border-amber-500')
+    expect(comiendo).not.toContain('border-amber-500')
+  })
+
+  it('🔴 una mesa que espera el pago NO dice «Cobrada · liberar»', async () => {
+    // El defecto mas peligroso de los tres: el pedido cobrado por QR queda en
+    // `cobrando`, o sea NO `abierto`, y la derivacion vieja lo leia como
+    // "cobrada". El mozo liberaba la mesa creyendo que ya habian pagado --y
+    // liberarla es perder el cobro, porque el QR sigue puesto--.
+    backend(mesa({ estado: 'ocupada', esperando_pago: true }))
+    montar()
+
+    expect(await screen.findByText(/Esperando pago/)).toBeInTheDocument()
+    expect(tarjeta().queryByText(/Cobrada · liberar/)).toBeNull()
+    expect(tarjeta().queryByText(/^Libre$/)).toBeNull()
+    expect(tarjeta().getByText(/todavía no escaneó/)).toBeInTheDocument()
+  })
+
+  it('🔑 tocarla NO la libera', async () => {
+    backend(mesa({ estado: 'ocupada', esperando_pago: true }))
+    const usuario = userEvent.setup()
+    montar()
+
+    await usuario.click(await screen.findByText(/Esperando pago/))
+
+    expect(pedidos.some((p) => p.url.includes('/liberar'))).toBe(false)
+    // Y tampoco abre el dialogo de comensales.
+    expect(screen.queryByText(/Comensales/)).toBeNull()
+  })
+
+  it('el aviso de "todavía no escaneó" no sale en una mesa cobrada', async () => {
+    // El negativo: sin esto, un aviso puesto sin condicion pasaria el test de
+    // arriba y le hablaria de un QR a una mesa que pago en efectivo.
+    backend(mesa({ estado: 'ocupada', falta_liberar: true }))
+    montar()
+
+    await screen.findByText(/Cobrada · liberar/)
+    expect(tarjeta().queryByText(/todavía no escaneó/)).toBeNull()
   })
 })

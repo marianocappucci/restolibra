@@ -15,10 +15,12 @@ def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[di
     with get_connection() as conn:
         sql = """
             SELECT m.*, s.nombre AS salon_nombre,
-                   p.id AS pedido_id, p.numero AS pedido_numero, p.created_at AS pedido_creado_at
+                   p.id AS pedido_id, p.numero AS pedido_numero, p.created_at AS pedido_creado_at,
+                   c.id AS pedido_cobrando_id
             FROM mesas m
             JOIN salones s ON s.id = m.salon_id
             LEFT JOIN pedidos p ON p.mesa_id = m.id AND p.estado = 'abierto'
+            LEFT JOIN pedidos c ON c.mesa_id = m.id AND c.estado = 'cobrando'
         """
         where, params = [], []
         if salon_id:
@@ -32,24 +34,36 @@ def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[di
     for r in rows:
         r["pedido_total"] = pedido_total(r["pedido_id"]) if r.get("pedido_id") else 0.0
         r["mins_ocupada"] = minutos_desde(r["pedido_creado_at"]) if r.get("pedido_creado_at") else 0
-        r["falta_liberar"] = _falta_liberar(r["estado"], r.get("pedido_id"))
+        r["esperando_pago"] = _esperando_pago(r["estado"], r.get("pedido_cobrando_id"))
+        r["falta_liberar"] = _falta_liberar(
+            r["estado"], r.get("pedido_id"), r.get("pedido_cobrando_id"))
     return rows
 
 
-def _falta_liberar(estado: str, pedido_id) -> bool:
-    """La mesa ya se cobró y sigue ocupada.
+def _esperando_pago(estado: str, pedido_cobrando_id) -> bool:
+    """La cuenta se cerró y falta que entre la plata del QR.
+
+    🔴 **Sin esto la mesa diría "cobrada, liberar" con el pago pendiente**, y el
+    mozo la liberaría creyendo que ya pagaron. Es el tercer eje del modelo del
+    salón: la mesa no depende del dinero, pero **sí tiene que mostrarlo**.
+    """
+    return estado == "ocupada" and bool(pedido_cobrando_id)
+
+
+def _falta_liberar(estado: str, pedido_id, pedido_cobrando_id=None) -> bool:
+    """La mesa ya se cobró **y la plata entró**, y sigue ocupada.
 
     🔑 **Se deriva, no se guarda.** Persistirlo abriría la puerta a que el
     estado escrito diga una cosa y los pedidos otra — el mismo tipo de defecto
     que la separación entre plata y ocupación vino a cerrar.
 
-    La derivación se apoya en que las dos únicas formas de que una mesa quede
-    `ocupada` sin pedido abierto son que el pedido se haya **cobrado**
-    (`cobrar_pedido` ya no la libera) o que se haya anulado — y anular **sí** la
-    libera, porque no es un evento financiero: no se movió plata y la mesa
-    quedó vacía de verdad.
+    La derivación se apoya en que las formas de que una mesa quede `ocupada` sin
+    pedido abierto son que el pedido se haya **cobrado** (`cobrar_pedido` ya no
+    la libera), que se haya anulado —y anular **sí** la libera, porque no es un
+    evento financiero— o que esté **esperando el pago del QR**. Ese último caso
+    se excluye acá: todavía no hay nada cobrado que festejar.
     """
-    return estado == "ocupada" and not pedido_id
+    return estado == "ocupada" and not pedido_id and not pedido_cobrando_id
 
 
 def get_mesa(mid: int) -> dict | None:
@@ -65,7 +79,13 @@ def get_mesa(mid: int) -> dict | None:
         abierto = conn.execute(
             "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' LIMIT 1", (mid,)
         ).fetchone()
-        mesa["falta_liberar"] = _falta_liberar(mesa["estado"], abierto["id"] if abierto else None)
+        cobrando = conn.execute(
+            "SELECT id FROM pedidos WHERE mesa_id=? AND estado='cobrando' LIMIT 1", (mid,)
+        ).fetchone()
+        cobrando_id = cobrando["id"] if cobrando else None
+        mesa["esperando_pago"] = _esperando_pago(mesa["estado"], cobrando_id)
+        mesa["falta_liberar"] = _falta_liberar(
+            mesa["estado"], abierto["id"] if abierto else None, cobrando_id)
         return mesa
 
 
@@ -98,17 +118,26 @@ def liberar_mesa(mid: int) -> bool:
     Existe porque `cobrar_pedido` dejó de hacerlo: ningún evento financiero
     libera una mesa. Ver el comentario largo en `db_cobro_pedido.py`.
 
-    🔴 **No libera una mesa con el pedido abierto.** Ahí el pedido sigue vivo y
-    la mesa volvería al mapa como disponible mientras alguien come: para eso
-    está anular o cobrar. Devuelve `False`, que el router traduce a 409 — un
-    "no hice nada" en silencio es peor, porque el mozo ve la mesa igual y no
-    sabe por qué.
+    🔴 **No libera una mesa con el pedido abierto NI con uno esperando el pago.**
+
+    - Con el pedido abierto, la mesa volvería al mapa como disponible mientras
+      alguien come: para eso está anular o cobrar.
+    - Con un pedido en `cobrando` —cobrado por QR, esperando que MercadoPago
+      diga que entró— **liberarla es perder el cobro**: el QR sigue puesto con
+      el monto de esa cuenta y el mozo ya sentó a otros.
+
+    ⚠️ Los dos casos hacen falta, y el segundo no salía del primero: un pedido
+    en `cobrando` **no** está `abierto`. Lo encontró un test, no la lectura.
+
+    Devuelve `False`, que el router traduce a 409 — un "no hice nada" en
+    silencio es peor, porque el mozo ve la mesa igual y no sabe por qué.
     """
     with get_connection() as conn:
-        abierto = conn.execute(
-            "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' LIMIT 1", (mid,)
+        vivo = conn.execute(
+            "SELECT id FROM pedidos WHERE mesa_id=? AND estado IN ('abierto','cobrando') "
+            "LIMIT 1", (mid,)
         ).fetchone()
-        if abierto:
+        if vivo:
             return False
         cur = conn.execute(
             "UPDATE mesas SET estado='libre' WHERE id=? AND estado<>'libre'", (mid,))
