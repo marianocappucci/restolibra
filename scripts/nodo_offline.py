@@ -302,8 +302,8 @@ def estado() -> int:
             " GROUP BY table_name ORDER BY table_name"
         ).fetchall()
         nodos = conn.execute(
-            "SELECT node_id, branch_id, active, last_server_cursor"
-            " FROM node_identity ORDER BY node_id"
+            "SELECT node_id, branch_id, active, last_server_cursor,"
+            " last_seen_at FROM node_identity ORDER BY node_id"
         ).fetchall()
 
     print("Tablas publicadas al changelog:")
@@ -318,7 +318,92 @@ def estado() -> int:
         print("  (ninguno — falta correr `registrar`)")
     for fila in nodos:
         activo = "activo" if fila[2] else "REVOCADO"
-        print(f"  {fila[0]} (sucursal {fila[1]}) — {activo}, cursor {fila[3] or 0}")
+        visto = _hace_cuanto(fila[4])
+        print(f"  {fila[0]} (sucursal {fila[1]}) — {activo}, cursor {fila[3] or 0},"
+              f" visto {visto}")
+    return 0
+
+
+def _hace_cuanto(marca: str | None) -> str:
+    """Texto corto para cuándo fue la última vez, o por qué no hay ninguna."""
+    if not marca:
+        return "NUNCA (registrado pero nunca sincronizó)"
+    from datetime import datetime, timezone
+
+    try:
+        cuando = datetime.fromisoformat(marca)
+    except ValueError:
+        return f"fecha ilegible ({marca!r})"
+    if cuando.tzinfo is None:
+        cuando = cuando.replace(tzinfo=timezone.utc)
+    minutos = (datetime.now(timezone.utc) - cuando).total_seconds() / 60
+    if minutos < 2:
+        return "recién"
+    if minutos < 120:
+        return f"hace {minutos:.0f} min"
+    return f"hace {minutos / 60:.1f} h"
+
+
+def vigilar(umbral_minutos: int) -> int:
+    """Avisa qué nodos dejaron de hablar. **Sale con 1 si hay alguno.**
+
+    🔴 El código de salida es el punto. Un comando que imprime lindo y siempre
+    sale con 0 no es monitoreo: es un informe que hay que acordarse de leer, y
+    nadie lee un log que casi siempre dice que todo está bien. Saliendo con 1
+    lo puede usar el cron, un `healthcheck` o cualquier cosa que mire códigos.
+
+    El umbral se pasa y no se adivina: depende del intervalo que tenga
+    configurado cada instalación --por defecto el nodo cicla cada 60 s-- y este
+    script no lo conoce. Un umbral de 15 minutos tolera quince ciclos perdidos.
+
+    ⚠️ Un nodo silencioso NO significa ventas perdidas: el nodo sigue cobrando
+    sin internet, y lo que cobró está en su outbox esperando. Significa que
+    nadie sabe cuánto hay esperando ni desde cuándo, que es distinto y peor de
+    lo que parece: el día que ese disco se rompa, recién ahí se cuenta.
+    """
+    with _conexion() as conn:
+        nodos = conn.execute(
+            "SELECT node_id, branch_id, active, last_seen_at"
+            " FROM node_identity ORDER BY node_id"
+        ).fetchall()
+
+    if not nodos:
+        print("No hay nodos registrados: no hay nada que vigilar.")
+        return 0
+
+    from datetime import datetime, timezone
+
+    ahora = datetime.now(timezone.utc)
+    callados = []
+    for fila in nodos:
+        node_id, sucursal, activo, visto = fila[0], fila[1], fila[2], fila[3]
+        if not activo:
+            print(f"  {node_id} (sucursal {sucursal}) — REVOCADO, no se vigila")
+            continue
+        minutos = None
+        if visto:
+            try:
+                cuando = datetime.fromisoformat(visto)
+                if cuando.tzinfo is None:
+                    cuando = cuando.replace(tzinfo=timezone.utc)
+                minutos = (ahora - cuando).total_seconds() / 60
+            except ValueError:
+                minutos = None
+        if minutos is not None and minutos <= umbral_minutos:
+            print(f"  {node_id} (sucursal {sucursal}) — al día, visto {_hace_cuanto(visto)}")
+        else:
+            callados.append((node_id, sucursal, visto))
+            print(f"  {node_id} (sucursal {sucursal}) — SIN NOTICIAS, visto {_hace_cuanto(visto)}")
+
+    if callados:
+        print()
+        print(f"{len(callados)} nodo(s) sin dar señales en {umbral_minutos} minutos.")
+        print("Puede ser la conexión del local, la PC apagada o el servicio caído.")
+        print("Lo cobrado sin internet sigue en el nodo; el problema es que nadie")
+        print("sabe cuánto hay esperando ni desde cuándo.")
+        return 1
+    print()
+    print(f"Los {len(nodos)} nodos dieron señales dentro de los {umbral_minutos} minutos.")
     return 0
 
 
@@ -335,8 +420,14 @@ def main(argv: list[str] | None = None) -> int:
     baja = sub.add_parser("dar-de-baja", help="revoca un nodo (PC robada o reemplazada)")
     baja.add_argument("node_id")
     sub.add_parser("estado", help="que hay publicado y que nodos existen")
+    vig = sub.add_parser(
+        "vigilar", help="sale con 1 si algun nodo dejo de dar senales")
+    vig.add_argument("--umbral", type=int, default=15,
+                     help="minutos sin noticias para darlo por callado")
 
     args = parser.parse_args(argv)
+    if args.comando == "vigilar":
+        return vigilar(args.umbral)
     if args.comando == "publicar":
         return publicar()
     if args.comando == "registrar":

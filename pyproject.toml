@@ -141,7 +141,15 @@ dependencies = [
 # v0.6.6, asi que el chequeo de pines de este repo fallo con
 # `pin=0.6.6 instalado=0.6.0`. v0.6.7 es el primer tag que saca la version
 # de `git describe`, como libracore.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.6.7",
+#
+# v0.6.7 -> v0.6.9 (2026-08-31): el latido del nodo. El central no tenia
+# forma de saber que una sucursal dejo de sincronizar --un nodo callado se
+# veia igual que uno al dia-- y ahora `node_identity.last_seen_at` se anota
+# en la autenticacion de las rutas de sync. De ese dato vive `nodo_offline
+# vigilar`, que es lo que corre el cron del central.
+#
+# (v0.6.8 fue el respaldo del nodo y la bandeja, del lado del instalador.)
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.6.9",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
