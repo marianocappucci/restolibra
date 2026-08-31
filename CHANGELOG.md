@@ -1,5 +1,24 @@
 # Changelog
 
+## v1.0.8 — 2026-08-31
+
+### `vigilar` decía que un nodo revocado había dado señales
+
+- 🔴 **Falso verde, y en la línea que el cron repite cada 10 minutos.** El
+  resumen sano contaba `len(nodos)`, que incluye a los **revocados**. Al dar de
+  baja el único nodo de la demo —con la PC apagada hacía cuatro horas— el log
+  pasó de la alerta correcta a *"El nodo dio señales dentro de los 15 minutos"*.
+  Nombraba justamente al nodo que no dio ninguna.
+- Ahora cuenta los **vigilados**. Sin ninguno activo dice *"No hay nodos
+  activos: todos los registrados están revocados."*, que es lo que pasa.
+  El código de salida sigue siendo 0, y eso está bien: un nodo revocado no se
+  vigila. Lo que no puede hacer es afirmar que dio señales.
+- ⚠️ **`vigilar` no tenía un solo test** — por eso el defecto entró con el
+  comando. Se agregan cuatro: al día → 0, pasado del umbral → 1, **el mismo
+  nodo con umbral holgado → 0** (el discriminante: sobre los mismos datos
+  prueba que decide el umbral), y los dos casos con revocados. Verificados por
+  mutación: volviendo a `len(nodos)`, los dos de revocados se ponen rojos.
+
 ## v1.0.7 — 2026-08-31
 
 ### El espejo del nodo ya no arrastra las tablas de precios de LibraCore
