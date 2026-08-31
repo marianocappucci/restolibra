@@ -435,11 +435,13 @@ def vigilar(umbral_minutos: int) -> int:
 
     ahora = datetime.now(timezone.utc)
     callados = []
+    vigilados = 0
     for fila in nodos:
         node_id, sucursal, activo, visto = fila[0], fila[1], fila[2], fila[3]
         if not activo:
             print(f"  {node_id} (sucursal {sucursal}) — REVOCADO, no se vigila")
             continue
+        vigilados += 1
         minutos = None
         if visto:
             try:
@@ -463,11 +465,20 @@ def vigilar(umbral_minutos: int) -> int:
         print("sabe cuánto hay esperando ni desde cuándo.")
         return 1
     print()
+
+    # 🔴 Se cuentan los VIGILADOS, no los registrados. Contaba `len(nodos)`, que
+    # incluye a los revocados, así que al dar de baja el único nodo de la demo
+    # —2026-08-31, con la PC apagada hacía 4 horas— el cron pasó a escribir cada
+    # 10 minutos "El nodo dio señales dentro de los 15 minutos". Es un falso
+    # verde de manual: la línea nombra justamente al nodo que no dio ninguna.
+    if not vigilados:
+        print("No hay nodos activos: todos los registrados están revocados.")
+        return 0
+
     # Singular aparte: con un nodo la línea decía "Los 1 nodos dieron
     # señales", y esa línea es la que se repite cada 10 minutos en el log
     # del cron. La mayoría de los locales van a tener un nodo.
-    cuantos = len(nodos)
-    sujeto = "El nodo dio" if cuantos == 1 else f"Los {cuantos} nodos dieron"
+    sujeto = "El nodo dio" if vigilados == 1 else f"Los {vigilados} nodos dieron"
     print(f"{sujeto} señales dentro de los {umbral_minutos} minutos.")
     return 0
 
