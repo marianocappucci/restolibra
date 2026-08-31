@@ -119,20 +119,27 @@ def test_el_endpoint_viejo_de_probar_ya_no_esta(admin_client):
     boton sale del kit y lo tienen los ocho. Dejarlo vivo seria mantener dos
     caminos para lo mismo, y el viejo resolvia igual pero por su cuenta.
 
-    🔴 **No se mide con un 404**, y ese fue el primer intento: este producto
-    sirve una SPA con catch-all, asi que **cualquier GET que no matchee una ruta
-    devuelve 200 con el `index.html`**. El 404 nunca llega. Lo que distingue es
-    el tipo de contenido: la ruta retirada cae en el catch-all y contesta HTML,
-    no el JSON que contestaba antes.
+    🔴 **Se mira la tabla de rutas, no la respuesta**, y costo dos intentos:
+
+    1. `assert ... == 404` dio **200** en local: con el `dist` del SPA
+       construido, el catch-all contesta el `index.html` para cualquier GET sin
+       ruta.
+    2. `assert content-type es text/html` dio **404 application/json** en el
+       CI, donde el job de backend no construye el frontend y no hay catch-all.
+
+    O sea que la respuesta depende de si el SPA esta construido, no de si la
+    ruta existe. Y mirar el status tampoco alcanza: el endpoint viejo
+    contestaba **400** sin SMTP cargado, que es justo el estado de este test.
+
+    Mirar `app.routes` SI sirve para este caso: el endpoint viejo era un
+    `@app.get` sobre la app, no un router incluido --de los incluidos es de los
+    que el docstring del modulo dice que no se puede--.
     """
-    r = admin_client.get("/api/email/probar")
+    rutas = {getattr(r, "path", None) for r in admin_client.app.routes}
 
-    assert "text/html" in r.headers.get("content-type", ""), (
-        "sigue contestando algo que no es el index del SPA: la ruta vieja "
-        f"parece viva ({r.status_code} {r.headers.get('content-type')})"
-    )
+    assert "/api/email/probar" not in rutas, "la ruta vieja sigue registrada"
 
-    # Control del metodo: el endpoint NUEVO si contesta JSON por el mismo
-    # cliente. Sin esto, "todo es HTML" pasaria igual con la app rota.
-    nuevo = admin_client.post("/api/config/smtp/probar")
-    assert "application/json" in nuevo.headers.get("content-type", "")
+    # Control del metodo: una ruta que SI esta registrada sobre la app aparece
+    # en ese conjunto. Sin esto, un `app.routes` vacio o de otra forma daria
+    # verde para siempre.
+    assert "/api/mp/probar" in rutas
