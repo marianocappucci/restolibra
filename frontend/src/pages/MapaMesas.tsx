@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle } from 'lucide-react'
+import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle, CheckCircle2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatoTiempo(mins: number): string {
@@ -50,6 +50,7 @@ export function MapaMesas() {
   const [mesaDetalle, setMesaDetalle] = useState<MesaDetalle | null>(null)
   const [comensales, setComensales] = useState('2')
   const [abriendo, setAbriendo] = useState(false)
+  const [liberando, setLiberando] = useState(0)
 
   useEffect(() => { cargar() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -71,9 +72,30 @@ export function MapaMesas() {
     }
   }
 
+  async function liberarMesa(mesa: Mesa) {
+    setError(null)
+    setLiberando(mesa.id)
+    try {
+      await api.post(`/api/salon/mesa/${mesa.id}/liberar`, {})
+      await cargar(data?.salon_sel)
+    } catch (err) {
+      setError(describeError(err))
+    } finally {
+      setLiberando(0)
+    }
+  }
+
   async function tocarMesa(mesa: Mesa) {
     if (mesa.pedido_id) {
       navigate(`/salon/pedido/${mesa.pedido_id}`)
+      return
+    }
+    // 🔴 Una mesa cobrada NO abre el diálogo de "abrir pedido". Antes esto no
+    // podía pasar porque cobrar la liberaba; ahora queda ocupada hasta que el
+    // mozo la libera, y ofrecerle abrir otro pedido encima sería sentar gente
+    // en una mesa que todavía no se levantó.
+    if (mesa.falta_liberar) {
+      await liberarMesa(mesa)
       return
     }
     setError(null)
@@ -152,7 +174,12 @@ export function MapaMesas() {
           <div className="flex gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-emerald-500" />Libre</span>
             <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-destructive" />Ocupada</span>
-            <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-amber-500" />Cuenta pedida</span>
+            {/* El ámbar decía «Cuenta pedida», que ningún código escribe:
+                `mesas.estado='cuenta'` no aparece en ningún módulo, sólo en el
+                conteo de `resumen_salon_ahora`. Desde que cobrar dejó de
+                liberar la mesa, el ámbar es esto —y esto sí pasa todos los
+                días—. */}
+            <span className="flex items-center gap-1"><span className="size-2.5 rounded-full bg-amber-500" />Cobrada · falta liberar</span>
           </div>
 
           {data.mesas.length === 0 ? (
@@ -165,7 +192,7 @@ export function MapaMesas() {
                 const prox = data.reservas_por_mesa[String(m.id)]
                 return (
                   <button key={m.id} onClick={() => tocarMesa(m)} className="text-left">
-                    <Card className={`h-full border-2 ${ESTADO_COLOR[m.estado]} transition hover:shadow-md`}>
+                    <Card className={`h-full border-2 ${m.falta_liberar ? 'border-amber-500' : ESTADO_COLOR[m.estado]} transition hover:shadow-md`}>
                       <CardContent className="grid gap-1 p-3 text-center">
                         <div className="text-sm font-semibold">{m.nombre}</div>
                         <div className="text-xs text-muted-foreground">{m.capacidad} cub.</div>
@@ -176,8 +203,20 @@ export function MapaMesas() {
                               <Clock className="size-3" />{formatoTiempo(m.mins_ocupada)}
                             </div>
                           </>
+                        ) : m.falta_liberar ? (
+                          // 🔴 Sin esta rama la mesa recién cobrada decía
+                          // «Libre» en verde con el borde de ocupada: la
+                          // tarjeta se contradecía a sí misma.
+                          <BadgeEstado tono="atencion" className="mx-auto">
+                            {liberando === m.id ? 'Liberando…' : 'Cobrada · liberar'}
+                          </BadgeEstado>
                         ) : (
                           <BadgeEstado tono="ok" className="mx-auto">Libre</BadgeEstado>
+                        )}
+                        {m.falta_liberar && (
+                          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                            <CheckCircle2 className="size-3" />Tocá para liberarla
+                          </div>
                         )}
                         {prox && (
                           <div className="flex items-center justify-center gap-1 text-xs text-sky-600 dark:text-sky-400">

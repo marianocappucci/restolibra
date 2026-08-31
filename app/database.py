@@ -315,6 +315,7 @@ from app.db_mesas import (  # noqa: F401
     create_mesa,
     update_mesa,
     set_mesa_estado,
+    liberar_mesa,
     delete_mesa,
     resumen_salon_ahora,
 )

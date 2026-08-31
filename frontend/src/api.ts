@@ -158,6 +158,13 @@ export type Mesa = {
   pedido_creado_at: string | null
   pedido_total: number
   mins_ocupada: number
+  /** La mesa ya se cobró y sigue ocupada: falta que el mozo la libere.
+   *
+   *  🔑 **Lo deriva el backend, no se guarda** — es `ocupada` sin pedido
+   *  abierto. Ver `db_mesas._falta_liberar`. Desde el 2026-08-31 cobrar ya no
+   *  libera la mesa: los cuatro que terminan el café siguen sentados, y con el
+   *  cobro por QR el pago puede quedar pendiente. */
+  falta_liberar: boolean
 }
 
 export type MapaSalonData = {
