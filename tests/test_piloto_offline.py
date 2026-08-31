@@ -332,3 +332,131 @@ def test_la_variable_no_quedo_definida_en_el_entorno_de_la_suite():
     """Guard del propio arnes: si algo la dejara puesta, los tests del camino
     normal medirian el camino de nodo y nadie se enteraria."""
     assert "RESTOLIBRA_EDGE_NODE_ID" not in os.environ
+
+
+# --------------------------------------------------------------------------
+# La lista de tablas que el nodo espeja, y el corte cuando una no se puede.
+#
+# Nace el 2026-08-31, de que `publicar` venía diciendo "21 de 22": salteaba
+# `lista_precio_items` por su PK compuesta `(lista_id, producto_id)`. La
+# resolución no fue enseñarle al aplicador esa clave sino sacar la tabla: este
+# producto no la lee. Ver el comentario de `TABLAS_DE_REFERENCIA`.
+# --------------------------------------------------------------------------
+
+
+def test_las_tablas_de_precios_viejas_de_libracore_no_se_espejan():
+    """Las cuatro que el producto dejó de usar en la migración a LibraCommerce.
+
+    El test mira **las dos mitades**, y no sólo la ausencia: que falten las
+    cuatro viejas no dice nada si por el mismo descuido faltaran también las
+    nuevas — la lista quedaría igual de vacía de precios y el test igual de
+    verde. Así que se exige además que estén las que el producto sí consulta.
+    """
+    from scripts.nodo_offline import TABLAS_DE_REFERENCIA
+
+    viejas = {"productos", "categorias_producto", "listas_precio",
+              "lista_precio_items"}
+    assert not (viejas & TABLAS_DE_REFERENCIA), (
+        "volvieron las tablas de precios de LibraCore a la lista del espejo; "
+        "este producto cotiza por price_lists/item_prices desde P8"
+    )
+
+    nuevas = {"catalog_items", "categories", "price_lists", "item_prices"}
+    assert nuevas <= TABLAS_DE_REFERENCIA, (
+        "faltan las tablas de precios que el producto SÍ usa: "
+        f"{sorted(nuevas - TABLAS_DE_REFERENCIA)}"
+    )
+
+
+def test_publicar_no_saltea_ninguna_tabla(admin_client, capsys):
+    """Con la lista de hoy, el espejo del nodo sale completo.
+
+    Es el test que hace valer al de abajo: sin él, el corte por salteo podría
+    no dispararse nunca y nadie se enteraría de que la lista quedó rota.
+    """
+    from scripts import nodo_offline
+
+    assert nodo_offline.publicar() == 0
+    assert "SALTEADA" not in capsys.readouterr().out
+
+
+def test_una_tabla_que_el_nodo_no_puede_espejar_corta_el_aprovisionamiento(
+    admin_client, monkeypatch, capsys
+):
+    """El control: `publicar` sale con 1, no imprime y sigue.
+
+    Antes el salteo era una línea de texto entre veinte de "trigger ok", y el
+    comando salía con 0 igual. Un aprovisionamiento que deja al nodo con una
+    copia incompleta tiene que fallar, porque lo que sigue es un cliente
+    vendiendo contra datos que no están.
+    """
+    from libracore.db import core
+    from scripts import nodo_offline
+
+    conn = core.get_connection()
+    conn.execute("DROP TABLE IF EXISTS dos_claves")
+    conn.execute("CREATE TABLE dos_claves (a INTEGER, b INTEGER, nombre TEXT,"
+                 " PRIMARY KEY (a, b))")
+    conn.commit()
+    conn.close()
+
+    monkeypatch.setattr(
+        nodo_offline, "TABLAS_DE_REFERENCIA",
+        frozenset(nodo_offline.TABLAS_DE_REFERENCIA | {"dos_claves"}),
+    )
+    try:
+        assert nodo_offline.publicar() == 1
+        salida = capsys.readouterr().out
+        assert "dos_claves: SALTEADA" in salida
+        assert "copia INCOMPLETA" in salida
+    finally:
+        conn = core.get_connection()
+        conn.execute("DROP TABLE IF EXISTS dos_claves")
+        conn.commit()
+        conn.close()
+
+
+def test_publicar_retira_el_trigger_de_una_tabla_que_salio_de_la_lista(
+    admin_client, capsys
+):
+    """🔴 Sacar la tabla del código no la despublica del central.
+
+    Es lo que pasó al sacar las cuatro tablas de precios de LibraCore: tres de
+    ellas seguían con su trigger instalado en el central de demo, escribiendo al
+    changelog de algo que el nodo ya no espera. `publicar` tiene que **converger
+    a la lista declarada**, no sólo agregar.
+
+    El control va adentro: primero se comprueba que el trigger de más está
+    puesto y **registra**, porque si no el "ya no registra" del final lo daría
+    igual un trigger que nunca se instaló.
+    """
+    from libracore.db import core
+    from libraedge.db.changelog import instalar_trigger, listar_cambios
+    from scripts import nodo_offline
+
+    conn = core.get_connection()
+    conn.execute("DROP TABLE IF EXISTS sobrante")
+    conn.execute("CREATE TABLE sobrante (id SERIAL PRIMARY KEY, nombre TEXT)")
+    instalar_trigger(conn, "sobrante", "id")
+    conn.execute("INSERT INTO sobrante (nombre) VALUES (?)", ("antes",))
+    conn.commit()
+    antes = len([c for c in listar_cambios(conn) if c.table_name == "sobrante"])
+    conn.close()
+    assert antes == 1, "el trigger de más no estaba registrando"
+
+    try:
+        # `sobrante` NO está en TABLAS_DE_REFERENCIA: publicar tiene que sacarlo.
+        assert nodo_offline.publicar() == 0
+        assert "sobrante: trigger RETIRADO" in capsys.readouterr().out
+
+        conn = core.get_connection()
+        conn.execute("INSERT INTO sobrante (nombre) VALUES (?)", ("despues",))
+        conn.commit()
+        despues = len([c for c in listar_cambios(conn) if c.table_name == "sobrante"])
+        conn.close()
+        assert despues == antes, "siguió publicando después de retirarlo"
+    finally:
+        conn = core.get_connection()
+        conn.execute("DROP TABLE IF EXISTS sobrante")
+        conn.commit()
+        conn.close()
