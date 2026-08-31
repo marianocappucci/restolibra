@@ -44,10 +44,20 @@ function estadoLabel(estado: string): string {
 }
 
 type ItemRow = { nombre: string; qty: string; precio: string; producto_id: number | null }
-type PagoRow = { medio: string; monto: string; referencia: string }
+/** `cobrarConQr` es "le voy a cobrar recién ahora", no "ya me pagó".
+ *
+ *  🔴 Sin esa distinción la venta nace **cobrada** —con el movimiento de caja
+ *  escrito— antes de que nadie escanee nada. Ver `PagoPayload.cobrar_con_qr` en
+ *  `app/web/api/ventas.py`. */
+type PagoRow = { medio: string; monto: string; referencia: string; cobrarConQr: boolean }
 
 const EMPTY_ITEM: ItemRow = { nombre: '', qty: '1', precio: '0', producto_id: null }
-const EMPTY_PAGO: PagoRow = { medio: 'efectivo', monto: '', referencia: '' }
+//: El medio que el QR cobra. El backend rebota con 422 un `cobrar_con_qr` en
+//: cualquier otro: nada acredita un pago en efectivo, así que la venta
+//: quedaría pendiente para siempre.
+const MEDIO_DEL_QR = 'mercadopago'
+
+const EMPTY_PAGO: PagoRow = { medio: 'efectivo', monto: '', referencia: '', cobrarConQr: false }
 
 export function Ventas() {
   const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
@@ -167,8 +177,20 @@ export function Ventas() {
     setItems((rows) => rows.filter((_, i) => i !== index))
   }
 
-  function updatePago(index: number, field: keyof PagoRow, value: string) {
-    setPagos((rows) => rows.map((r, i) => i === index ? { ...r, [field]: value } : r))
+  function updatePago(index: number, field: 'medio' | 'monto' | 'referencia', value: string) {
+    setPagos((rows) => rows.map((r, i) => {
+      if (i !== index) return r
+      const fila = { ...r, [field]: value }
+      // 🔴 Cambiar el medio APAGA la marca. Si quedara prendida, el backend
+      // rebota con 422 al guardar y el mostrador se entera recién ahí, con la
+      // venta ya cargada.
+      if (field === 'medio' && value !== MEDIO_DEL_QR) fila.cobrarConQr = false
+      return fila
+    }))
+  }
+
+  function updatePagoQr(index: number, valor: boolean) {
+    setPagos((rows) => rows.map((r, i) => i === index ? { ...r, cobrarConQr: valor } : r))
   }
 
   function addPagoRow() {
@@ -196,7 +218,12 @@ export function Ventas() {
         descuento: Number(descuento) || 0,
         cliente_id: clienteId ? Number(clienteId) : null,
         observaciones,
-        pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({ medio: p.medio, monto: Number(p.monto), referencia: p.referencia })),
+        pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({
+          medio: p.medio, monto: Number(p.monto), referencia: p.referencia,
+          // Viaja SIEMPRE, también en `false`: el estado del pago se declara,
+          // no se deja al default de la base.
+          cobrar_con_qr: p.cobrarConQr,
+        })),
       })
       setShowNueva(false)
       navigate(`/ventas/${venta.id}`)
@@ -411,6 +438,18 @@ export function Ventas() {
                     </Select>
                     <Input type="number" step="0.01" value={row.monto} onChange={(e) => updatePago(i, 'monto', e.target.value)} className="w-28" placeholder="Monto" />
                     <Input value={row.referencia} onChange={(e) => updatePago(i, 'referencia', e.target.value)} className="w-40" placeholder="Referencia" />
+                    {row.medio === MEDIO_DEL_QR && (
+                      <label className="flex items-center gap-1.5 text-sm">
+                        <input
+                          type="checkbox"
+                          id={`cobrar-con-qr-${i}`}
+                          checked={row.cobrarConQr}
+                          onChange={(e) => updatePagoQr(i, e.target.checked)}
+                          className="size-4"
+                        />
+                        Cobrar con QR ahora
+                      </label>
+                    )}
                     {pagos.length > 1 && <Button size="sm" variant="ghost" onClick={() => removePagoRow(i)}><X />Quitar</Button>}
                   </div>
                 ))}

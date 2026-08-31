@@ -12,6 +12,7 @@ from app.libraedge_integration import encolar_pedido_cobrado
 from app.db_modulos import get_modulos
 from app.db_pedidos import get_pedido
 from app.db_ventas import get_next_venta_numero, create_venta, add_venta_pago
+from libracore import pagos as acreditacion
 from app.db_caja import create_caja_movimiento
 from app.db_stock import descontar_stock_venta
 from app.db_turnos import get_turno_activo, vincular_venta_turno
@@ -94,7 +95,12 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             for i, p in enumerate(pagos):
                 monto = float(p["monto"])
                 referencia = p.get("referencia") or f"pedido:{pedido_id}:venta:{venta_id}:pago:{i}"
-                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn)
+                # Declarado `aprobado`: el cobro del salón es plata que ya
+                # está —efectivo, tarjeta—. El camino del QR, donde el pago
+                # nace pendiente, es el de `crear_venta_directa`; traerlo acá
+                # es el paso siguiente y necesita el modelo del salón.
+                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn,
+                               estado=acreditacion.EstadoAcreditacion.APROBADO.value)
                 create_caja_movimiento(
                     fecha=fecha, tipo="ingreso",
                     concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
