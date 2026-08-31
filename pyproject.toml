@@ -125,7 +125,31 @@ dependencies = [
 # reintentaba NADIE nunca. La venta que el nodo cobro no llegaba al central, no
 # habia error, y se descubria en el arqueo. Estuvo ahi desde la primera version
 # del worker.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.5.0",
+#
+# v0.5.0 -> v0.6.6 (2026-08-31): el nodo no guardaba su cursor del espejo.
+# `set_server_cursor` hacia UPDATE sobre una `node_identity` vacia --del lado
+# del nodo nadie creaba la fila-- y un UPDATE de cero filas es un exito, asi
+# que cada ciclo pedia desde 0 y rebajaba el espejo COMPLETO. Medido contra
+# el central de demo: 102 cambios, y los mismos 102 al minuto siguiente.
+#
+# Este pin es lo que decide que version de LibraEdge viaja en la carga de
+# CADA nodo instalado, asi que sin este salto todas las instalaciones
+# seguirian con el defecto.
+#
+# El salto es a v0.6.7 y no a v0.6.6, y lo enseno el CI: libraedge declaraba
+# `version = "0.6.0"` a mano en su pyproject mientras los tags iban por
+# v0.6.6, asi que el chequeo de pines de este repo fallo con
+# `pin=0.6.6 instalado=0.6.0`. v0.6.7 es el primer tag que saca la version
+# de `git describe`, como libracore.
+#
+# v0.6.7 -> v0.6.9 (2026-08-31): el latido del nodo. El central no tenia
+# forma de saber que una sucursal dejo de sincronizar --un nodo callado se
+# veia igual que uno al dia-- y ahora `node_identity.last_seen_at` se anota
+# en la autenticacion de las rutas de sync. De ese dato vive `nodo_offline
+# vigilar`, que es lo que corre el cron del central.
+#
+# (v0.6.8 fue el respaldo del nodo y la bandeja, del lado del instalador.)
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.6.9",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
