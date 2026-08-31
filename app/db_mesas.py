@@ -32,7 +32,24 @@ def get_mesas(salon_id: int | None = None, solo_activas: bool = True) -> list[di
     for r in rows:
         r["pedido_total"] = pedido_total(r["pedido_id"]) if r.get("pedido_id") else 0.0
         r["mins_ocupada"] = minutos_desde(r["pedido_creado_at"]) if r.get("pedido_creado_at") else 0
+        r["falta_liberar"] = _falta_liberar(r["estado"], r.get("pedido_id"))
     return rows
+
+
+def _falta_liberar(estado: str, pedido_id) -> bool:
+    """La mesa ya se cobró y sigue ocupada.
+
+    🔑 **Se deriva, no se guarda.** Persistirlo abriría la puerta a que el
+    estado escrito diga una cosa y los pedidos otra — el mismo tipo de defecto
+    que la separación entre plata y ocupación vino a cerrar.
+
+    La derivación se apoya en que las dos únicas formas de que una mesa quede
+    `ocupada` sin pedido abierto son que el pedido se haya **cobrado**
+    (`cobrar_pedido` ya no la libera) o que se haya anulado — y anular **sí** la
+    libera, porque no es un evento financiero: no se movió plata y la mesa
+    quedó vacía de verdad.
+    """
+    return estado == "ocupada" and not pedido_id
 
 
 def get_mesa(mid: int) -> dict | None:
@@ -42,7 +59,14 @@ def get_mesa(mid: int) -> dict | None:
                FROM mesas m JOIN salones s ON s.id=m.salon_id WHERE m.id=?""",
             (mid,),
         ).fetchone()
-        return dict(row) if row else None
+        if not row:
+            return None
+        mesa = dict(row)
+        abierto = conn.execute(
+            "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' LIMIT 1", (mid,)
+        ).fetchone()
+        mesa["falta_liberar"] = _falta_liberar(mesa["estado"], abierto["id"] if abierto else None)
+        return mesa
 
 
 def create_mesa(salon_id: int, nombre: str, capacidad: int = 4, orden: int = 0) -> int:
@@ -65,6 +89,31 @@ def update_mesa(mid: int, nombre: str, capacidad: int = 4, orden: int = 0, activ
 def set_mesa_estado(mid: int, estado: str):
     with get_connection() as conn:
         conn.execute("UPDATE mesas SET estado=? WHERE id=?", (estado, mid))
+
+
+def liberar_mesa(mid: int) -> bool:
+    """Deja la mesa libre. Es la acción **explícita** del mozo, y la única
+    forma de liberar una mesa que se cobró.
+
+    Existe porque `cobrar_pedido` dejó de hacerlo: ningún evento financiero
+    libera una mesa. Ver el comentario largo en `db_cobro_pedido.py`.
+
+    🔴 **No libera una mesa con el pedido abierto.** Ahí el pedido sigue vivo y
+    la mesa volvería al mapa como disponible mientras alguien come: para eso
+    está anular o cobrar. Devuelve `False`, que el router traduce a 409 — un
+    "no hice nada" en silencio es peor, porque el mozo ve la mesa igual y no
+    sabe por qué.
+    """
+    with get_connection() as conn:
+        abierto = conn.execute(
+            "SELECT id FROM pedidos WHERE mesa_id=? AND estado='abierto' LIMIT 1", (mid,)
+        ).fetchone()
+        if abierto:
+            return False
+        cur = conn.execute(
+            "UPDATE mesas SET estado='libre' WHERE id=? AND estado<>'libre'", (mid,))
+        conn.commit()
+    return cur.rowcount > 0
 
 
 def delete_mesa(mid: int) -> bool:

@@ -5,22 +5,7 @@ de espejar la suite del upstream — cubren el flujo real de un servicio:
 abrir mesa -> cargar items -> enviar a cocina -> avanzar la comanda ->
 cobrar, mas el rol `mozo`, que solo existe en este producto.
 """
-import pytest
-
 from tests.conftest import ADMIN_PASS, ADMIN_USER
-
-
-@pytest.fixture()
-def salon_con_mesa(admin_client):
-    """Un salon con una mesa, que es el piso minimo para operar."""
-    salon = admin_client.post("/api/salon/config/salones",
-                              json={"nombre": "Salon principal", "orden": 1})
-    assert salon.status_code == 200, salon.text
-    sid = admin_client.get("/api/salon/config").json()["salones"][0]["id"]
-    mesa = admin_client.post("/api/salon/config/mesas",
-                             json={"salon_id": sid, "nombre": "Mesa 1", "capacidad": 4})
-    assert mesa.status_code == 200, mesa.text
-    return {"salon_id": sid, "mesa_id": mesa.json()["id"]}
 
 
 def _producto(client, nombre="Milanesa", precio=8000.0, estacion="cocina"):

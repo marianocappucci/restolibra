@@ -117,8 +117,23 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
                 "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
                 (venta_id, _ar_now(), pedido_id),
             )
-            if pedido.get("mesa_id"):
-                conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
+            # 🔴 **Ningún evento financiero libera una mesa.** Hasta el
+            # 2026-08-31 acá iba un `UPDATE mesas SET estado='libre'`, en la
+            # misma transacción que mueve la caja.
+            #
+            # Estaban pegadas dos cosas que no tienen por qué estarlo: la plata
+            # y la ocupación. Los cuatro que terminan el café siguen sentados
+            # después de pagar, y la mesa no está libre para sentar a nadie;
+            # al revés, con el cobro por QR el pago puede quedar **pendiente**,
+            # y liberar la mesa ahí sería regalarla antes de que entre la plata.
+            #
+            # Liberar es una acción operativa **explícita** del mozo:
+            # `db.liberar_mesa()`. Mientras tanto la mesa queda `ocupada` sin
+            # pedido abierto, que es de dónde se deriva el "cobrada, falta
+            # liberar" del mapa — sin columna nueva.
+            #
+            # Hay un test que fija la regla sobre el código, no sobre este
+            # comentario: ver `test_ninguna_ruta_financiera_toca_mesas`.
 
             # Nodo offline: la operación de outbox entra **en esta misma
             # transacción**, justo antes del commit. Es lo que hace que la venta
