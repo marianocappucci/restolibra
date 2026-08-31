@@ -1,5 +1,35 @@
 # Changelog
 
+## v1.0.6 — 2026-08-31
+
+### El central sabe si un nodo dejó de dar señales
+
+- 🔴 **Antes no lo sabía.** Un nodo que dejó de sincronizar hace seis horas se
+  veía **exactamente igual** que uno al día: su fila de `node_identity` no
+  cambia, el outbox del central no crece —porque el nodo no manda nada— y no
+  había ningún dato del que agarrarse. El nodo sí lo sabe, y lo muestra en su
+  bandeja; el central no se enteraba.
+- `libraedge` v0.6.9 agrega `node_identity.last_seen_at`, que se anota en la
+  autenticación de `/sync/v1/*`. Va ahí y no en cada ruta porque es el único
+  punto por el que pasa todo nodo que se identifica: una ruta nueva no se lo
+  puede olvidar. El `pull` cuenta igual que el `push` —un local sin ventas
+  igual baja el espejo— y se anota **después** de verificar el secreto, para
+  que un nodo revocado no se vea sano para siempre.
+- **`python -m scripts.nodo_offline vigilar --umbral 15`** avisa qué sucursales
+  quedaron calladas y **sale con 1 si hay alguna**. El código de salida es el
+  punto: un comando que siempre sale con 0 es un informe que hay que acordarse
+  de leer. `estado` ahora también muestra cuándo se vio a cada nodo.
+- Distingue `NUNCA` —registrado pero nunca instalado— de "hace 6 h", no vigila
+  los revocados, y deja escrito que **silencio no es plata perdida**: el nodo
+  sigue cobrando; lo que se perdió es saber cuánto espera y desde cuándo.
+
+### Pines
+
+- `libraedge` v0.5.0 → **v0.6.9**. En el camino: el cursor del espejo que no se
+  guardaba (v0.6.6, el nodo rebajaba el espejo entero cada 60 s), la versión
+  que salía de una línea escrita a mano (v0.6.7), el respaldo del nodo y la
+  bandeja (v0.6.8) y el latido (v0.6.9).
+
 ## v1.0.5 — 2026-08-30
 
 ### El central habla con los nodos offline de LibraEdge
