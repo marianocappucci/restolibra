@@ -460,3 +460,111 @@ def test_publicar_retira_el_trigger_de_una_tabla_que_salio_de_la_lista(
         conn.execute("DROP TABLE IF EXISTS sobrante")
         conn.commit()
         conn.close()
+
+
+# --------------------------------------------------------------------------
+# `vigilar`, que no tenía un solo test — y por eso el 2026-08-31 pasó a mentir
+# apenas se dio de baja el único nodo de la demo.
+# --------------------------------------------------------------------------
+
+
+def _un_nodo(node_id="nodo-test", sucursal="test", hace_minutos=1, activo=True):
+    """Registra un nodo y le estampa `last_seen_at` hace N minutos."""
+    import datetime
+
+    from libracore.db import core
+    from libraedge.db.repository import NodeRepository
+
+    conn = core.get_connection()
+    NodeRepository(conn).register_node(node_id, branch_id=sucursal)
+    visto = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+        minutes=hace_minutos
+    )
+    conn.execute(
+        "UPDATE node_identity SET last_seen_at = ? WHERE node_id = ?",
+        (visto.isoformat(), node_id),
+    )
+    if not activo:
+        NodeRepository(conn).deactivate_node(node_id)
+    conn.commit()
+    conn.close()
+
+
+def _limpiar_nodos():
+    from libracore.db import core
+
+    conn = core.get_connection()
+    conn.execute("DELETE FROM node_identity")
+    conn.commit()
+    conn.close()
+
+
+def test_vigilar_sale_con_cero_cuando_el_nodo_esta_al_dia(admin_client, capsys):
+    from scripts import nodo_offline
+
+    _limpiar_nodos()
+    try:
+        _un_nodo(hace_minutos=1)
+        assert nodo_offline.vigilar(15) == 0
+        assert "al día" in capsys.readouterr().out
+    finally:
+        _limpiar_nodos()
+
+
+def test_vigilar_sale_con_uno_cuando_el_nodo_se_pasa_del_umbral(admin_client, capsys):
+    """Y el mismo nodo con umbral holgado vuelve a 0.
+
+    Ese segundo caso es el que hace valer al primero: sobre **los mismos datos**
+    prueba que lo que decide es el umbral y no otra cosa.
+    """
+    from scripts import nodo_offline
+
+    _limpiar_nodos()
+    try:
+        _un_nodo(hace_minutos=90)
+        assert nodo_offline.vigilar(15) == 1
+        assert "SIN NOTICIAS" in capsys.readouterr().out
+
+        assert nodo_offline.vigilar(10_000) == 0
+        assert "El nodo dio señales" in capsys.readouterr().out
+    finally:
+        _limpiar_nodos()
+
+
+def test_vigilar_no_dice_que_dio_senales_un_nodo_revocado(admin_client, capsys):
+    """🔴 El falso verde que apareció al dar de baja el único nodo de la demo.
+
+    El resumen contaba `len(nodos)`, que incluye a los revocados, así que con el
+    único nodo dado de baja —y la PC apagada hacía cuatro horas— el cron pasó a
+    escribir cada 10 minutos *"El nodo dio señales dentro de los 15 minutos"*.
+    Sale con 0, que está bien: un nodo revocado no se vigila. Lo que no puede
+    hacer es **afirmar que dio señales**.
+    """
+    from scripts import nodo_offline
+
+    _limpiar_nodos()
+    try:
+        _un_nodo(hace_minutos=240, activo=False)
+        assert nodo_offline.vigilar(15) == 0
+        salida = capsys.readouterr().out
+        assert "REVOCADO, no se vigila" in salida
+        assert "dio señales" not in salida, "afirmó que un nodo revocado dio señales"
+        assert "No hay nodos activos" in salida
+    finally:
+        _limpiar_nodos()
+
+
+def test_vigilar_con_un_revocado_al_lado_cuenta_solo_el_activo(admin_client, capsys):
+    """El contraste: con un activo al día, el revocado no infla la cuenta."""
+    from scripts import nodo_offline
+
+    _limpiar_nodos()
+    try:
+        _un_nodo(node_id="nodo-vivo", sucursal="a", hace_minutos=1)
+        _un_nodo(node_id="nodo-muerto", sucursal="b", hace_minutos=500, activo=False)
+        assert nodo_offline.vigilar(15) == 0
+        salida = capsys.readouterr().out
+        assert "El nodo dio señales" in salida, "contó también al revocado"
+        assert "Los 2 nodos" not in salida
+    finally:
+        _limpiar_nodos()
