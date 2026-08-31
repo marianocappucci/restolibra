@@ -43,9 +43,27 @@ import sys
 #: `_clave_primaria()`.
 TABLAS_DE_REFERENCIA = frozenset({
     # LibraCore
-    "clients", "modulos", "usuarios", "productos", "categorias_producto",
-    "listas_precio", "lista_precio_items", "proveedores", "cuentas_tesoreria",
+    "clients", "modulos", "usuarios", "proveedores", "cuentas_tesoreria",
     "cajas",
+    #
+    # 🔴 NO están `productos`, `categorias_producto`, `listas_precio` ni
+    # `lista_precio_items`, y no es un olvido: **este producto no las lee.**
+    #
+    # Existen en la base porque el DDL de LibraCore las crea, pero desde la
+    # migración a LibraCommerce (P8) el catálogo y los precios de Restolibra
+    # viven en `catalog_items`, `categories`, `price_lists` e `item_prices`.
+    # Medido el 2026-08-31: cero consultas a las cuatro en `app/`, y ninguno de
+    # los routers del motor que este producto monta --facturas, ARCA, config,
+    # MercadoPago-- las toca. El propio `app/db_listas_precio.py` dice en su
+    # primera línea que corre sobre `price_lists`/`item_prices`.
+    #
+    # Espejarlas sería peor que no hacerlo: le mandaría al nodo tablas vacías
+    # que nadie consulta, y el espejo se vería completo mientras la fuente real
+    # está en otro lado. `lista_precio_items` además tiene PK compuesta
+    # `(lista_id, producto_id)`, así que el aplicador la salteaba y el
+    # `publicar` terminaba diciendo "21 de 22" — un faltante que parecía un
+    # problema y era una tabla que sobraba.
+    #
     # LibraCommerce
     "catalog_items", "categories", "item_codes", "item_prices", "price_lists",
     "units", "locations", "parties",
@@ -148,9 +166,16 @@ def publicar() -> int:
     reaplicarlos es inofensivo, pero engorda el changelog. Por eso sólo se
     siembra lo que todavía no tiene nada publicado.
     """
-    from libraedge.db.changelog import instalar_trigger, sembrar
+    from libraedge.db.changelog import (
+        desinstalar_trigger,
+        instalar_trigger,
+        sembrar,
+        tablas_publicadas,
+    )
 
     publicadas = []
+    salteadas: list[str] = []
+    sobrantes: list[str] = []
     with _conexion() as conn:
         presentes = _tablas_que_existen(conn)
         faltantes = sorted(TABLAS_DE_REFERENCIA - set(presentes))
@@ -162,8 +187,16 @@ def publicar() -> int:
         for tabla in orden_de_siembra(conn, presentes):
             pk = _clave_primaria(conn, tabla)
             if pk is None:
+                # 🔴 Se anota para FALLAR al final, no sólo para imprimirlo.
+                # Una tabla que el nodo no puede espejar es un agujero en su
+                # copia, y un agujero que sale por pantalla entre veinte líneas
+                # de "trigger ok" se lee como parte del ruido. Con la lista
+                # depurada no debería saltearse ninguna: si aparece una, alguien
+                # agregó algo que el espejo no sabe aplicar, y el
+                # aprovisionamiento tiene que parar ahí.
                 print(f"  {tabla}: SALTEADA — sin PK de una sola columna, el "
                       f"espejo del nodo no podría aplicarla")
+                salteadas.append(tabla)
                 continue
             instalar_trigger(conn, tabla, pk)
             publicadas.append(tabla)
@@ -175,8 +208,35 @@ def publicar() -> int:
                 continue
             sembradas = sembrar(conn, tabla, pk)
             print(f"  {tabla}: trigger ok (pk {pk}), sembradas {sembradas} filas")
+
+        # 🔴 CONVERGER, no solo agregar. Sacar una tabla de la lista de arriba
+        # NO desinstala su trigger: un aprovisionamiento anterior ya lo dejó
+        # puesto y sigue escribiendo al changelog de algo que el nodo ya no
+        # espera. Pasó al sacar las cuatro tablas de precios de LibraCore el
+        # 2026-08-31: tres de ellas seguían publicando en el central de demo.
+        #
+        # Lo instalado se lee del catálogo de PostgreSQL, no de una lista: si
+        # se comparara contra otra lista en código, las dos podrían estar
+        # igual de desactualizadas.
+        sobrantes = [
+            tabla for tabla in tablas_publicadas(conn)
+            if tabla not in TABLAS_DE_REFERENCIA
+        ]
+        for tabla in sobrantes:
+            desinstalar_trigger(conn, tabla)
+            print(f"  {tabla}: trigger RETIRADO — ya no está en la lista")
+
         conn.commit()
     print(f"Publicadas {len(publicadas)} de {len(presentes)} tablas presentes.")
+    if sobrantes:
+        print(f"Retirados {len(sobrantes)} triggers de tablas que salieron de la lista.")
+    if salteadas:
+        print()
+        print(f"🔴 {len(salteadas)} tabla(s) sin publicar: {', '.join(salteadas)}.")
+        print("El nodo va a espejar una copia INCOMPLETA. O la tabla no hace")
+        print("falta --y hay que sacarla de TABLAS_DE_REFERENCIA-- o el")
+        print("aplicador tiene que aprender a manejar su clave primaria.")
+        return 1
     return 0
 
 
@@ -403,7 +463,12 @@ def vigilar(umbral_minutos: int) -> int:
         print("sabe cuánto hay esperando ni desde cuándo.")
         return 1
     print()
-    print(f"Los {len(nodos)} nodos dieron señales dentro de los {umbral_minutos} minutos.")
+    # Singular aparte: con un nodo la línea decía "Los 1 nodos dieron
+    # señales", y esa línea es la que se repite cada 10 minutos en el log
+    # del cron. La mayoría de los locales van a tener un nodo.
+    cuantos = len(nodos)
+    sujeto = "El nodo dio" if cuantos == 1 else f"Los {cuantos} nodos dieron"
+    print(f"{sujeto} señales dentro de los {umbral_minutos} minutos.")
     return 0
 
 

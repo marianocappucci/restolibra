@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.0.7 — 2026-08-31
+
+### El espejo del nodo ya no arrastra las tablas de precios de LibraCore
+
+- 🔴 **`publicar` venía diciendo "21 de 22".** La que faltaba era
+  `lista_precio_items`: tiene PK compuesta `(lista_id, producto_id)` y el
+  aplicador del nodo, que ubica cada fila por una sola columna, no sabe cómo
+  aplicarla. Se salteaba, lo imprimía y **el comando salía con 0 igual**.
+- **La resolución no fue enseñarle esa clave al aplicador: fue sacar la tabla.**
+  Medido antes de decidir — en `app/` hay cero consultas a `productos`,
+  `categorias_producto`, `listas_precio` y `lista_precio_items`, y ninguno de
+  los routers del motor que este producto monta las toca. Existen porque el DDL
+  de LibraCore las crea; desde la migración a LibraCommerce (P8) el catálogo y
+  los precios de Restolibra viven en `catalog_items`, `categories`,
+  `price_lists` e `item_prices` — lo dice la primera línea de
+  `app/db_listas_precio.py`. En la demo las cuatro están **vacías**.
+- Espejarlas era peor que no hacerlo: le mandaba al nodo tablas que nadie
+  consulta y el espejo **se veía completo** con la fuente real en otro lado.
+- Ahora son 18 tablas y se publican las 18.
+
+### Un salteo corta el aprovisionamiento en vez de pasar de largo
+
+- `publicar` **sale con 1** si quedó alguna tabla sin publicar, y dice por qué:
+  o la tabla no hace falta y hay que sacarla de `TABLAS_DE_REFERENCIA`, o el
+  aplicador tiene que aprender su clave primaria. Con la lista depurada no
+  debería saltearse ninguna; si aparece una, alguien agregó algo que el espejo
+  no sabe aplicar, y lo que sigue es un cliente vendiendo contra datos que no
+  están.
+- Tres tests nuevos, con el control incluido: que la lista no tenga las cuatro
+  viejas **y sí tenga las cuatro nuevas** (si faltaran las dos mitades el test
+  quedaría verde igual), que hoy no se saltee ninguna, y que una tabla de PK
+  compuesta metida a propósito haga salir con 1.
+
+### Y `publicar` ahora converge: retira lo que sobra
+
+- 🔴 **Sacar una tabla del código no la despublicaba del central.** Los triggers
+  que dejó un aprovisionamiento anterior siguen ahí: medido en la demo, tres de
+  las cuatro tablas retiradas (`productos`, `categorias_producto`,
+  `listas_precio`) seguían escribiendo al changelog de algo que el nodo ya no
+  espera.
+- `publicar` compara contra **el catálogo de PostgreSQL** —no contra otra lista
+  en código, que podría estar igual de desactualizada— y retira los triggers de
+  las tablas que salieron. Requiere `libraedge` **v0.6.10**, que suma
+  `desinstalar_trigger` y `tablas_publicadas`: la contracara no existía.
+- El test lleva el control adentro: comprueba que el trigger de más **estaba
+  registrando** antes de retirarlo, porque si no el "ya no registra" del final
+  lo daría igual un trigger que nunca se instaló.
+
+### Detalle
+
+- `vigilar` decía *"Los 1 nodos dieron señales"*. Es la línea que el cron
+  escribe cada 10 minutos, y la mayoría de los locales tienen un nodo.
+  > El arreglo destapó que el envoltorio del cron en el VPS sacaba el resumen
+  > grepeando **esa frase exacta**: con el singular habría escrito "OK — sin
+  > resumen" indefinidamente, sin fallar. Ahora toma la última línea no vacía.
+- Pin de `libraedge`: **v0.6.9 → v0.6.10**.
+
 ## v1.0.6 — 2026-08-31
 
 ### El central sabe si un nodo dejó de dar señales
