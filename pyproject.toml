@@ -135,7 +135,13 @@ dependencies = [
 # Este pin es lo que decide que version de LibraEdge viaja en la carga de
 # CADA nodo instalado, asi que sin este salto todas las instalaciones
 # seguirian con el defecto.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.6.6",
+#
+# El salto es a v0.6.7 y no a v0.6.6, y lo enseno el CI: libraedge declaraba
+# `version = "0.6.0"` a mano en su pyproject mientras los tags iban por
+# v0.6.6, asi que el chequeo de pines de este repo fallo con
+# `pin=0.6.6 instalado=0.6.0`. v0.6.7 es el primer tag que saca la version
+# de `git describe`, como libracore.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.6.7",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
