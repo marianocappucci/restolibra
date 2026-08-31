@@ -217,7 +217,13 @@ def test_las_claves_primarias_salen_de_la_base_y_no_de_una_lista(admin_client):
     assert espejo.get("units") == "code", (
         "si esto es 'id', se volvió a declarar la PK a mano"
     )
-    assert espejo.get("productos") == "id"
+    # El contraste: una tabla normal tiene que dar `id`, o el primer assert
+    # pasaría también con un `espejo_del_nodo` que devolviera "code" para todo.
+    #
+    # Era `productos`, que el 2026-08-31 salió de la lista del espejo: este
+    # producto cotiza por LibraCommerce desde P8 y esa tabla de LibraCore no la
+    # lee nadie. Se apunta a `catalog_items`, que es el catálogo de verdad.
+    assert espejo.get("catalog_items") == "id"
 
 
 def test_estado_dice_que_falta_cuando_no_hay_nada(admin_client, capsys):
