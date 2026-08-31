@@ -30,9 +30,10 @@ import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from libracore import medios_pago
+from libracore import pagos as acreditacion
 
 from app import database as db
 from app.web.api_auth import get_current_user_json
@@ -193,6 +194,11 @@ def anular(pid: int):
     return {"ok": True}
 
 
+#: El medio que el QR de MercadoPago cobra. Sale del vocabulario del motor y no
+#: de un literal: la familia tuvo cuatro grafías distintas para esto.
+MEDIO_DEL_QR = medios_pago.validar("mercadopago")
+
+
 class PagoPayload(BaseModel):
     #: 🔴 **Se valida.** Hasta el 2026-08-24 era un `str` pelado, y
     #: `add_venta_pago()` tampoco miraba: la lista de medios solo existia para
@@ -205,11 +211,29 @@ class PagoPayload(BaseModel):
     medio: str
     monto: float
     referencia: str = ""
+    #: 🔴 **"Le voy a cobrar recién ahora", no "ya me pagó".**
+    #:
+    #: Sin esta marca el pedido se cierra como cobrado y el movimiento de caja
+    #: se escribe antes de que nadie escanee nada. Con ella, el pago nace
+    #: `pendiente`, el pedido queda `cobrando`, y la mesa muestra **"esperando
+    #: pago"** en vez de "cobrada, liberar".
+    cobrar_con_qr: bool = False
 
     @field_validator("medio")
     @classmethod
     def _medio_del_vocabulario(cls, v: str) -> str:
         return medios_pago.validar(v)
+
+    @model_validator(mode="after")
+    def _el_qr_solo_cobra_lo_suyo(self):
+        """🔴 Un `cobrar_con_qr` en efectivo dejaría el pedido esperando **para
+        siempre**: nada acredita un pago en efectivo, así que la mesa quedaría
+        en "esperando pago" hasta que alguien la libere a mano, con la plata ya
+        en el cajón."""
+        if self.cobrar_con_qr and self.medio != MEDIO_DEL_QR:
+            raise ValueError(
+                f"«Cobrar con QR» sólo aplica al medio {MEDIO_DEL_QR}.")
+        return self
 
 
 class CobroPayload(BaseModel):
@@ -224,7 +248,18 @@ def cobrar(pid: int, payload: CobroPayload, user: dict = Depends(get_current_use
     if not pedido:
         raise HTTPException(404, "Pedido no encontrado")
 
-    pagos = [{"medio": p.medio, "monto": p.monto, "referencia": p.referencia.strip()} for p in payload.pagos if p.monto > 0]
+    # Cada línea declara su estado. El QR que se va a cobrar recién ahora nace
+    # `PENDIENTE`: no toca la caja, y el pedido queda `cobrando` hasta que
+    # MercadoPago diga que entró.
+    pagos = [
+        {
+            "medio": p.medio, "monto": p.monto, "referencia": p.referencia.strip(),
+            "estado": (acreditacion.EstadoAcreditacion.PENDIENTE
+                       if p.cobrar_con_qr
+                       else acreditacion.EstadoAcreditacion.APROBADO).value,
+        }
+        for p in payload.pagos if p.monto > 0
+    ]
     if not pagos:
         raise HTTPException(422, "Registrá al menos un medio de pago.")
 
@@ -240,7 +275,12 @@ def cobrar(pid: int, payload: CobroPayload, user: dict = Depends(get_current_use
         # vez de un 500/409 ciego, resolvemos: si ya está cobrado, devolvemos
         # esa venta (idempotente desde la perspectiva del segundo mozo).
         pedido_actual = db.get_pedido(pid)
-        if pedido_actual and pedido_actual["estado"] == "cobrado" and pedido_actual.get("venta_id"):
+        # ⚠️ `cobrando` cuenta TAMBIÉN. Antes esto miraba sólo `cobrado`, y con
+        # el cobro por QR el pedido queda en `cobrando` hasta que entra la
+        # plata: el segundo mozo recibía un 409 y volvía a cobrar una cuenta que
+        # ya estaba puesta en el QR. Lo encontró un test.
+        if (pedido_actual and pedido_actual["estado"] in ("cobrado", "cobrando")
+                and pedido_actual.get("venta_id")):
             return {"venta_id": pedido_actual["venta_id"], "ya_cobrado": True}
         raise HTTPException(409, "Este pedido ya fue cobrado o modificado. Volvé al pedido y verificá.")
     except sqlite3.IntegrityError:

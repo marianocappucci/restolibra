@@ -165,6 +165,13 @@ export type Mesa = {
    *  libera la mesa: los cuatro que terminan el café siguen sentados, y con el
    *  cobro por QR el pago puede quedar pendiente. */
   falta_liberar: boolean
+  /** La cuenta se cerró y falta que entre la plata del QR.
+   *
+   *  🔴 **Sin esto la mesa decía "Cobrada · liberar" con el pago pendiente**, y
+   *  liberarla es perder el cobro: el QR sigue puesto con el monto de esa
+   *  cuenta. Lo deriva el backend de que haya un pedido en `cobrando` — ver
+   *  `db_mesas._esperando_pago`. */
+  esperando_pago: boolean
 }
 
 export type MapaSalonData = {

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle, CheckCircle2 } from 'lucide-react'
+import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle, CheckCircle2, QrCode } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatoTiempo(mins: number): string {
@@ -94,6 +94,10 @@ export function MapaMesas() {
     // podía pasar porque cobrar la liberaba; ahora queda ocupada hasta que el
     // mozo la libera, y ofrecerle abrir otro pedido encima sería sentar gente
     // en una mesa que todavía no se levantó.
+    // 🔴 Una mesa que espera el pago NO se libera de un toque: el QR sigue
+    // puesto con el monto de esa cuenta, y liberarla es perder el cobro. El
+    // backend la rebota con 409; acá ni se ofrece.
+    if (mesa.esperando_pago) return
     if (mesa.falta_liberar) {
       await liberarMesa(mesa)
       return
@@ -192,7 +196,7 @@ export function MapaMesas() {
                 const prox = data.reservas_por_mesa[String(m.id)]
                 return (
                   <button key={m.id} onClick={() => tocarMesa(m)} className="text-left">
-                    <Card className={`h-full border-2 ${m.falta_liberar ? 'border-amber-500' : ESTADO_COLOR[m.estado]} transition hover:shadow-md`}>
+                    <Card className={`h-full border-2 ${m.falta_liberar || m.esperando_pago ? 'border-amber-500' : ESTADO_COLOR[m.estado]} transition hover:shadow-md`}>
                       <CardContent className="grid gap-1 p-3 text-center">
                         <div className="text-sm font-semibold">{m.nombre}</div>
                         <div className="text-xs text-muted-foreground">{m.capacidad} cub.</div>
@@ -203,6 +207,12 @@ export function MapaMesas() {
                               <Clock className="size-3" />{formatoTiempo(m.mins_ocupada)}
                             </div>
                           </>
+                        ) : m.esperando_pago ? (
+                          // El pedido se cobró con QR y MercadoPago todavía no
+                          // dijo que entró. Ni "libre" ni "cobrada": esperando.
+                          <BadgeEstado tono="atencion" className="mx-auto">
+                            Esperando pago
+                          </BadgeEstado>
                         ) : m.falta_liberar ? (
                           // 🔴 Sin esta rama la mesa recién cobrada decía
                           // «Libre» en verde con el borde de ocupada: la
@@ -212,6 +222,11 @@ export function MapaMesas() {
                           </BadgeEstado>
                         ) : (
                           <BadgeEstado tono="ok" className="mx-auto">Libre</BadgeEstado>
+                        )}
+                        {m.esperando_pago && (
+                          <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
+                            <QrCode className="size-3" />El cliente todavía no escaneó
+                          </div>
                         )}
                         {m.falta_liberar && (
                           <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">

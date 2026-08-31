@@ -507,6 +507,24 @@ def acreditar_pago_qr(venta_id: int, payment_id: str,
                 ("confirmed" if nuevo == "cobrada" else "draft", nuevo, venta_id),
             )
 
+            # 🔑 **Si esta venta cerró un pedido del salón, el pedido cierra
+            # acá.** Queda en `cobrando` desde que se cobró con el QR —que es lo
+            # que hace que el mapa diga "esperando pago" y no "cobrada,
+            # liberar"—, y pasa a `cobrado` recién cuando entra la plata.
+            #
+            # Va en ESTA transacción a propósito: si el pedido se cerrara
+            # aparte, una caída en el medio dejaría el movimiento de caja
+            # escrito y la mesa mostrando que todavía espera el pago.
+            #
+            # `AND estado='cobrando'` para no tocar un pedido que ya se cerró
+            # por el otro camino: el webhook y el poll pueden llegar los dos.
+            if nuevo == "cobrada":
+                conn.execute(
+                    "UPDATE pedidos SET estado='cobrado', updated_at=? "
+                    "WHERE venta_id=? AND estado='cobrando'",
+                    (_ar_now(), venta_id),
+                )
+
             conn.commit()
             return True
         except Exception:
