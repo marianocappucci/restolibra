@@ -30,9 +30,11 @@ dentro del motor genérico) sino en la tabla `venta_links`, propia de
 Restolibra (mismo patrón que Contalibra), con `venta_id` = `sales.id`.
 """
 import contextlib
+from decimal import Decimal
 import sqlite3
 
 from libracore import medios_pago
+from libracore import pagos as acreditacion
 from libracore.db.caja import create_caja_movimiento
 from libracore.db.core import Conexion, _ar_now
 from libracore.db.cuenta_corriente import create_cc_pago
@@ -118,12 +120,27 @@ def create_venta(numero: str, fecha: str, items: list, subtotal: float,
 
 
 def add_venta_pago(venta_id: int, medio: str, monto: float, referencia: str = "",
-                   conn: Conexion | None = None):
+                   conn: Conexion | None = None, *, estado: str):
+    """Una línea de pago de una venta.
+
+    🔴 **`estado` es obligatorio y va por nombre.** La columna tiene default
+    `'aprobado'` en la base —lo necesita el backfill de las filas viejas, ver la
+    revisión `0005` de LibraCore—, así que un `INSERT` que la omitiera contaría
+    como plata que entró sin que nadie lo haya decidido. Ese es el hueco que
+    este parámetro cierra: acá el estado **se declara**, o no se escribe la fila.
+
+    Los valores son los de `libracore.pagos.EstadoAcreditacion`, y la base tiene
+    un `CHECK` que no admite otros.
+    """
+    # Valida contra el vocabulario del motor antes de tocar la base: el error
+    # dice qué estado se intentó poner, en vez del `CheckViolation` de psycopg.
+    estado = acreditacion.estado_de({"estado": estado}).value
     cm = contextlib.nullcontext(conn) if conn is not None else get_connection()
     with cm as c:
         c.execute(
-            "INSERT INTO ventas_pagos (venta_id, medio, monto, referencia) VALUES (?,?,?,?)",
-            (venta_id, medio, monto, referencia),
+            "INSERT INTO ventas_pagos (venta_id, medio, monto, referencia, estado) "
+            "VALUES (?,?,?,?,?)",
+            (venta_id, medio, monto, referencia, estado),
         )
 
 
@@ -156,8 +173,20 @@ def crear_venta_directa(fecha: str, items: list, subtotal: float, descuento: flo
                     conn=conn,
                 )
                 for p in pagos:
+                    # El estado lo trae la línea de pago; sin `estado` levanta,
+                    # que es lo buscado: los dos defaults posibles mueven plata
+                    # en silencio y en direcciones opuestas.
+                    estado_del_pago = acreditacion.estado_de(p)
                     add_venta_pago(venta_id, p["medio"], p["monto"],
-                                   p.get("referencia", ""), conn=conn)
+                                   p.get("referencia", ""), conn=conn,
+                                   estado=estado_del_pago.value)
+                    # 🔴 **La caja se escribe al ACREDITAR, no al declarar.** Un
+                    # pago `pendiente` —el del QR que todavía nadie escaneó—
+                    # queda registrado como línea y no toca la caja: escribirlo
+                    # acá infla el arqueo con plata que no entró. Lo acredita
+                    # `acreditar_pago_qr()` cuando MercadoPago dice `approved`.
+                    if estado_del_pago not in acreditacion.ACREDITAN:
+                        continue
                     label = medios_pago.label(p["medio"])
                     create_caja_movimiento(
                         fecha=fecha, tipo="ingreso",
@@ -400,6 +429,89 @@ def get_venta_by_mp_order(mp_order_id: str) -> dict | None:
         if not row:
             return None
         return _venta_dict(row, _items_de(conn, row["id"]), [])
+
+
+def acreditar_pago_qr(venta_id: int, payment_id: str,
+                      usuario_id: int | None = None) -> bool:
+    """La plata del QR entró: se acreditan sus pagos pendientes.
+
+    🔴 **Este es el punto de acreditación**, la contracara de que
+    `crear_venta_directa` ya no escriba la caja al declarar. Hace las tres cosas
+    en una sola transacción:
+
+    1. pasa a `APROBADO` los pagos pendientes de la venta;
+    2. escribe **ahora** el movimiento de caja de cada uno;
+    3. recalcula el estado de la venta con lo acreditado.
+
+    Devuelve `True` si acreditó algo.
+
+    ## 🔑 Es idempotente, y no por prolijidad
+
+    El poll de `mp-status` y el webhook pueden llegar los dos, en cualquier
+    orden: sin esto la misma plata entraría a la caja varias veces y el arqueo
+    cerraría de más. La idempotencia sale de la **condición**, no de un flag:
+    sólo se toca lo que está `PENDIENTE`, así que la segunda llamada no
+    encuentra nada y no escribe nada.
+
+    Una venta cuyos pagos ya estaban aprobados —el caso normal, cobrada en
+    efectivo— pasa por acá sin efecto.
+    """
+    with get_connection() as conn:
+        try:
+            pendientes = conn.execute(
+                "SELECT id, medio, monto FROM ventas_pagos "
+                "WHERE venta_id=? AND estado=? ORDER BY id",
+                (venta_id, acreditacion.EstadoAcreditacion.PENDIENTE.value),
+            ).fetchall()
+            if not pendientes:
+                return False
+
+            venta = conn.execute(
+                "SELECT number AS numero, occurred_on AS fecha, total "
+                "FROM sales WHERE id=?", (venta_id,)
+            ).fetchone()
+            if venta is None:
+                return False
+
+            for p in pendientes:
+                conn.execute(
+                    "UPDATE ventas_pagos SET estado=?, referencia=? WHERE id=?",
+                    (acreditacion.EstadoAcreditacion.APROBADO.value,
+                     f"MP#{payment_id}", p["id"]),
+                )
+                create_caja_movimiento(
+                    fecha=venta["fecha"], tipo="ingreso",
+                    concepto=f"Venta {venta['numero']} — {medios_pago.label(p['medio'])}",
+                    monto=p["monto"], referencia=f"MP#{payment_id}",
+                    medio_pago=p["medio"], usuario_id=usuario_id, conn=conn,
+                )
+
+            # El estado se recalcula con TODOS los pagos, no sólo los recién
+            # acreditados: una venta pagada mitad en efectivo y mitad por QR
+            # pasa a `cobrada` sólo cuando entra la segunda mitad.
+            todos = conn.execute(
+                "SELECT monto, estado FROM ventas_pagos WHERE venta_id=?",
+                (venta_id,),
+            ).fetchall()
+            acreditado = acreditacion.acreditado(
+                [{"monto": r["monto"], "estado": r["estado"]} for r in todos])
+            total = Decimal(str(venta["total"]))
+            if acreditado >= total:
+                nuevo = "cobrada"
+            elif acreditado > 0:
+                nuevo = "parcial"
+            else:
+                nuevo = "pendiente"
+            conn.execute(
+                "UPDATE sales SET status=?, status_detail=? WHERE id=?",
+                ("confirmed" if nuevo == "cobrada" else "draft", nuevo, venta_id),
+            )
+
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
 
 
 def add_venta_pago_referencia_mp(venta_id: int, payment_id: str) -> None:

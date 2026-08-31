@@ -42,8 +42,23 @@ async def _cobro_de_venta_por_qr(
     vale es el de la notificación, que es el que sella la idempotencia.
     """
     db.set_venta_mp_payment(venta_id, payment_id)
-    db.add_venta_pago_referencia_mp(venta_id, payment_id)
-    logger.info("Venta %s pagada via QR de MercadoPago, payment_id=%s", venta_id, payment_id)
+    # 🔴 **Acá también entra la plata a la caja.** Si la venta se creó con
+    # `cobrar_con_qr`, su pago quedó `pendiente` y sin movimiento de caja.
+    # `mp-status` y el webhook son los DOS caminos por los que se entera de que
+    # entró, y cualquiera de los dos puede llegar primero —o los dos—.
+    #
+    # 🔑 Acreditar es idempotente por la condición (`WHERE estado='pendiente'`),
+    # así que los dos caminos juntos no duplican el ingreso. Sin eso, una venta
+    # cuyo webhook llega mientras la pantalla poll-ea entraría dos veces a la
+    # caja y el arqueo cerraría de más.
+    acreditado = db.acreditar_pago_qr(venta_id, payment_id)
+    if not acreditado:
+        # No había pendientes: o ya lo acreditó `mp-status`, o la venta se
+        # cobró declarando el pago aprobado. La referencia se sella igual, que
+        # es lo que este camino ya hacía.
+        db.add_venta_pago_referencia_mp(venta_id, payment_id)
+    logger.info("Venta %s pagada via QR de MercadoPago, payment_id=%s (acreditada=%s)",
+                venta_id, payment_id, acreditado)
     return None
 
 

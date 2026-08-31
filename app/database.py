@@ -279,6 +279,7 @@ from app.db_ventas import (  # noqa: F401
     set_venta_mp_payment,
     get_venta_by_mp_order,
     add_venta_pago_referencia_mp,
+    acreditar_pago_qr,
 )
 from app.db_salones import (  # noqa: F401
     get_salones,
