@@ -21,7 +21,7 @@
 //     nada visible: rompería el envío.
 //  2. 🔴 **La contraseña de SMTP no vuelve del servidor.** Hasta el 2026-08-30
 //     salía en claro por `GET /api/config`, junto con el token de MercadoPago.
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -147,12 +147,24 @@ describe('la Configuración de Restolibra', () => {
     expect(pedidos.some((p) => p.url.includes('/admin/smtp'))).toBe(false)
   })
 
-  it('el botón de probar sigue estando, y es el que este producto tiene propio', async () => {
-    // `GET /api/email/probar` existe acá y en Contalibra, y en los otros seis
-    // no. Por eso no subió al kit. Prueba el mismo SMTP que la sección
-    // configura, porque el endpoint resuelve por el mismo camino que el envío.
+  it('el botón de probar sigue estando, y ahora es el del kit', async () => {
+    // 🟢 Hasta hoy este producto envolvía la sección del kit para agregarle el
+    // botón: existía acá y en el otro, y en los seis restantes no. Desde
+    // `libra-ui` v0.55.0 el botón es del kit y el endpoint lo pone el motor,
+    // así que lo tienen los ocho y el envoltorio se retiró.
     montar('/config?seccion=integraciones&integracion=email')
-    expect(await screen.findByRole('button', { name: /Probar conexión/ })).toBeInTheDocument()
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /Probar conexión/ }))
+
+    // 🔑 Pega en el MISMO prefijo que la sección usa para leer y guardar. Si
+    // apuntara a otro lado diría "Conectado" sobre un servidor mientras el
+    // correo sale por el que configura la pantalla — que es exactamente la
+    // falla que este producto ya tuvo.
+    await waitFor(() => expect(pedidos.some(
+      (p) => p.url === '/api/config/smtp/probar' && p.metodo === 'POST')).toBe(true))
+    // Y el endpoint viejo, que se retiró en este mismo cambio, no se toca.
+    expect(pedidos.some((p) => p.url.includes('/api/email/probar'))).toBe(false)
   })
 
   it('🔴 la contraseña de SMTP no vuelve del servidor, y guardar sin tocarla no la borra', async () => {

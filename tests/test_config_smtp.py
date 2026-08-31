@@ -83,3 +83,63 @@ def test_borrar_vuelve_al_entorno(admin_client):
 
 def test_host_vacio_da_422(admin_client):
     assert admin_client.put("/api/config/smtp", json={"host": "   "}).status_code == 422
+
+
+# ------------------------------------------------------- probar la conexion
+
+def test_probar_esta_montado(admin_client):
+    """`POST /api/config/smtp/probar`, del motor (libracore v1.69.0).
+
+    Reemplaza al `GET /api/email/probar` que este producto tenia escrito a
+    mano. Sin SMTP cargado contesta 400 y dice que falta completar la pantalla
+    --pero contesta. 🔑 Ese 400 es la prueba de que la ruta existe: sin la
+    linea de montaje seria 404 o 405 y la app arrancaria igual.
+    """
+    r = admin_client.post("/api/config/smtp/probar")
+
+    assert r.status_code == 400, r.text
+    assert "Complet" in r.json()["detail"]
+
+
+def test_una_ruta_inventada_al_lado_no_contesta(admin_client):
+    """El control del de arriba: distingue "esta montado" de "cualquier cosa
+    colgada de /api/config/smtp contesta"."""
+    assert admin_client.post("/api/config/smtp/inventado").status_code in (404, 405)
+
+
+def test_probar_es_de_administrador(client):
+    """Abre una sesion SMTP con las credenciales del cliente."""
+    assert client.post("/api/config/smtp/probar").status_code in (401, 403)
+
+
+def test_el_endpoint_viejo_de_probar_ya_no_esta(admin_client):
+    """🔴 `GET /api/email/probar` se retiro en el mismo cambio.
+
+    Era uno de los dos unicos productos que podian probar su correo; ahora el
+    boton sale del kit y lo tienen los ocho. Dejarlo vivo seria mantener dos
+    caminos para lo mismo, y el viejo resolvia igual pero por su cuenta.
+
+    🔴 **Se mira la tabla de rutas, no la respuesta**, y costo dos intentos:
+
+    1. `assert ... == 404` dio **200** en local: con el `dist` del SPA
+       construido, el catch-all contesta el `index.html` para cualquier GET sin
+       ruta.
+    2. `assert content-type es text/html` dio **404 application/json** en el
+       CI, donde el job de backend no construye el frontend y no hay catch-all.
+
+    O sea que la respuesta depende de si el SPA esta construido, no de si la
+    ruta existe. Y mirar el status tampoco alcanza: el endpoint viejo
+    contestaba **400** sin SMTP cargado, que es justo el estado de este test.
+
+    Mirar `app.routes` SI sirve para este caso: el endpoint viejo era un
+    `@app.get` sobre la app, no un router incluido --de los incluidos es de los
+    que el docstring del modulo dice que no se puede--.
+    """
+    rutas = {getattr(r, "path", None) for r in admin_client.app.routes}
+
+    assert "/api/email/probar" not in rutas, "la ruta vieja sigue registrada"
+
+    # Control del metodo: una ruta que SI esta registrada sobre la app aparece
+    # en ese conjunto. Sin esto, un `app.routes` vacio o de otra forma daria
+    # verde para siempre.
+    assert "/api/mp/probar" in rutas

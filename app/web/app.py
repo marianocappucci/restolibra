@@ -69,6 +69,7 @@ from libracore.config_router import (
 )
 from libracore.mp_config_router import build_mp_config_router
 from libracore.respaldo import Instancia
+from libracore.smtp_router import build_smtp_probe_router
 
 app = FastAPI(title="Restolibra")
 
@@ -444,6 +445,19 @@ app.include_router(
     dependencies=[Depends(require_admin_o_servicio_json)],
 )
 app.include_router(
+    # `POST /api/config/smtp/probar`, del motor (libracore v1.69.0). Reemplaza
+    # al `GET /api/email/probar` que este producto tenia escrito a mano, y que
+    # se retiro en el mismo cambio: era uno de los dos unicos productos que
+    # podian probar su correo, y ahora el boton sale del kit y lo tienen los
+    # ocho.
+    #
+    # 🔑 Sigue resolviendo por `smtp_efectivo` sobre el MISMO resolver que los
+    # envios, que es lo que hacia que el boton significara algo. El prefijo es
+    # el que este producto ya publico.
+    build_smtp_probe_router(db_usuarios.smtp_config, prefix="/api/config/smtp"),
+    dependencies=[Depends(require_admin_o_servicio_json)],
+)
+app.include_router(
     # "Mi Cuenta" (autoservicio de la propia contraseña) -- NO admin-only,
     # ver comentario en web/api/usuarios.py sobre el bug preexistente que
     # esto corrige (require_admin -> get_current_user_json/_auth_json).
@@ -524,35 +538,6 @@ async def api_auth_verify(request: Request):
         "valid": True,
         "nombre_empresa": request.state.empresa_nombre,
     })
-
-
-@app.get("/api/email/probar", include_in_schema=False)
-async def email_probar(user: str = Depends(require_auth)):
-    import smtplib
-
-    # 🔴 Resuelto por el MISMO camino que el envío real. Antes esto leía
-    # `config.json` mientras la pantalla escribía en la base de libraauth: la
-    # prueba decía "Conectado" contra un servidor y los mails salían por otro
-    # —o no salían—. Ver `smtp_config` en `app/db_usuarios.py`.
-    cfg = smtp_efectivo(db_usuarios.smtp_config)
-    host = (cfg["host"] or "").strip()
-    port = cfg["port"]
-    smtp_user = (cfg["user"] or "").strip()
-    password = (cfg["password"] or "").strip()
-    if not host or not smtp_user or not password:
-        return JSONResponse({"ok": False, "error": "Completá host, usuario y contraseña antes de probar."}, status_code=400)
-    try:
-        with smtplib.SMTP(host, port, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(smtp_user, password)
-        return JSONResponse({"ok": True, "host": host, "port": port, "user": smtp_user})
-    except smtplib.SMTPAuthenticationError:
-        return JSONResponse({"ok": False, "error": "Autenticación fallida. Verificá el usuario y la contraseña de aplicación."}, status_code=401)
-    except smtplib.SMTPConnectError as e:
-        return JSONResponse({"ok": False, "error": f"No se pudo conectar al servidor: {e}"}, status_code=502)
-    except Exception as e:
-        return JSONResponse({"ok": False, "error": str(e)}, status_code=502)
 
 
 @app.get("/api/mp/probar", include_in_schema=False)
