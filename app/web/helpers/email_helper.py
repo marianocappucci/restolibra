@@ -2,7 +2,7 @@
 
 🔑 **La resolución del SMTP no se escribe acá**: sale de
 `libracore.facturas_router.smtp_efectivo`, la misma que usa el envío de
-comprobantes y la que prueba `GET /api/email/probar`. Los tres tienen que dar
+comprobantes y la que prueba `POST /api/config/smtp/probar`. Los tres tienen que dar
 lo mismo, y que cada uno lo resolviera por su cuenta es exactamente como este
 producto terminó con dos configuraciones de SMTP distintas —ver `smtp_config`
 en `app/db_usuarios.py`.

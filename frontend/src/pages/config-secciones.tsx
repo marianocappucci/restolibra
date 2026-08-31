@@ -15,8 +15,7 @@
  *  producto, arreglarla no arreglaba a los otros siete.
  */
 import { useEffect, useState } from 'react'
-import { Check, Printer, Send } from 'lucide-react'
-import { EmailCard as EmailDelKit } from 'libra-ui/Configuracion'
+import { Check, Printer } from 'lucide-react'
 import { PasswordInput } from 'libra-ui/PasswordInput'
 
 import { api, ApiError } from '../api'
@@ -54,61 +53,6 @@ function Campo({ label, value, onChange, type = 'text', marcador }: {
     <div className="grid gap-2">
       <Label htmlFor={id}>{label}</Label>
       {campo}
-    </div>
-  )
-}
-
-
-/** El correo saliente: **la sección del kit**, sin nada propio salvo el botón
- *  de probar.
- *
- *  🔴 Hasta el 2026-08-30 esto era una tarjeta escrita a mano contra
- *  `/api/config/email`, porque este producto tenía DOS configuraciones de SMTP:
- *  la de `config.json` —que mandaba los comprobantes— y la de libraauth,
- *  detrás de `/api/config/smtp`, que mandaba la recuperación de contraseña.
- *  Cuál mandaba qué no se veía en ningún lado: el cliente cargaba su contraseña
- *  de aplicación en una, la pantalla decía "Guardado", y los mails seguían
- *  saliendo por la otra —o no salían.
- *
- *  Hoy hay una sola, y es la que resuelve `libracore.facturas_router.smtp_efectivo`
- *  para los tres envíos del producto. Ver `smtp_config` en `app/db_usuarios.py`.
- *
- *  ⚠️ **El botón de probar sí queda propio.** `GET /api/email/probar` existe en
- *  este producto y en Contalibra, y en los otros seis no: subirlo al kit
- *  pondría en pantalla un botón que en seis productos daría 404. Prueba el
- *  mismo SMTP que el kit configura, porque el endpoint resuelve por el mismo
- *  camino que el envío.
- */
-export function EmailCard() {
-  const [probando, setProbando] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [aviso, setAviso] = useState<string | null>(null)
-
-  async function probar() {
-    setProbando(true)
-    setAviso(null)
-    setError(null)
-    try {
-      const r = await api.get<{ ok: boolean; host?: string; error?: string }>('/api/email/probar')
-      if (r.ok) setAviso(`Conectado — ${r.host}`)
-      else setError(r.error ?? 'Error')
-    } catch (err) {
-      setError(describeError(err))
-    } finally {
-      setProbando(false)
-    }
-  }
-
-  return (
-    <div className="grid gap-4">
-      <EmailDelKit producto="Restolibra" basePath="/api/config/smtp" />
-      <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" variant="outline" disabled={probando} onClick={() => void probar()}>
-          <Send />{probando ? 'Probando…' : 'Probar conexión'}
-        </Button>
-        {error && <span className="text-sm text-destructive">{error}</span>}
-        {aviso && <span className="text-sm text-muted-foreground">{aviso}</span>}
-      </div>
     </div>
   )
 }
