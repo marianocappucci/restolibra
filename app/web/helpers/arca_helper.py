@@ -7,6 +7,7 @@ que esta copia local todavía no tenía (hallazgo cruzado de la auditoría del
 2026-07-13, ya corregido en Contalibra en su momento) — comportamiento
 nuevo, no una regresión."""
 from libracore.arca_facturacion import (  # noqa: F401
+    ambiente_de,
     get_next_numero_with_arca,
     solicitar_cae,
 )
