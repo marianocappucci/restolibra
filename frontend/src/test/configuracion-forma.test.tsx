@@ -94,15 +94,24 @@ describe('la Configuración de Restolibra', () => {
     ])
   })
 
-  it('🔴 MercadoPago no muestra el interruptor de facturar solo', async () => {
-    // Este producto no emite la factura al acreditarse el cobro del QR: el
-    // `PUT` no tiene ese campo. Un interruptor que no hace nada es peor que no
-    // tenerlo — el cliente lo prende y espera facturas que no van a salir.
+  it('🔴 MercadoPago muestra el interruptor de facturar solo', async () => {
+    // 🔴 **Este caso decía lo contrario hasta el 2026-08-31**, y tenía razón:
+    // el producto no emitía la factura al acreditarse el cobro del QR, así que
+    // mostrar el interruptor habría sido peor que esconderlo — el cliente lo
+    // prende y espera facturas que no van a salir.
+    //
+    // Ahora sí emite (`venta_facturacion.facturar_si_esta_prendida`, por los
+    // dos caminos: el webhook y el poll de `mp-status`), así que el interruptor
+    // tiene que estar. El `PUT` del motor ya guardaba el campo — lo que faltaba
+    // era quién lo leyera.
     montar('/config?seccion=integraciones&integracion=mercadopago')
 
     await screen.findByLabelText(/User ID \(QR\)/)
-    expect(screen.queryByRole('switch')).toBeNull()
-    expect(screen.queryByText(/Facturar automáticamente/)).toBeNull()
+    expect(screen.getByRole('switch')).toBeInTheDocument()
+    // El texto nombra lo que ESTE producto factura: la venta de la mesa o del
+    // mostrador, no un turno de cancha ni una orden de carga.
+    expect(screen.getByText(/Facturar automáticamente las ventas cobradas por QR/))
+      .toBeInTheDocument()
   })
 
   it('Integraciones agrupa las tres, en el orden de siempre', async () => {

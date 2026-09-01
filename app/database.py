@@ -274,6 +274,7 @@ from app.db_ventas import (  # noqa: F401
     get_venta,
     anular_venta,
     vincular_venta_factura,
+    vincular_cobros_de_venta,
     vincular_venta_remito,
     set_venta_mp_order,
     set_venta_mp_payment,

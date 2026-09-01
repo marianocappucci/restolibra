@@ -408,6 +408,48 @@ def vincular_venta_factura(vid: int, factura_id: int):
     _upsert_link(vid, "factura_id", factura_id)
 
 
+def vincular_cobros_de_venta(numero: str, factura_id: int) -> int:
+    """Marca los movimientos de caja de una venta como el cobro de su factura.
+
+    Una factura figura cobrada cuando existen `caja_movimientos` con su
+    `factura_id` (ver `get_cobros_factura` en LibraCore). Los de una venta se
+    crean **antes** de que la factura exista y sin ese campo, así que la
+    pantalla de Comprobantes mostraría "Sin cobrar" un comprobante cuya plata ya
+    está en la caja. Es el mismo defecto que Contalibra reportó el 2026-08-20,
+    con 8 facturas así; acá se trae junto con la auto-facturación, para que no
+    aparezca el día que alguien la prenda.
+
+    🔴 **No registra un cobro nuevo, vincula el que ya está.** Pasar por
+    `registrar_cobro_factura` habría creado un segundo movimiento por el mismo
+    dinero: la venta ya lo registró al cobrarse, y el ingreso quedaría contado
+    dos veces.
+
+    🔑 El patrón es `Venta {numero} %` y **no** `Venta {numero} — %`, que es lo
+    que usa Contalibra. Este producto escribe el concepto de dos formas, y una
+    de ellas mete el pedido en el medio:
+
+        Venta V-00007 — Efectivo                      (POS de mostrador)
+        Venta V-00007 (pedido P-0009) — efectivo      (cobro de una mesa)
+
+    Con el guion en el patrón, el cobro de una mesa —el caso normal de este
+    producto— no matchearía y la factura saldría "Sin cobrar". El espacio
+    después del número es lo que evita que `V-0000` matchee a `V-00007`, y los
+    números de venta son `V-%05d`, sin comodines de LIKE adentro.
+
+    Devuelve cuántos movimientos vinculó. Cero es un resultado válido: una venta
+    en cuenta corriente, o una cobrada por QR que todavía no acreditó, no tiene
+    ningún movimiento que vincular.
+    """
+    with get_connection() as conn:
+        cur = conn.execute(
+            "UPDATE caja_movimientos SET factura_id=? "
+            "WHERE factura_id IS NULL AND tipo='ingreso' AND concepto LIKE ?",
+            (factura_id, f"Venta {numero} %"),
+        )
+        conn.commit()
+        return cur.rowcount
+
+
 def vincular_venta_remito(vid: int, remito_id: int):
     _upsert_link(vid, "remito_id", remito_id)
 

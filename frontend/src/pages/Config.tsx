@@ -15,9 +15,11 @@
  *
  *  - **No hay pestaña de Categorías.** Las de producto y egreso siguen siendo
  *    páginas Jinja2 propias, linkeadas directo desde el sidebar.
- *  - **MercadoPago no factura solo al acreditarse el pago**: acá el `PUT` no
- *    tiene ese campo, así que el interruptor no se muestra. Uno que no hace
- *    nada es peor que no tenerlo.
+ *  🟢 **Ya no hay diferencia en MercadoPago.** Hasta el 2026-08-31 acá decía
+ *    que este producto *"no factura solo al acreditarse el pago"* y el
+ *    interruptor no se mostraba. Era cierto y era el defecto: Restolibra era el
+ *    único de los cuatro productos que cobran con QR sin facturación
+ *    automática. Ver `app/venta_facturacion.py`.
  *  🟢 **Del correo ya no queda nada propio.** La sección es la del kit desde el
  *    2026-08-30, y el botón *Probar conexión* también lo es desde `libra-ui`
  *    v0.55.0. Era lo último que este producto tenía envuelto: el botón existía
@@ -41,12 +43,10 @@ export const Config = createConfiguracion({
   // Sale en el tutorial de Gmail y en el de Padrón A13.
   producto: 'Restolibra',
   integraciones: {
-    mercadopago: {
-      basePath: '/api/config/mercadopago',
-      // Ver el docstring: este producto no emite la factura sola al acreditarse
-      // el cobro del QR, y el `PUT` no tiene el campo.
-      autoFacturar: false,
-    },
+    // Sin `autoFacturar: false`: el interruptor va con el texto por defecto del
+    // kit, que habla de *ventas* — que es lo que este producto factura, venga
+    // la venta de una mesa o del mostrador.
+    mercadopago: { basePath: '/api/config/mercadopago' },
     // Sin `empresa`: este producto es multi-empresa, como Contalibra.
     arca: { basePath: '/api/config/arca' },
     // 🟢 La seccion del kit, sin envoltorio. Hasta hoy este producto la

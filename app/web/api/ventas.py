@@ -32,7 +32,7 @@ from pydantic import BaseModel, field_validator, model_validator
 from libracore import medios_pago
 from libracore import pagos as acreditacion
 
-from app import config_manager, database as db, mp_api
+from app import config_manager, database as db, mp_api, venta_facturacion
 from app.web.api_auth import get_current_user_json, require_role_json
 
 router = APIRouter(prefix="/api/ventas", tags=["ventas"])
@@ -247,7 +247,14 @@ async def venta_mp_status(vid: int, user: dict = Depends(get_current_user_json))
 
     🔑 Acreditar es idempotente (`acreditar_pago_qr` sólo toca lo que está
     `pendiente`), así que el poll pegándole cada pocos segundos no duplica la
-    plata, y da igual si el webhook llegó primero.
+    plata, y da igual si el webhook llegó primero. Lo mismo vale para la
+    factura: `facturar_venta` devuelve la que ya exista.
+
+    🔴 **Acá también se factura, y no es redundante con el webhook.** Son los
+    DOS caminos por los que este producto se entera de que el QR se pagó, y en
+    la instancia real de Contalibra el webhook **no llegó nunca** —cero POST en
+    el log, contra cinco a `mp-qr`—. Si sólo facturara el webhook, la venta
+    quedaría cobrada y "Sin facturar" sin que nada lo dijera.
     """
     venta = db.get_venta(vid)
     if not venta:
@@ -257,7 +264,13 @@ async def venta_mp_status(vid: int, user: dict = Depends(get_current_user_json))
         # Ya estaba acreditada. Se llama igual: cubre a las que se acreditaron
         # antes de que esto existiera, y no hace nada si no hay pendientes.
         db.acreditar_pago_qr(vid, venta["mp_payment_id"], usuario_id=user["id"])
-        return {"status": "approved", "payment_id": venta["mp_payment_id"]}
+        # Y se intenta facturar igual, por el mismo motivo: cubre a las que se
+        # cobraron antes de que existiera la automática, y a las que fallaron el
+        # CAE la primera vez.
+        factura_id = (venta.get("factura_id")
+                      or await venta_facturacion.facturar_si_esta_prendida(vid))
+        return {"status": "approved", "payment_id": venta["mp_payment_id"],
+                "factura_id": factura_id}
 
     access_token = config_manager.load().get("mp_access_token", "")
     if not access_token:
@@ -283,4 +296,5 @@ async def venta_mp_status(vid: int, user: dict = Depends(get_current_user_json))
     # `cobrar_con_qr`, su pago quedó `pendiente` y sin movimiento de caja;
     # recién ahora se acredita.
     db.acreditar_pago_qr(vid, payment_id, usuario_id=user["id"])
-    return {"status": "approved", "payment_id": payment_id}
+    factura_id = await venta_facturacion.facturar_si_esta_prendida(vid)
+    return {"status": "approved", "payment_id": payment_id, "factura_id": factura_id}
