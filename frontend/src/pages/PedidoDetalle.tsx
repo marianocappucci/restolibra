@@ -2,8 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   api, ApiError,
-  type MedioPago, type MenuData, type Pedido, type PedidoItem, type PedidoModificador, type RecetaIngrediente,
+  type MenuData, type Pedido, type PedidoItem, type PedidoModificador, type RecetaIngrediente,
 } from '../api'
+import { useMediosPago } from '../lib/medios-pago'
+import { LineasDePago } from '@/components/lineas-de-pago'
+import {
+  lineaVacia, pagosPayload, totalDeclarado, vueltoDe, type LineaDePago,
+} from '@/lib/pagos'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -19,13 +24,6 @@ import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
-
-type PagoRow = { monto: string; referencia: string }
-
-//: El medio que el QR de MercadoPago cobra. El backend rebota con 422 un
-//: `cobrar_con_qr` en cualquier otro: nada acredita un pago en efectivo, así
-//: que el pedido quedaría esperando para siempre con la plata en el cajón.
-const MEDIO_DEL_QR = 'mercadopago'
 
 
 // Pantalla canónica de "pedido abierto" -- compartida por mesas
@@ -58,10 +56,13 @@ export function PedidoDetalle() {
   const [modSeleccion, setModSeleccion] = useState<Record<number, 'normal' | 'quitar' | 'doble'>>({})
   const [modNota, setModNota] = useState('')
 
-  const [medios, setMedios] = useState<MedioPago[]>([])
+  // 🔴 Del hook y no de un `fetch` propio a `/api/pedidos/medios-pago`: es el
+  // mismo `medios_pago.para_selector()` del motor por los dos caminos, pero el
+  // hook cachea la lista para toda la pestaña. Antes esta pantalla la pedía de
+  // nuevo en cada pedido que se abría.
+  const { medios } = useMediosPago()
   const [showCobro, setShowCobro] = useState(false)
-  const [pagos, setPagos] = useState<Record<string, PagoRow>>({})
-  const [cobrarConQr, setCobrarConQr] = useState(false)
+  const [lineas, setLineas] = useState<LineaDePago[]>([lineaVacia()])
   const [descuento, setDescuento] = useState('0')
   const [descPct, setDescPct] = useState('')
   const [clienteCobro, setClienteCobro] = useState('')
@@ -70,7 +71,6 @@ export function PedidoDetalle() {
 
   useEffect(() => { cargar() }, [pid]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { cargarMenu(q) }, [pid]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => { api.get<MedioPago[]>('/api/pedidos/medios-pago').then(setMedios).catch(() => {}) }, [])
 
   function describeError(err: unknown): string {
     if (err instanceof ApiError) return err.detail
@@ -191,7 +191,10 @@ export function PedidoDetalle() {
   }
 
   function abrirCobro() {
-    setPagos({})
+    // 🔑 Arranca con UNA línea de efectivo por el total. El caso normal del
+    // mostrador —un pedido, un medio, el importe justo— queda cargado de
+    // entrada y no hay nada que tipear; el resto se agrega con el botón.
+    setLineas([lineaVacia(undefined, String(pedido?.total ?? 0))])
     setDescuento('0')
     setDescPct('')
     setClienteCobro(pedido?.cliente_nombre ?? '')
@@ -201,21 +204,13 @@ export function PedidoDetalle() {
 
   const total = pedido?.total ?? 0
   const aPagar = useMemo(() => Math.max(0, +(total - (Number(descuento) || 0)).toFixed(2)), [total, descuento])
-  const sumaPagos = useMemo(
-    () => Object.values(pagos).reduce((acc, p) => acc + (Number(p.monto) || 0), 0),
-    [pagos],
+  // El vuelto total del cobro: la suma de los vueltos de las líneas de
+  // efectivo. **No sale de restarle el total a lo declarado** — esa resta era
+  // el defecto viejo, que hacía pasar por vuelto plata que igual se registraba.
+  const vueltoTotal = useMemo(
+    () => lineas.reduce((acc, l) => acc + vueltoDe(l), 0),
+    [lineas],
   )
-  const diff = +(sumaPagos - aPagar).toFixed(2)
-
-  function setPago(medioId: string, field: keyof PagoRow, value: string) {
-    setPagos((prev) => ({ ...prev, [medioId]: { monto: prev[medioId]?.monto ?? '', referencia: prev[medioId]?.referencia ?? '', [field]: value } }))
-  }
-
-  function ponerExacto(medioId: string) {
-    const otros = Object.entries(pagos).filter(([k]) => k !== medioId).reduce((acc, [, p]) => acc + (Number(p.monto) || 0), 0)
-    const restante = Math.max(0, +(aPagar - otros).toFixed(2))
-    setPago(medioId, 'monto', restante ? String(restante) : '')
-  }
 
   function aplicarDescPct(pct: string) {
     setDescPct(pct)
@@ -224,23 +219,26 @@ export function PedidoDetalle() {
   }
 
   async function confirmarCobro() {
-    const pagosPayload = Object.entries(pagos)
-      .filter(([, p]) => Number(p.monto) > 0)
-      .map(([medio, p]) => ({
-        medio, monto: Number(p.monto), referencia: p.referencia,
-        // Viaja SIEMPRE, también en `false`: el estado del pago se declara, no
-        // se deja al default de la base.
-        cobrar_con_qr: medio === MEDIO_DEL_QR && cobrarConQr,
-      }))
-    if (pagosPayload.length === 0) {
+    const pagos = pagosPayload(lineas)
+    if (pagos.length === 0) {
       setCobroError('Registrá al menos un medio de pago.')
+      return
+    }
+    if (totalDeclarado(lineas) > aPagar + 0.005) {
+      // 🔴 Se corta ACÁ y no en el backend. El importe de más no es un vuelto:
+      // entraría a la caja tal cual y aparecería como sobrante en el arqueo.
+      // Para devolver plata está *Paga con*, en la línea de efectivo.
+      setCobroError(
+        'Los importes suman más que el total. Si estás calculando un vuelto, '
+        + 'usá «Paga con» en la línea de efectivo.',
+      )
       return
     }
     setCobrando(true)
     setCobroError(null)
     try {
       const res = await api.post<{ venta_id: number }>(`/api/pedidos/${pid}/cobrar`, {
-        pagos: pagosPayload, descuento: Number(descuento) || 0, cliente_nombre: clienteCobro.trim(),
+        pagos, descuento: Number(descuento) || 0, cliente_nombre: clienteCobro.trim(),
       })
       setShowCobro(false)
       navigate(`/ventas/${res.venta_id}`)
@@ -442,61 +440,55 @@ export function PedidoDetalle() {
         </DialogContent>
       </Dialog>
 
-      {/* Cobro -- mismo patrón de medios de pago que Ventas.tsx */}
+      {/* Cobro. La izquierda es la cuenta —lo que el mozo le lee al cliente— y
+          la derecha el cobro en sí: descuento, medios y con cuánto paga. Las
+          dos columnas colapsan a una sola en pantalla angosta, que es como se
+          ve en la tablet del salón. */}
       <Dialog open={showCobro} onOpenChange={setShowCobro}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="sm:max-w-3xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><DollarSign className="size-4" />Cobrar pedido {pedido.numero}</DialogTitle></DialogHeader>
 
-          {cobroError && <p className="text-sm text-destructive">{cobroError}</p>}
+          {cobroError && <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">{cobroError}</p>}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,4fr)_minmax(0,6fr)]">
             <div className="grid gap-1 rounded-md border p-3 text-sm">
               {pedido.items.map((it) => (
-                <div key={it.id} className="flex justify-between"><span>{it.qty} × {it.nombre}</span><span>{formatCurrency(it.subtotal)}</span></div>
+                <div key={it.id} className="flex justify-between gap-2"><span className="min-w-0">{it.qty} × {it.nombre}</span><span className="shrink-0 tabular-nums">{formatCurrency(it.subtotal)}</span></div>
               ))}
-              {pedido.costo_envio > 0 && <div className="flex justify-between border-t pt-1"><span>Envío</span><span>{formatCurrency(pedido.costo_envio)}</span></div>}
-              <div className="flex justify-between border-t pt-1 text-base font-bold"><span>TOTAL</span><span>{formatCurrency(pedido.total)}</span></div>
+              {pedido.costo_envio > 0 && <div className="flex justify-between gap-2 border-t pt-1"><span>Envío</span><span className="shrink-0 tabular-nums">{formatCurrency(pedido.costo_envio)}</span></div>}
+              <div className="flex justify-between gap-2 border-t pt-1"><span className="text-muted-foreground">Subtotal</span><span className="shrink-0 tabular-nums text-muted-foreground">{formatCurrency(pedido.total)}</span></div>
+              {Number(descuento) > 0 && (
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Descuento</span><span className="shrink-0 tabular-nums text-muted-foreground">− {formatCurrency(Number(descuento))}</span></div>
+              )}
+              <div className="flex justify-between gap-2 border-t pt-1 text-lg font-bold"><span>A PAGAR</span><span className="shrink-0 tabular-nums">{formatCurrency(aPagar)}</span></div>
+              {vueltoTotal > 0 && (
+                <div className="flex justify-between gap-2 border-t pt-1 text-base font-semibold text-primary"><span>Vuelto</span><span className="shrink-0 tabular-nums">{formatCurrency(vueltoTotal)}</span></div>
+              )}
             </div>
 
-            <div className="grid gap-2">
-              {medios.map((m) => (
-                <div key={m.id} className="flex items-center gap-1.5">
-                  <span className="w-32 shrink-0 text-xs text-muted-foreground">{m.label}</span>
-                  <Input type="number" step="0.01" value={pagos[m.id]?.monto ?? ''} onChange={(e) => setPago(m.id, 'monto', e.target.value)} placeholder="0,00" className="w-24" />
-                  <Button size="sm" variant="outline" title="Poner el importe restante" onClick={() => ponerExacto(m.id)}><Check /></Button>
-                  <Input value={pagos[m.id]?.referencia ?? ''} onChange={(e) => setPago(m.id, 'referencia', e.target.value)} placeholder="Ref." className="w-20" />
-                  {m.id === MEDIO_DEL_QR && (
-                    <label className="flex items-center gap-1 text-xs">
-                      <input
-                        type="checkbox"
-                        id="cobrar-con-qr"
-                        checked={cobrarConQr}
-                        onChange={(e) => setCobrarConQr(e.target.checked)}
-                        className="size-3.5"
-                      />
-                      Cobrar con QR ahora
-                    </label>
-                  )}
-                </div>
-              ))}
-
-              <div className="mt-1 flex items-center justify-between rounded-md bg-muted/50 p-2 text-sm">
-                <span>Total a pagar: <strong>{formatCurrency(aPagar)}</strong></span>
-                <span className={Math.abs(diff) < 0.005 ? 'font-bold text-emerald-600 dark:text-emerald-400' : diff < 0 ? 'font-bold text-destructive' : 'font-bold text-primary'}>
-                  {Math.abs(diff) < 0.005 ? 'Pago exacto' : diff < 0 ? `Falta ${formatCurrency(-diff)}` : `Vuelto ${formatCurrency(diff)}`}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="grid gap-1">
-                  <Label className="text-xs">Descuento</Label>
-                  <div className="flex items-center gap-1">
-                    <Input type="number" step="0.1" min="0" max="100" value={descPct} onChange={(e) => aplicarDescPct(e.target.value)} placeholder="%" className="w-16" />
-                    <Input type="number" step="0.01" min="0" value={descuento} onChange={(e) => { setDescuento(e.target.value); setDescPct('') }} className="w-24" />
+            <div className="grid gap-4">
+              <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2">
+                  <Label htmlFor="cobro-descuento-pct" className="text-xs">Descuento (% o importe)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input id="cobro-descuento-pct" type="number" step="0.1" min="0" max="100" value={descPct} onChange={(e) => aplicarDescPct(e.target.value)} placeholder="%" className="w-16" />
+                    <Input aria-label="Descuento en importe" type="number" step="0.01" min="0" value={descuento} onChange={(e) => { setDescuento(e.target.value); setDescPct('') }} className="min-w-0 flex-1" />
                   </div>
                 </div>
-                <div className="grid gap-1"><Label className="text-xs">Cliente (opcional)</Label><Input value={clienteCobro} onChange={(e) => setClienteCobro(e.target.value)} placeholder="Consumidor final" /></div>
+                <div className="grid gap-2">
+                  <Label htmlFor="cobro-cliente" className="text-xs">Cliente (opcional)</Label>
+                  <Input id="cobro-cliente" value={clienteCobro} onChange={(e) => setClienteCobro(e.target.value)} placeholder="Consumidor final" />
+                </div>
               </div>
+
+              <LineasDePago
+                lineas={lineas}
+                onChange={setLineas}
+                medios={medios}
+                aPagar={aPagar}
+                formatCurrency={formatCurrency}
+                deshabilitado={cobrando}
+              />
             </div>
           </div>
 

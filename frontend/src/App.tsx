@@ -4,7 +4,6 @@ import { useAuth } from './context/AuthContext'
 import { Layout } from './components/Layout'
 import { Login } from './pages/Login'
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset'
-import { Dashboard } from './pages/Dashboard'
 import { Depositos } from './pages/Depositos'
 import { DepositoDetalle } from './pages/DepositoDetalle'
 import { DepositoTransferencia } from './pages/DepositoTransferencia'
@@ -92,8 +91,9 @@ function StandaloneRoute({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
-// Etapa A: solo Login + Dashboard. Mas rutas se agregan por etapa, igual
-// que se hizo en Contalibra (ver wiki/entities/restolibra.md).
+// La pantalla de arranque es el **mapa de mesas** (`/salon`), no un tablero:
+// es lo primero que mira quien abre el sistema en un restaurante. Ver el
+// comentario de la ruta `/dashboard`, que hoy es sólo un redirect.
 export default function App() {
   return (
     <Routes>
@@ -101,14 +101,15 @@ export default function App() {
       {/* Públicas a propósito: quien las necesita no puede iniciar sesión. */}
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <Dashboard />
-          </ProtectedRoute>
-        }
-      />
+      {/* 🔴 **El Dashboard se retiró el 2026-08-31, a pedido del humano.** En
+          la instancia de dev abría en blanco, y no era el tablero lo que la
+          gente usa para trabajar: en un restaurante la pantalla de arranque es
+          el mapa de mesas. Se redirige en vez de dejar la ruta muerta porque
+          hay enlaces guardados y pestañas abiertas apuntando acá.
+
+          El endpoint `GET /api/dashboard` **queda**: no molesta, y decidir qué
+          pasa con las consultas que lo alimentan es del módulo de Reportes. */}
+      <Route path="/dashboard" element={<Navigate to="/salon" replace />} />
       <Route
         path="/caja"
         element={
@@ -576,8 +577,8 @@ export default function App() {
           </ProtectedRoute>
         }
       />
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/salon" replace />} />
+      <Route path="*" element={<Navigate to="/salon" replace />} />
     </Routes>
   )
 }

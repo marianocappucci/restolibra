@@ -1,6 +1,6 @@
 import {
   BarChart3, BookOpen, BookText, Boxes, Calculator, CalendarClock, ChefHat, Clock, CreditCard,
-  FileText, Flame, Gauge, History, LayoutGrid, Landmark, LineChart, Package, Receipt,
+  FileText, Flame, History, LayoutGrid, Landmark, LineChart, Package, Receipt,
   Settings, ShoppingBag, ShoppingCart, SquareStack, Tag, TrendingUp, Truck, UserCog, Users,
   Wallet, Warehouse, ClipboardList,
 } from 'lucide-react'
@@ -11,16 +11,16 @@ import type { User } from '../api'
 
 // Mismo orden y agrupamiento que el sidebar Jinja2 viejo
 // (web/templates/base.html) -- ver wiki/entities/restolibra.md, auditoria
-// de regresion funcional. OJO: un mozo solo ve la seccion Salon (ni
-// Dashboard ni Config quedan visibles) -- comportamiento real del sistema
-// viejo, no una simplificacion nuestra.
+// de regresion funcional. OJO: un mozo solo ve la seccion Salon (Config no
+// le queda visible) -- comportamiento real del sistema viejo, no una
+// simplificacion nuestra.
+//
+// 🔴 **La entrada de Dashboard se retiró el 2026-08-31.** La pantalla se dio
+// de baja (abría en blanco en dev y no era lo que se usa para trabajar) y el
+// sidebar arranca ahora en Salón, que es también el `homeTo`.
 const esMozo = (u: User) => u.role === 'mozo'
 
 const NAV_SECTIONS: NavSection<User>[] = [
-  {
-    items: [{ to: '/dashboard', label: 'Dashboard', icon: Gauge }],
-    hideFor: esMozo,
-  },
   {
     label: 'Salón',
     items: [
@@ -140,7 +140,7 @@ export const Layout = createLayout<User>({
   wordmarkClassName: `${WORDMARK} text-[15px]/[21px]`,
   navSections: NAV_SECTIONS,
   icon: ChefHat,
-  homeTo: '/dashboard',
+  homeTo: '/salon',
   accountTo: '/mi-cuenta',
   // Ya no se pasa `topbar`: desde libra-ui v0.19.0 la barra no existe para
   // ningún producto, así que la opción se fue. El render de acá no cambia --

@@ -6,6 +6,10 @@ import {
   type Cliente, type ListaPrecio, type ProductoBusqueda, type Venta,
 } from '../api'
 import { useMediosPago } from '../lib/medios-pago'
+import { LineasDePago } from '@/components/lineas-de-pago'
+import {
+  lineaVacia, pagosPayload, totalDeclarado, vueltoDe, type LineaDePago,
+} from '@/lib/pagos'
 import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { useAuth } from '../context/AuthContext'
 import { Card, CardContent } from '@/components/ui/card'
@@ -44,20 +48,8 @@ function estadoLabel(estado: string): string {
 }
 
 type ItemRow = { nombre: string; qty: string; precio: string; producto_id: number | null }
-/** `cobrarConQr` es "le voy a cobrar recién ahora", no "ya me pagó".
- *
- *  🔴 Sin esa distinción la venta nace **cobrada** —con el movimiento de caja
- *  escrito— antes de que nadie escanee nada. Ver `PagoPayload.cobrar_con_qr` en
- *  `app/web/api/ventas.py`. */
-type PagoRow = { medio: string; monto: string; referencia: string; cobrarConQr: boolean }
 
 const EMPTY_ITEM: ItemRow = { nombre: '', qty: '1', precio: '0', producto_id: null }
-//: El medio que el QR cobra. El backend rebota con 422 un `cobrar_con_qr` en
-//: cualquier otro: nada acredita un pago en efectivo, así que la venta
-//: quedaría pendiente para siempre.
-const MEDIO_DEL_QR = 'mercadopago'
-
-const EMPTY_PAGO: PagoRow = { medio: 'efectivo', monto: '', referencia: '', cobrarConQr: false }
 
 export function Ventas() {
   const { medios, etiqueta: etiquetaDeMedio } = useMediosPago()
@@ -75,7 +67,7 @@ export function Ventas() {
   const [clientes, setClientes] = useState<Cliente[]>([])
   const [listasPrecio, setListasPrecio] = useState<ListaPrecio[]>([])
   const [items, setItems] = useState<ItemRow[]>([{ ...EMPTY_ITEM }])
-  const [pagos, setPagos] = useState<PagoRow[]>([{ ...EMPTY_PAGO }])
+  const [pagos, setPagos] = useState<LineaDePago[]>([lineaVacia()])
   const [clienteId, setClienteId] = useState('')
   const [listaPrecioId, setListaPrecioId] = useState('')
   const [descuento, setDescuento] = useState('0')
@@ -134,7 +126,7 @@ export function Ventas() {
 
   function abrirNueva() {
     setItems([{ ...EMPTY_ITEM }])
-    setPagos([{ ...EMPTY_PAGO }])
+    setPagos([lineaVacia()])
     setClienteId(''); setListaPrecioId(''); setDescuento('0'); setObservaciones('')
     setNuevoCliente(false)
     setNcNombre(''); setNcCuit(''); setNcIva(''); setNcEmail(''); setNcPhone('')
@@ -177,36 +169,24 @@ export function Ventas() {
     setItems((rows) => rows.filter((_, i) => i !== index))
   }
 
-  function updatePago(index: number, field: 'medio' | 'monto' | 'referencia', value: string) {
-    setPagos((rows) => rows.map((r, i) => {
-      if (i !== index) return r
-      const fila = { ...r, [field]: value }
-      // 🔴 Cambiar el medio APAGA la marca. Si quedara prendida, el backend
-      // rebota con 422 al guardar y el mostrador se entera recién ahí, con la
-      // venta ya cargada.
-      if (field === 'medio' && value !== MEDIO_DEL_QR) fila.cobrarConQr = false
-      return fila
-    }))
-  }
-
-  function updatePagoQr(index: number, valor: boolean) {
-    setPagos((rows) => rows.map((r, i) => i === index ? { ...r, cobrarConQr: valor } : r))
-  }
-
-  function addPagoRow() {
-    setPagos((rows) => [...rows, { ...EMPTY_PAGO }])
-  }
-
-  function removePagoRow(index: number) {
-    setPagos((rows) => rows.filter((_, i) => i !== index))
-  }
-
   const subtotalCalc = items.reduce((acc, r) => acc + (Number(r.qty) || 0) * (Number(r.precio) || 0), 0)
   const totalCalc = Math.max(0, subtotalCalc - (Number(descuento) || 0))
-  const pagadoCalc = pagos.reduce((acc, p) => acc + (Number(p.monto) || 0), 0)
-  const difCalc = Math.round((totalCalc - pagadoCalc) * 100) / 100
+  // El vuelto sale de *Paga con*, línea por línea — no de restarle el total a
+  // lo declarado. Ver el docstring de `components/lineas-de-pago.tsx`: esa
+  // resta hacía pasar por vuelto plata que igual quedaba registrada.
+  const vueltoCalc = pagos.reduce((acc, p) => acc + vueltoDe(p), 0)
 
   async function crearVenta() {
+    if (totalDeclarado(pagos) > totalCalc + 0.005) {
+      // 🔴 Se corta ACÁ. El importe de más no es un vuelto: entraría a la caja
+      // tal cual y saldría como sobrante en el arqueo. Para devolver plata está
+      // *Paga con*, en la línea de efectivo.
+      setError(
+        'Los importes de pago suman más que el total. Si estás calculando un '
+        + 'vuelto, usá «Paga con» en la línea de efectivo.',
+      )
+      return
+    }
     setSavingVenta(true)
     setError(null)
     try {
@@ -218,12 +198,7 @@ export function Ventas() {
         descuento: Number(descuento) || 0,
         cliente_id: clienteId ? Number(clienteId) : null,
         observaciones,
-        pagos: pagos.filter((p) => Number(p.monto) > 0).map((p) => ({
-          medio: p.medio, monto: Number(p.monto), referencia: p.referencia,
-          // Viaja SIEMPRE, también en `false`: el estado del pago se declara,
-          // no se deja al default de la base.
-          cobrar_con_qr: p.cobrarConQr,
-        })),
+        pagos: pagosPayload(pagos),
       })
       setShowNueva(false)
       navigate(`/ventas/${venta.id}`)
@@ -424,47 +399,26 @@ export function Ventas() {
 
               <div className="grid gap-2">
                 <Label>Pagos</Label>
-                {pagos.map((row, i) => (
-                  <div key={i} className="flex flex-wrap items-center gap-2">
-                    <Select value={row.medio} onValueChange={(v) => updatePago(i, 'medio', v)}>
-                      <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {/* 🔴 Del motor. Esta lista era la copia TypeScript, y el backend
-                            ahora **valida** el medio: ofrecer uno que no esta
-                            en la canonica --`cheque`-- daba un 422 recien al
-                            guardar la venta, con el mostrador esperando. */}
-                        {medios.map((m) => <SelectItem key={m.id} value={m.id}>{m.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Input type="number" step="0.01" value={row.monto} onChange={(e) => updatePago(i, 'monto', e.target.value)} className="w-28" placeholder="Monto" />
-                    <Input value={row.referencia} onChange={(e) => updatePago(i, 'referencia', e.target.value)} className="w-40" placeholder="Referencia" />
-                    {row.medio === MEDIO_DEL_QR && (
-                      <label className="flex items-center gap-1.5 text-sm">
-                        <input
-                          type="checkbox"
-                          id={`cobrar-con-qr-${i}`}
-                          checked={row.cobrarConQr}
-                          onChange={(e) => updatePagoQr(i, e.target.checked)}
-                          className="size-4"
-                        />
-                        Cobrar con QR ahora
-                      </label>
-                    )}
-                    {pagos.length > 1 && <Button size="sm" variant="ghost" onClick={() => removePagoRow(i)}><X />Quitar</Button>}
-                  </div>
-                ))}
-                <Button size="sm" variant="outline" className="w-fit" onClick={addPagoRow}><Plus />Agregar pago</Button>
-                {Math.abs(difCalc) > 0.01 && (
-                  <p className="text-sm text-amber-700 dark:text-amber-400">
-                    {difCalc > 0 ? `Falta cubrir ${formatCurrency(difCalc)}` : `Vuelto: ${formatCurrency(Math.abs(difCalc))}`}
-                  </p>
-                )}
+                {/* La misma forma que la cuenta del salón: un medio por línea,
+                    con el `<Select>` del motor y el vuelto del efectivo. Ver
+                    `components/lineas-de-pago.tsx`. */}
+                <LineasDePago
+                  lineas={pagos}
+                  onChange={setPagos}
+                  medios={medios}
+                  aPagar={totalCalc}
+                  formatCurrency={formatCurrency}
+                  deshabilitado={savingVenta}
+                />
               </div>
 
               <div className="flex flex-wrap items-end gap-4 border-t pt-4">
-                <div className="grid gap-2"><Label>Descuento</Label><Input type="number" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="w-28" /></div>
+                <div className="grid gap-2"><Label htmlFor="venta-descuento">Descuento</Label><Input id="venta-descuento" type="number" step="0.01" value={descuento} onChange={(e) => setDescuento(e.target.value)} className="w-28" /></div>
                 <p className="text-sm">Subtotal: <span className="font-medium">{formatCurrency(subtotalCalc)}</span></p>
                 <p className="text-sm">Total: <span className="font-medium">{formatCurrency(totalCalc)}</span></p>
+                {vueltoCalc > 0 && (
+                  <p className="text-sm">Vuelto: <span className="font-semibold text-primary">{formatCurrency(vueltoCalc)}</span></p>
+                )}
               </div>
             </div>
 

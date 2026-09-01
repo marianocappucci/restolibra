@@ -56,7 +56,9 @@ export function Caja() {
     api.get<CajaConfig[]>('/api/cajas').then(setCajas).catch(() => {})
   }, [])
 
-  // Deep-link desde el acceso rápido del Dashboard: ?nuevo=1 abre el diálogo directo.
+  // Deep-link: `?nuevo=1` abre el diálogo directo. Lo estrenó el acceso rápido
+  // del Dashboard, que se dio de baja el 2026-08-31; la entrada queda porque es
+  // una URL que se puede guardar y compartir, no un detalle de esa pantalla.
   useEffect(() => {
     if (searchParams.get('nuevo') === '1') setNuevoOpen(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
