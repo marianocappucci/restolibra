@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Configuración de la conexión a Nginx Proxy Manager.
-Uso: python3 scripts/npm_setup.py
+Uso: ./.venv-scripts/bin/python3 scripts/npm_setup.py
 
 Guarda la config en scripts/.npm_config.json (excluido del repo).
 

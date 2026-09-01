@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Onboarding de nuevo cliente Restolibra.
-Uso: python3 scripts/nuevo_cliente.py
+Uso: ./.venv-scripts/bin/python3 scripts/nuevo_cliente.py
 
 Wrapper de configuración sobre libracore.provisioning.nuevo_cliente (lógica
 compartida con Contalibra, parametrización de este script — ver
