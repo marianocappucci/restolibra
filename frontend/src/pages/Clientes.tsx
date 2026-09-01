@@ -340,6 +340,15 @@ export function Clientes() {
               data={clientes}
               emptyMessage="No hay clientes registrados aún."
               getRowClassName={(c) => !c.activo ? 'opacity-50' : undefined}
+              // La tabla no pagina: sin buscador, llegar a un cliente entre
+              // cientos es scrollear. El email entra en la búsqueda aunque no
+              // sea columna -- es lo que se tiene a mano cuando el cliente
+              // escribió por correo; el CUIT, lo que se tiene del papel.
+              search={{
+                campos: (c) => [c.name, c.cuit_dni, c.email, c.phone],
+                placeholder: 'Buscar por nombre, CUIT/DNI, email o teléfono',
+                ariaLabel: 'Buscar cliente',
+              }}
             />
           )}
         </CardContent>
