@@ -224,8 +224,16 @@ describe('la Configuración de Restolibra', () => {
   it('ARCA sube el certificado: ya no hay dónde tipear una ruta del servidor', async () => {
     montar('/config?seccion=integraciones&integracion=arca')
 
-    expect(await screen.findByLabelText(/Certificado/)).toHaveAttribute('type', 'file')
-    expect(screen.getByLabelText(/Clave privada/)).toHaveAttribute('type', 'file')
+    // 🔑 Se nombra el ambiente: desde libra-ui v0.57.0 la tarjeta muestra los
+    // DOS pares de credenciales, así que hay dos campos "Certificado (.crt)" y
+    // dos "Clave privada (.key)" en la misma pantalla. Sin distinguirlos la
+    // consulta es ambigua — y además no diría a qué par se refiere.
+    expect(await screen.findByLabelText(/Certificado.*Homologaci/))
+      .toHaveAttribute('type', 'file')
+    expect(screen.getByLabelText(/Clave privada.*Homologaci/))
+      .toHaveAttribute('type', 'file')
+    // Y el par de producción también está, que es lo que este cambio agrega.
+    expect(screen.getByLabelText(/Certificado.*Producci/)).toHaveAttribute('type', 'file')
   })
 
   it('la sección propia del ticket sigue estando, con su texto', async () => {
