@@ -42,7 +42,9 @@ from libracore.db.caja import resolver_punto_venta
 from app import config_manager
 from app import database as db
 from app import pdf_generator as pdf_gen
-from app.web.helpers.arca_helper import get_next_numero_with_arca, solicitar_cae
+from app.web.helpers.arca_helper import (
+    ambiente_de, get_next_numero_with_arca, solicitar_cae,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -258,6 +260,18 @@ async def facturar_venta(venta_id: int, *, usuario_id: int | None = None) -> dic
         observaciones=f"Venta {venta['numero']}",
         condicion_venta=_condicion_venta(venta),
         usuario_id=usuario_id if usuario_id is not None else venta.get("usuario_id"),
+        # 🔴 Obligatorio desde LibraCore v1.71.0, y **sin default a propósito**:
+        # un comprobante emitido contra homologación trae CAE y numeración del
+        # WSFE de homologación. Sin marcarlo entra al Libro IVA del cliente y le
+        # rompe la correlatividad.
+        #
+        # Sale de `ambiente_de(arca)` —el MISMO `arca` con el que se acaba de
+        # pedir el número— y no de la config leída aparte: leerlas por separado
+        # dejaría la factura marcada con un ambiente distinto del que la numeró
+        # si el selector cambia entre las dos lecturas. Además ese tercer valor
+        # no siempre es un dict —en dev es el string `"_dev_mock_"`— y
+        # `ambiente_de` es justamente quien sabe traducirlo.
+        ambiente=ambiente_de(arca),
     )
 
     factura = db.get_factura(factura_id)

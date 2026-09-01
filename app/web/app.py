@@ -13,6 +13,7 @@ import httpx
 
 from app import database as db
 from libracore.facturas_router import smtp_efectivo
+from libracore import arca_credenciales
 from app import config_manager
 from app import arca_wsaa
 from app import arca_wspadron
@@ -586,15 +587,29 @@ async def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
     arca_cfg = db.obtener_todas_arca_configs()
     arca     = arca_cfg[0] if arca_cfg else None
 
-    if not arca or not arca.get("certificado_path") or not arca.get("clave_path"):
+    # 🔴 **Acá se leía `arca["certificado_path"]` directo, y eran DOS defectos.**
+    #
+    # Desde que una instancia guarda dos pares de credenciales, esas columnas
+    # —las que no llevan sufijo— son las de **producción**. Leerlas directo
+    # significaba autenticar con el certificado real contra el WSAA de
+    # `arca["ambiente"]`, que es la línea de abajo: si el ambiente es
+    # homologación, se firma con la credencial del cliente creyendo que se
+    # prueba.
+    #
+    # Y peor de cerca: en una instancia de homologación —las demos— la
+    # migración `0007` mueve el par a las columnas con sufijo, así que esas
+    # quedan vacías y este endpoint contestaría 503 *"Configurá los
+    # certificados"* sobre una instancia que los tiene perfectamente cargados.
+    #
+    # `paths_en_disco` resuelve las dos decisiones juntas —de qué ambiente es el
+    # par y dónde está el archivo— porque separadas la segunda deshace a la
+    # primera. Ver `libracore/arca_credenciales.py`.
+    cert_path, clave_path = arca_credenciales.paths_en_disco(arca)
+    if not arca or not cert_path or not clave_path:
         return JSONResponse(
             {"error": "Configurá los certificados ARCA en Configuración para habilitar la consulta de CUIT."},
             status_code=503,
         )
-
-    cert_path, clave_path = config_manager.resolve_cert_paths(
-        arca["certificado_path"], arca["clave_path"]
-    )
     try:
         ta = await arca_wsaa.autenticar(
             cert_path, clave_path, arca["ambiente"],
