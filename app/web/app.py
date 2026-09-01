@@ -507,7 +507,17 @@ def startup():
 
 @app.get("/", include_in_schema=False)
 def root():
-    return RedirectResponse("/dashboard")
+    """La raíz manda al **mapa de mesas**, que es la pantalla de arranque de
+    este producto desde el 2026-08-31.
+
+    🔴 Hasta ese día mandaba a `/dashboard`, y quedó apuntando ahí un rato más
+    que todo lo demás: la SPA ya redirigía `/dashboard` → `/salon`, así que
+    entrar por la raíz **funcionaba igual** —con un salto de más, a una pantalla
+    que ya no existe— y nada lo señalaba. Se encontró mirando el `curl` del
+    deploy, no leyendo el código: este 307 lo hace el servidor y no aparece en
+    ninguna búsqueda de rutas del frontend.
+    """
+    return RedirectResponse("/salon")
 
 
 DOCS_AUTH_SECRET = os.environ.get("DOCS_AUTH_SECRET", "")
