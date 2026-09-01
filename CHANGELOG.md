@@ -1,5 +1,33 @@
 # Changelog
 
+## v1.0.10 — 2026-09-01
+
+### 🔴 Los reportes de salón eran un 500 disfrazado de «Cargando…»
+
+- La consulta de tiempos de comanda usaba `julianday()`, que es una función de
+  **SQLite**. Contra PostgreSQL muere con `UndefinedFunction`, así que las
+  **dos** pantallas que la usan devolvían 500: **Reportes de salón**
+  (`/api/salon/reportes`) y el **Dashboard**, que la llama para `rep_hoy`.
+- 🔴 **Y no se veía como un error.** La pantalla rendereaba la rama de carga
+  mientras no hubiera datos, y ante un request fallido nunca hay datos: el
+  «Cargando…» no se apagaba nunca. El bug se reportó como lentitud.
+- Sobrevivió al corte a PostgreSQL del 2026-08-10 porque **ningún test tocaba
+  esa función**. Ahora tiene 9 tests de backend y 3 de frontend, con los
+  minutos afirmados sobre tiempos conocidos —un 200 pasa igual con la
+  conversión en segundos— y un guard que impide que la función de SQLite
+  vuelva a entrar por otro módulo.
+
+### Las ventas de mostrador entran al reporte de salón
+
+- Una venta del POS de mostrador escribe derecho en la tabla de ventas, sin
+  pasar por mesa ni comanda: **no tenía canal, y no aparecía en ningún lado**.
+  El reporte de salón mostraba menos que la caja del día y nada lo avisaba.
+  Ahora es una fila propia, **Mostrador (POS)**, junto a Salón, Barra,
+  Takeaway y Delivery.
+- Las **ventas anuladas** dejan de sumar. Anular marca la venta pero no toca el
+  pedido, que queda en «cobrado»: sin este filtro una anulación de mesa seguía
+  contando en el total de su canal.
+
 ## v1.0.9 — 2026-09-01
 
 ### El salón cobra con QR, y la mesa deja de depender de la plata
