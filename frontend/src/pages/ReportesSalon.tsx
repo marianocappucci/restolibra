@@ -13,6 +13,10 @@ function formatCurrency(value: number): string {
 
 const CANAL_LABEL: Record<string, string> = {
   salon: 'Salón', barra: 'Barra', takeaway: 'Takeaway', delivery: 'Delivery',
+  // Canal sintético que arma el backend (`CANAL_MOSTRADOR` en
+  // db_reportes_gastronomicos.py): las ventas del POS de mostrador, que no
+  // nacen de un pedido y por eso no tienen un `pedidos.canal` propio.
+  mostrador: 'Mostrador (POS)',
 }
 const ESTACION_LABEL: Record<string, string> = { cocina: 'Cocina', barra: 'Barra' }
 
@@ -59,9 +63,9 @@ export function ReportesSalon() {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      {loading || !data ? (
+      {loading ? (
         <p className="py-6 text-center text-sm text-muted-foreground">Cargando…</p>
-      ) : (
+      ) : !data ? null : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <Card>
