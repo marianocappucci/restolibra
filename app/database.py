@@ -274,11 +274,13 @@ from app.db_ventas import (  # noqa: F401
     get_venta,
     anular_venta,
     vincular_venta_factura,
+    vincular_cobros_de_venta,
     vincular_venta_remito,
     set_venta_mp_order,
     set_venta_mp_payment,
     get_venta_by_mp_order,
     add_venta_pago_referencia_mp,
+    acreditar_pago_qr,
 )
 from app.db_salones import (  # noqa: F401
     get_salones,
@@ -315,6 +317,7 @@ from app.db_mesas import (  # noqa: F401
     create_mesa,
     update_mesa,
     set_mesa_estado,
+    liberar_mesa,
     delete_mesa,
     resumen_salon_ahora,
 )

@@ -180,6 +180,7 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
     from app.db_caja import create_caja_movimiento
     from app.db_stock import descontar_stock_venta
     from app.db_ventas import add_venta_pago, create_venta
+    from libracore import pagos as acreditacion
 
     datos = operation.payload
     numero = datos["numero"]
@@ -225,7 +226,16 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
     pedido_numero = (datos.get("pedido") or {}).get("numero")
     for pago in datos["pagos"]:
         monto = float(pago["monto"])
-        add_venta_pago(venta_id, pago["medio"], monto, pago.get("referencia") or "", conn=conn)
+        # 🔑 Declarado `aprobado`, y el estado NO viaja en el sobre del nodo:
+        # lo que se sincroniza es un pedido **ya cobrado** --la plata entro en
+        # el mostrador, offline--, asi que replicarlo como pendiente dejaria al
+        # central esperando una acreditacion que no va a llegar nunca.
+        #
+        # Cuando el nodo ofrezca cobro por QR habra que revisar esto: ahi si
+        # existiria un pago pendiente que valdria la pena hacer viajar.
+        add_venta_pago(venta_id, pago["medio"], monto, pago.get("referencia") or "",
+                       conn=conn,
+                       estado=acreditacion.EstadoAcreditacion.APROBADO.value)
         create_caja_movimiento(
             fecha=datos["fecha"], tipo="ingreso",
             concepto=f"Venta {numero} (pedido {pedido_numero}) — {pago['medio']}",

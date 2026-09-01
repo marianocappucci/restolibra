@@ -91,7 +91,7 @@ export function MiCuenta() {
               )} />
               <div className="flex gap-2">
                 <Button type="submit" disabled={saving}><Check />{saving ? 'Guardando…' : 'Cambiar contraseña'}</Button>
-                <Button type="button" variant="outline" onClick={() => navigate('/dashboard')}>Volver</Button>
+                <Button type="button" variant="outline" onClick={() => navigate('/salon')}>Volver</Button>
               </div>
             </form>
           </Form>

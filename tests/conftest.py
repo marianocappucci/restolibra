@@ -276,3 +276,21 @@ def sin_red_de_verdad(monkeypatch, request):
 
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", _async)
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", _sync)
+
+
+@pytest.fixture()
+def salon_con_mesa(admin_client):
+    """Un salon con una mesa, que es el piso minimo para operar.
+
+    Vivia en `test_restaurant.py`. Se movio aca cuando `test_mesa_y_plata.py`
+    la necesito tambien: una fixture de conftest la ven los dos archivos, y
+    copiarla habria dejado dos definiciones que se pueden desincronizar.
+    """
+    salon = admin_client.post("/api/salon/config/salones",
+                              json={"nombre": "Salon principal", "orden": 1})
+    assert salon.status_code == 200, salon.text
+    sid = admin_client.get("/api/salon/config").json()["salones"][0]["id"]
+    mesa = admin_client.post("/api/salon/config/mesas",
+                             json={"salon_id": sid, "nombre": "Mesa 1", "capacidad": 4})
+    assert mesa.status_code == 200, mesa.text
+    return {"salon_id": sid, "mesa_id": mesa.json()["id"]}

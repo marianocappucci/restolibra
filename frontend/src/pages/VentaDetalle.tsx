@@ -38,11 +38,62 @@ export function VentaDetalle() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [confirmAnular, setConfirmAnular] = useState(false)
+  const [qrEsperando, setQrEsperando] = useState(false)
+  const [qrError, setQrError] = useState<string | null>(null)
+
+  /** Pone el total de esta venta a cobrar en el QR del mostrador y espera.
+   *
+   *  🔑 **No hay ninguna imagen que mostrar**, y no es un olvido: es el modelo
+   *  de QR **fijo** por punto de venta. El cartel es el impreso de la caja y no
+   *  cambia nunca; lo que cambia es cuánto cobra al escanearlo. Para ver o
+   *  imprimir ese cartel está Configuración → MercadoPago.
+   */
+  async function cobrarConQr() {
+    setQrError(null)
+    setQrEsperando(true)
+    try {
+      await api.post(`/api/ventas/${ventaId}/mp-qr`, {})
+    } catch (err) {
+      setQrEsperando(false)
+      setQrError(describeError(err))
+    }
+  }
 
   useEffect(() => {
     cargar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ventaId])
+
+  // 🔴 **El poll, que es lo que cierra el circuito.** Sin esto el mostrador
+  // pone el monto en el QR y no se entera nunca de que el cliente pagó: la
+  // pantalla se queda esperando y la venta queda pendiente en la vista aunque
+  // la plata ya haya entrado.
+  //
+  // 🔑 Pegarle repetido es seguro: `mp-status` acredita **de forma
+  // idempotente** —sólo toca lo que está `pendiente`—, así que ni el poll ni
+  // el webhook llegando en el medio duplican el ingreso en la caja.
+  useEffect(() => {
+    if (!qrEsperando) return
+    let vivo = true
+    const t = setInterval(async () => {
+      try {
+        const r = await api.get<{ status: string }>(`/api/ventas/${ventaId}/mp-status`)
+        if (!vivo) return
+        if (r.status === 'approved') {
+          setQrEsperando(false)
+          await cargar()
+        } else if (r.status === 'rejected' || r.status === 'cancelled') {
+          setQrEsperando(false)
+          setQrError('MercadoPago rechazó el pago. Probá de nuevo o cobrá por otro medio.')
+        }
+      } catch {
+        // Un error de red puntual no corta la espera: el cliente puede estar
+        // escaneando justo ahora. Se reintenta en la vuelta siguiente.
+      }
+    }, 3000)
+    return () => { vivo = false; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qrEsperando, ventaId])
 
   function describeError(err: unknown): string {
     if (err instanceof ApiError) return err.detail
@@ -122,8 +173,30 @@ export function VentaDetalle() {
                     <div className="mt-1 flex justify-between border-t pt-1.5 font-semibold">
                       <span>Total cobrado</span><span>{formatCurrency(detalle.pagos.reduce((a, p) => a + p.monto, 0))}</span>
                     </div>
-                    {detalle.pagos.some((p) => esElectronico(p.medio)) && detalle.estado === 'cobrada' && (
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground"><QrCode className="size-3.5" />Cobro con QR dinámico de MercadoPago: alcance recortado deliberadamente en esta etapa (ver wiki/entities/contalibra.md, Etapa C).</p>
+                    {/* 🔴 Acá había un cartel que decía "alcance recortado
+                        deliberadamente en esta etapa". El cobro por QR se
+                        perdió en la migración a React —los endpoints se dieron
+                        de baja "porque no quedó ningún botón en la SPA que los
+                        invocara"—, y este texto era la única señal. Ahora está
+                        el botón. */}
+                    {detalle.estado !== 'cobrada' && detalle.estado !== 'anulada'
+                      && detalle.pagos.some((p) => esElectronico(p.medio)) && (
+                      <div className="mt-2 grid gap-2 border-t pt-2">
+                        <Button
+                          type="button" size="sm" variant="outline"
+                          disabled={qrEsperando}
+                          onClick={() => void cobrarConQr()}
+                        >
+                          <QrCode />
+                          {qrEsperando ? 'Esperando el pago…' : 'Cobrar con QR'}
+                        </Button>
+                        <p className="text-xs text-muted-foreground">
+                          {qrEsperando
+                            ? 'El monto ya está puesto en el QR del mostrador. Pedile al cliente que lo escanee.'
+                            : 'Pone el total de esta venta a cobrar en el QR impreso del mostrador.'}
+                        </p>
+                        {qrError && <p className="text-xs text-destructive">{qrError}</p>}
+                      </div>
                     )}
                   </>
                 )}

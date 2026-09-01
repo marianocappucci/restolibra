@@ -158,6 +158,20 @@ export type Mesa = {
   pedido_creado_at: string | null
   pedido_total: number
   mins_ocupada: number
+  /** La mesa ya se cobró y sigue ocupada: falta que el mozo la libere.
+   *
+   *  🔑 **Lo deriva el backend, no se guarda** — es `ocupada` sin pedido
+   *  abierto. Ver `db_mesas._falta_liberar`. Desde el 2026-08-31 cobrar ya no
+   *  libera la mesa: los cuatro que terminan el café siguen sentados, y con el
+   *  cobro por QR el pago puede quedar pendiente. */
+  falta_liberar: boolean
+  /** La cuenta se cerró y falta que entre la plata del QR.
+   *
+   *  🔴 **Sin esto la mesa decía "Cobrada · liberar" con el pago pendiente**, y
+   *  liberarla es perder el cobro: el QR sigue puesto con el monto de esa
+   *  cuenta. Lo deriva el backend de que haya un pedido en `cobrando` — ver
+   *  `db_mesas._esperando_pago`. */
+  esperando_pago: boolean
 }
 
 export type MapaSalonData = {
@@ -299,22 +313,11 @@ export type PedidoActivo = {
   created_at: string
 }
 
-export type DashboardData = {
-  mes_desde: string
-  mes_hasta: string
-  facturado_mes: number
-  cobrado_mes: number
-  egresos_mes: number
-  saldo_total: number
-  cant_facturas_mes: number
-  facturas_sin_cobrar: FacturaSinCobrar[]
-  presupuestos_pendientes: PresupuestoPendiente[]
-  ultimos_movimientos: MovimientoCaja[]
-  resumen_salon: ResumenSalon
-  pedidos_activos: PedidoActivo[]
-  reservas_hoy: ReservaHoy[]
-  rep_hoy: ReporteGastronomicoResumen
-}
+// 🔴 Acá vivía `DashboardData`, el tipo de `GET /api/dashboard`. Se retiró el
+// 2026-08-31 junto con la pantalla que lo consumía. **El endpoint sigue
+// existiendo**, pero un tipo sin ningún consumidor no lo comprueba nadie y se
+// desactualiza en silencio; si alguna pantalla vuelve a leer ese resumen, el
+// tipo se escribe contra la respuesta de ese momento y no contra esta foto.
 
 // --- Clientes / Cuenta Corriente / Proveedores / Egresos -- portados desde
 // Contalibra (frontend/src/api.ts), mismo backend libracore. Etapa C

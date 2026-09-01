@@ -12,37 +12,32 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { AuthProvider } from '../context/AuthContext'
 
-const RUTA_PROTEGIDA = '/dashboard'
+// 🔴 **La ruta protegida es `/salon` desde el 2026-08-31**, no `/dashboard`:
+// esa pantalla se dio de baja y hoy `/dashboard` es un `<Navigate>`. Si este
+// archivo hubiera quedado apuntando ahi seguiria en verde --el redirect
+// termina en el salon igual-- pero estaria midiendo el redirect y no la
+// pantalla, que es justo el punto ciego que este archivo existe para no tener.
+const RUTA_PROTEGIDA = '/salon'
 const PRODUCTO = 'Restolibra'
 
-// El dashboard es la primera pantalla protegida y NO tolera un resumen al que
-// le falten campos: hace Object.entries() sobre ellos y revienta con "Cannot
-// convert undefined or null to object", tumbando el arbol de React entero.
+// El mapa de mesas es la primera pantalla protegida y NO tolera un mapa al que
+// le falten campos: itera `salones` y `mesas`, y con `undefined` revienta
+// tumbando el arbol de React entero.
 //
 // Con el mock generico (`json([])` para todo lo que no fuera la sesion) eso
 // pasaba en silencio: el error cae FUERA del await del test, asi que los 6
 // tests seguian en verde y lo unico que lo delataba era la cobertura, que
 // saltaba entre corridas identicas segun si la pantalla alcanzaba a montar.
 //
-// La forma sale del tipo DashboardData de src/api.ts. Si ese tipo cambia y
-// esto no, el dashboard vuelve a reventar aca -- que es exactamente lo que se
+// La forma sale del tipo MapaSalonData de src/api.ts. Si ese tipo cambia y
+// esto no, la pantalla vuelve a reventar aca -- que es exactamente lo que se
 // quiere que pase, en el CI y no en el navegador.
-const RUTA_DASHBOARD = '/api/dashboard'
-const RESUMEN_DASHBOARD = {
-  mes_desde: '2026-07-01',
-  mes_hasta: '2026-07-31',
-  facturado_mes: 1000,
-  cobrado_mes: 800,
-  egresos_mes: 200,
-  saldo_total: 600,
-  cant_facturas_mes: 3,
-  facturas_sin_cobrar: [],
-  presupuestos_pendientes: [],
-  ultimos_movimientos: [],
-  resumen_salon: { total: 10, libres: 6, ocupadas: 4, cuenta: 1 },
-  pedidos_activos: [],
-  reservas_hoy: [],
-  rep_hoy: { total_total: 0, total_n: 0, canales: [] },
+const RUTA_MAPA = '/api/salon/mapa'
+const MAPA_SALON = {
+  salones: [{ id: 1, nombre: 'Salon principal' }],
+  salon_sel: 1,
+  mesas: [],
+  reservas_por_mesa: {},
 }
 const RUTA_SESION = '/api/me'
 
@@ -75,8 +70,8 @@ function conSesion() {
             // sidebar con `modulos`.
             nombre: 'Ana', modulos: [], empresa_nombre: 'Prueba', mp_pending_count: 0,
           })
-        : String(url).includes(RUTA_DASHBOARD)
-          ? json(RESUMEN_DASHBOARD)
+        : String(url).includes(RUTA_MAPA)
+          ? json(MAPA_SALON)
           : json([]),
     ),
   )

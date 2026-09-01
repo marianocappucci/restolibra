@@ -1,7 +1,8 @@
 """
 Cobro de un pedido: cierra el pedido generando una venta con sus ítems y
-pagos en una única transacción — mueve caja, descuenta stock, vincula al
-turno y libera la mesa, reusando el flujo del POS (db_ventas.py). Extraído
+pagos en una única transacción — mueve caja, descuenta stock y vincula al
+turno, reusando el flujo del POS (db_ventas.py). **No libera la mesa**: ningún
+evento financiero lo hace, ver el comentario largo más abajo. Extraído
 de database.py como parte del split en módulos lógicos (Fase 3 de
 LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
@@ -12,6 +13,7 @@ from app.libraedge_integration import encolar_pedido_cobrado
 from app.db_modulos import get_modulos
 from app.db_pedidos import get_pedido
 from app.db_ventas import get_next_venta_numero, create_venta, add_venta_pago
+from libracore import pagos as acreditacion
 from app.db_caja import create_caja_movimiento
 from app.db_stock import descontar_stock_venta
 from app.db_turnos import get_turno_activo, vincular_venta_turno
@@ -55,13 +57,20 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
     descuento = min(max(0.0, descuento), subtotal)
     total = round(subtotal - descuento, 2)
 
-    total_pagado = round(sum(float(p["monto"]) for p in pagos), 2)
+    # 🔴 Lo **acreditado**, no la suma de las líneas. Con la suma, un pedido
+    # cobrado por QR nace "cobrada" antes de que el cliente escanee — que es
+    # exactamente el defecto que este modelo vino a cerrar en el mostrador.
+    total_pagado = float(acreditacion.acreditado(pagos))
     if total_pagado >= total:
         estado = "cobrada"
     elif total_pagado > 0:
         estado = "parcial"
     else:
         estado = "pendiente"
+
+    # ¿Queda algo esperando que MercadoPago diga que entró?
+    hay_pendientes = any(
+        acreditacion.estado_de(p) not in acreditacion.ACREDITAN for p in pagos)
 
     if not cliente_id and pedido.get("cliente_id"):
         cliente_id = pedido["cliente_id"]
@@ -94,7 +103,18 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             for i, p in enumerate(pagos):
                 monto = float(p["monto"])
                 referencia = p.get("referencia") or f"pedido:{pedido_id}:venta:{venta_id}:pago:{i}"
-                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn)
+                # El estado lo trae la línea de pago. Sin `estado` levanta:
+                # los dos defaults posibles mueven plata en silencio y en
+                # direcciones opuestas.
+                estado_del_pago = acreditacion.estado_de(p)
+                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn,
+                               estado=estado_del_pago.value)
+                # 🔴 **La caja se escribe al ACREDITAR, no al declarar.** Un
+                # pago por QR que todavía nadie escaneó queda registrado como
+                # línea y no toca la caja: escribirlo acá infla el arqueo con
+                # plata que no entró.
+                if estado_del_pago not in acreditacion.ACREDITAN:
+                    continue
                 create_caja_movimiento(
                     fecha=fecha, tipo="ingreso",
                     concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
@@ -113,12 +133,39 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
                     turno_id = turno["id"]
                     vincular_venta_turno(venta_id, turno_id, conn=conn)
 
+            # 🔑 **El pedido queda en `cobrando` mientras el QR no acredite.**
+            #
+            # `cobrando` ya existía como el candado de concurrencia dentro de
+            # esta transacción —lo pone el UPDATE condicional de arriba—; acá
+            # pasa a ser también el estado **durable** de "la cuenta se cerró y
+            # falta que entre la plata". No hace falta un estado nuevo: es
+            # literalmente lo que significa.
+            #
+            # Y es lo que hace que el mapa del salón NO diga "cobrada, liberar"
+            # sobre una mesa cuyo pago todavía no entró — ver
+            # `db_mesas._esperando_pago`.
             conn.execute(
-                "UPDATE pedidos SET estado='cobrado', venta_id=?, updated_at=? WHERE id=?",
-                (venta_id, _ar_now(), pedido_id),
+                "UPDATE pedidos SET estado=?, venta_id=?, updated_at=? WHERE id=?",
+                ("cobrando" if hay_pendientes else "cobrado",
+                 venta_id, _ar_now(), pedido_id),
             )
-            if pedido.get("mesa_id"):
-                conn.execute("UPDATE mesas SET estado='libre' WHERE id=?", (pedido["mesa_id"],))
+            # 🔴 **Ningún evento financiero libera una mesa.** Hasta el
+            # 2026-08-31 acá iba un `UPDATE mesas SET estado='libre'`, en la
+            # misma transacción que mueve la caja.
+            #
+            # Estaban pegadas dos cosas que no tienen por qué estarlo: la plata
+            # y la ocupación. Los cuatro que terminan el café siguen sentados
+            # después de pagar, y la mesa no está libre para sentar a nadie;
+            # al revés, con el cobro por QR el pago puede quedar **pendiente**,
+            # y liberar la mesa ahí sería regalarla antes de que entre la plata.
+            #
+            # Liberar es una acción operativa **explícita** del mozo:
+            # `db.liberar_mesa()`. Mientras tanto la mesa queda `ocupada` sin
+            # pedido abierto, que es de dónde se deriva el "cobrada, falta
+            # liberar" del mapa — sin columna nueva.
+            #
+            # Hay un test que fija la regla sobre el código, no sobre este
+            # comentario: ver `test_ninguna_ruta_financiera_toca_mesas`.
 
             # Nodo offline: la operación de outbox entra **en esta misma
             # transacción**, justo antes del commit. Es lo que hace que la venta

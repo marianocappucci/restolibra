@@ -113,6 +113,29 @@ def mesa_abrir(mid: int, payload: AbrirMesaPayload, user: dict = Depends(get_cur
     return {"pedido_id": pid}
 
 
+@router.post("/mesa/{mid}/liberar")
+def mesa_liberar(mid: int, user: dict = Depends(get_current_user_json)):
+    """Deja la mesa libre. Es la acción del mozo cuando los clientes se van.
+
+    🔴 **No la hace el cobro.** Hasta el 2026-08-31 `cobrar_pedido` liberaba la
+    mesa en la misma transacción que movía la caja: la plata y la ocupación
+    estaban pegadas sin motivo. Los cuatro que terminan el café siguen sentados
+    después de pagar, y con el cobro por QR el pago puede quedar **pendiente**,
+    donde liberar la mesa sería regalarla antes de que entre la plata.
+    """
+    if not db.get_mesa(mid):
+        raise HTTPException(404, "Mesa no encontrada")
+    if not db.liberar_mesa(mid):
+        # 409 y no 200: la mesa tiene un pedido abierto, así que sigue ocupada.
+        # Contestar "ok" dejaría al mozo mirando una mesa que no se movió sin
+        # saber por qué.
+        raise HTTPException(
+            409,
+            "La mesa tiene un pedido abierto. Cobralo o anulalo antes de liberarla.",
+        )
+    return {"ok": True}
+
+
 # ── Reservas (mozo) ──────────────────────────────────────────────────────────
 
 @router.get("/reservas")
