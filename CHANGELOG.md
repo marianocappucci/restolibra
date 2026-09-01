@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.0.9 — 2026-09-01
+
+### El salón cobra con QR, y la mesa deja de depender de la plata
+
+- **El pago declara su estado.** Uno `pendiente` —el QR que todavía nadie
+  escaneó— queda registrado como línea y **no toca la caja**; la escribe
+  `acreditar_pago_qr()` cuando MercadoPago dice que entró. Vuelven `mp-qr` y
+  `mp-status`, que la migración a React se había llevado puestos.
+- **Ningún evento financiero libera una mesa.** Liberar es una acción explícita
+  del mozo. La mesa distingue tres situaciones —comiendo, esperando el pago y
+  cobrada sin liberar— todas derivadas, sin columna nueva.
+
+### El cobro de un pedido: un medio por línea, y el vuelto del efectivo
+
+- 🔴 **Los campos quedaban fuera del modal.** La pantalla desplegaba los siete
+  medios de pago a la vez y el diálogo crecía más alto que la pantalla, sin tope
+  de altura ni scroll: los últimos campos no se podían alcanzar. El arreglo va
+  en el contenedor (`DialogContent`), que es de donde venía.
+- Ahora es un **selector de medio** y un botón para agregar el segundo o el
+  tercero — la misma forma que el POS de mostrador ya usaba, con una sola
+  implementación para las dos pantallas.
+- 🔴 **«Cuánto me dio» y «cuánto imputo» no son el mismo número.** El cajero que
+  cobraba $4.300 y recibía $5.000 escribía 5.000 en el importe: la pantalla le
+  mostraba el vuelto —restando del total— y la venta quedaba registrada con
+  **$5.000 de efectivo**. Esos $700 salían como sobrante en el arqueo del
+  cierre. El campo *Paga con* calcula el vuelto y **no viaja al backend**.
+
+### El cobro por QR emite la factura
+
+- Restolibra era el **único** de los cuatro productos de la familia que cobran
+  con QR sin facturación automática. El interruptor de Configuración estaba
+  apagado por configuración y detrás no había nada que emitiera.
+- Se cablean los **dos** caminos por los que el producto se entera de que el QR
+  se pagó —el webhook y el poll de `mp-status`—, porque cubrir uno solo ya dejó
+  ventas cobradas y sin facturar en otra instancia de la familia.
+
+### El sistema abre en el mapa de mesas
+
+- Se retiró el Dashboard, que abría en blanco. `/dashboard` queda como redirect
+  por los enlaces guardados; el endpoint no se toca.
+- La raíz `/` la redirige el **servidor**, no el router de React: quedó
+  apuntando a la pantalla retirada, y lo encontró el `curl` del deploy.
+
+### Configuración
+
+- **El cartel del QR de la caja** se ve, se descarga y se imprime desde
+  Configuración → MercadoPago (pin de `libra-ui` a `v0.56.0`; los dos endpoints
+  ya estaban en `libracore` `v1.70.0`).
+
 ## v1.0.8 — 2026-08-31
 
 ### `vigilar` decía que un nodo revocado había dado señales
