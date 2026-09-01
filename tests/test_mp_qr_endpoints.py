@@ -184,7 +184,11 @@ def test_mp_status_aprobado_acredita_y_escribe_la_caja(admin_client, mp_configur
     assert db.get_venta(vid)["estado"] == "pendiente"
 
     r = admin_client.get(f"/api/ventas/{vid}/mp-status")
-    assert r.json() == {"status": "approved", "payment_id": "987654321"}
+    # `factura_id` en `None` porque la auto-facturación está apagada, que es el
+    # default de toda instancia. El caso prendido vive en
+    # `test_auto_factura_por_qr.py`.
+    assert r.json() == {"status": "approved", "payment_id": "987654321",
+                        "factura_id": None}
 
     assert _caja(conn_db) == antes + 1
     assert db.get_venta(vid)["estado"] == "cobrada"

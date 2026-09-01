@@ -50,7 +50,11 @@ describe('el icono del título sale del sidebar', () => {
     // contra dos listas vacías. Es la forma en que este guard falló mientras se
     // escribía.
     const { rutasDelNav, pantallas, conIcono } = auditarTitulos(SRC)
-    expect(rutasDelNav).toBeGreaterThanOrEqual(33)
+    // 33 → 32 el 2026-08-31: se retiró la entrada de *Dashboard* del sidebar
+    // junto con su pantalla. El piso baja porque bajó de verdad — sigue siendo
+    // un número grande, así que un parser que deje de encontrar el Layout
+    // seguiría dando 0 y este control seguiría rojo.
+    expect(rutasDelNav).toBeGreaterThanOrEqual(32)
     expect(pantallas).toBeGreaterThanOrEqual(50)
     expect(conIcono).toBeGreaterThanOrEqual(50)
   })

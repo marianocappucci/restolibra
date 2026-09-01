@@ -24,6 +24,7 @@ este producto.
 import logging
 
 from app import database as db
+from app import venta_facturacion
 from libracore.mp_webhook import build_mp_webhook_router
 
 logger = logging.getLogger(__name__)
@@ -32,11 +33,19 @@ logger = logging.getLogger(__name__)
 async def _cobro_de_venta_por_qr(
     venta_id: int, payment_id: str, pago: dict, cfg: dict
 ) -> int | None:
-    """Registra en la venta el cobro que entró por su QR.
+    """Registra en la venta el cobro que entró por su QR, y emite la factura si
+    la instancia tiene la automática prendida.
 
-    Devuelve `None` **siempre**: a diferencia de Contalibra, acá el cobro por QR
-    no emite comprobante. Es el comportamiento que este producto ya tenía y no
-    se cambia de pasada.
+    🔴 **Hasta el 2026-08-31 devolvía `None` siempre**, y este docstring decía
+    que "a diferencia de Contalibra, acá el cobro por QR no emite comprobante".
+    Era cierto, y era el defecto: Restolibra era el único de los cuatro
+    productos que cobran con QR sin facturación automática — Contalibra la tiene
+    desde el 2026-08-19, VentaLibra y LibraClub también. El interruptor es el
+    mismo (`mp_auto_facturar_ventas`), y el `PUT` de este producto ya lo
+    guardaba: lo que faltaba era quién lo leyera.
+
+    Emitir es idempotente (`facturar_venta` devuelve la factura que ya exista),
+    así que un reintento de MercadoPago no duplica el comprobante.
 
     ⚠️ El `payment_id` llega por parámetro y no se saca de `pago["id"]`: el que
     vale es el de la notificación, que es el que sella la idempotencia.
@@ -59,7 +68,9 @@ async def _cobro_de_venta_por_qr(
         db.add_venta_pago_referencia_mp(venta_id, payment_id)
     logger.info("Venta %s pagada via QR de MercadoPago, payment_id=%s (acreditada=%s)",
                 venta_id, payment_id, acreditado)
-    return None
+    # `cfg` es el que ya cargó el motor para atender esta notificación: se le
+    # pasa en vez de releer `config.json` en el medio del webhook.
+    return await venta_facturacion.facturar_si_esta_prendida(venta_id, cfg)
 
 
 def _es_hosting_mensual(client: dict, contexto: dict) -> bool:

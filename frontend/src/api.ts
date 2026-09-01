@@ -313,22 +313,11 @@ export type PedidoActivo = {
   created_at: string
 }
 
-export type DashboardData = {
-  mes_desde: string
-  mes_hasta: string
-  facturado_mes: number
-  cobrado_mes: number
-  egresos_mes: number
-  saldo_total: number
-  cant_facturas_mes: number
-  facturas_sin_cobrar: FacturaSinCobrar[]
-  presupuestos_pendientes: PresupuestoPendiente[]
-  ultimos_movimientos: MovimientoCaja[]
-  resumen_salon: ResumenSalon
-  pedidos_activos: PedidoActivo[]
-  reservas_hoy: ReservaHoy[]
-  rep_hoy: ReporteGastronomicoResumen
-}
+// 🔴 Acá vivía `DashboardData`, el tipo de `GET /api/dashboard`. Se retiró el
+// 2026-08-31 junto con la pantalla que lo consumía. **El endpoint sigue
+// existiendo**, pero un tipo sin ningún consumidor no lo comprueba nadie y se
+// desactualiza en silencio; si alguna pantalla vuelve a leer ese resumen, el
+// tipo se escribe contra la respuesta de ese momento y no contra esta foto.
 
 // --- Clientes / Cuenta Corriente / Proveedores / Egresos -- portados desde
 // Contalibra (frontend/src/api.ts), mismo backend libracore. Etapa C

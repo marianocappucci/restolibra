@@ -44,10 +44,20 @@ function DialogContent({
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
+      {/* 🔴 `max-h` + `overflow-y-auto`: sin eso un diálogo más alto que la
+          pantalla se sale por arriba y por abajo, y no hay forma de llegar a lo
+          que quedó afuera. El diálogo está centrado con `top-50% translate-y--50%`,
+          así que no crece hacia abajo con scroll de página: crece hacia los dos
+          lados y lo que sobra se pierde.
+
+          Es lo que el humano reportó como *"cobrar pedido, campos fuera de
+          modal"*: la lista de siete medios de pago hacía justo eso. Se arregla
+          acá y no en esa pantalla porque el defecto es del contenedor —
+          cualquier diálogo largo lo tiene, y en esta app hay varios. */}
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "fixed top-[50%] left-[50%] z-50 grid max-h-[calc(100svh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto rounded-lg border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:max-w-lg",
           className
         )}
         {...props}
