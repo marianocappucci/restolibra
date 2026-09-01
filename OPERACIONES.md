@@ -66,6 +66,15 @@ docker compose up -d --build    # usa docker-compose.yml → puerto 8071
 
 El deploy a producción es `panel_admin.py actualizar`, **desde el VPS**:
 
+> 🔴 **El intérprete es el del venv, no el `python3` del sistema.** Los scripts
+> de `scripts/` son wrappers finos sobre `libracore.provisioning` y lo importan
+> al arrancar: con `python3` pelado mueren en
+> `ModuleNotFoundError: No module named 'libracore'` **antes de hacer nada**.
+> El venv es `/root/restolibra/.venv-scripts` (gitignored, se crea en el VPS —
+> ver `ONBOARDING_CLIENTES.md`). Esta guía invocaba los scripts con el `python3`
+> del sistema en sus 24 ejemplos, y mandó una sesión de deploy contra ese error
+> el 2026-09-01.
+
 > ⚠️ El resto de esta guía dice `contalibra` en casi todos lados: es una copia
 > del archivo de Contalibra que llegó con el fork y nunca se renombró. Los
 > comandos de **esta** sección son los de Restolibra.
@@ -73,11 +82,11 @@ El deploy a producción es `panel_admin.py actualizar`, **desde el VPS**:
 ```bash
 cd /root/restolibra
 # Primero, ver qué se va a construir sin construir nada:
-python3 scripts/panel_admin.py actualizar --dry-run
+./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar --dry-run
 
 # El deploy real: construye una imagen nueva y mueve a ella las instancias.
-python3 scripts/panel_admin.py actualizar            # todas las que estén corriendo
-python3 scripts/panel_admin.py actualizar <slug>     # una sola
+./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar            # todas las que estén corriendo
+./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar <slug>     # una sola
 ```
 
 Lo que hace:
@@ -177,7 +186,7 @@ dependencias). Las siguientes veces es mucho más rápido por caché.
 Si vas a usar dominios con SSL automático:
 
 ```bash
-python3 scripts/npm_setup.py
+./.venv-scripts/bin/python3 scripts/npm_setup.py
 ```
 
 El script pregunta la URL de NPM (típicamente `http://localhost:81`), las
@@ -191,7 +200,7 @@ que es el gateway Docker). Guarda la config en `scripts/.npm_config.json`
 
 ```bash
 cd /root/contalibra
-python3 scripts/nuevo_cliente.py
+./.venv-scripts/bin/python3 scripts/nuevo_cliente.py
 ```
 
 El script es interactivo y guía paso a paso:
@@ -249,7 +258,7 @@ Los módulos se asignan según el plan del cliente desde el backoffice
 una pantalla de auto-gestión de módulos dentro del sistema del cliente.
 
 ```bash
-python3 scripts/panel_admin.py
+./.venv-scripts/bin/python3 scripts/panel_admin.py
 # → opción 2 (info) para ver el slug exacto
 ```
 
@@ -259,8 +268,8 @@ python3 scripts/panel_admin.py
 
 ```bash
 cd /root/contalibra
-python3 scripts/panel_admin.py           # menú interactivo
-python3 scripts/panel_admin.py listar    # lista rápida desde CLI
+./.venv-scripts/bin/python3 scripts/panel_admin.py           # menú interactivo
+./.venv-scripts/bin/python3 scripts/panel_admin.py listar    # lista rápida desde CLI
 ```
 
 ### Menú disponible
@@ -297,7 +306,7 @@ cd /root/contalibra
 git pull
 
 # 2. Reiniciar todos los contenedores activos
-python3 scripts/panel_admin.py actualizar
+./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar
 ```
 
 **¿Por qué funciona sin reconstruir la imagen?**
@@ -319,13 +328,13 @@ git pull
 docker build -t contalibra:latest .
 
 # 3. Reiniciar todos los contenedores con la nueva imagen
-python3 scripts/panel_admin.py actualizar
+./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar
 ```
 
 ### Actualizar un solo cliente (sin afectar a los demás)
 
 ```bash
-python3 scripts/panel_admin.py restart mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py restart mitienda
 
 # O con docker directamente:
 docker compose -f clientes/mitienda/docker-compose.yml restart
@@ -335,10 +344,10 @@ docker compose -f clientes/mitienda/docker-compose.yml restart
 
 ```bash
 # Ver estado de todos los contenedores
-python3 scripts/panel_admin.py listar
+./.venv-scripts/bin/python3 scripts/panel_admin.py listar
 
 # Ver logs de un cliente específico si hay problemas
-python3 scripts/panel_admin.py logs mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py logs mitienda
 ```
 
 ---
@@ -361,7 +370,7 @@ python3 scripts/panel_admin.py logs mitienda
 ### Backup manual desde el panel admin
 
 ```bash
-python3 scripts/panel_admin.py backup mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py backup mitienda
 ```
 
 Genera dos archivos:
@@ -372,10 +381,10 @@ Genera dos archivos:
 
 ```bash
 # Interactivo (muestra lista de backups disponibles):
-python3 scripts/panel_admin.py restore-db mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py restore-db mitienda
 
 # Pasando el archivo directamente:
-python3 scripts/panel_admin.py restore-db mitienda contalibra_20260512_143022.db
+./.venv-scripts/bin/python3 scripts/panel_admin.py restore-db mitienda contalibra_20260512_143022.db
 ```
 
 El proceso: para el contenedor → backup automático del estado actual → restaura → reinicia.
@@ -383,7 +392,7 @@ El proceso: para el contenedor → backup automático del estado actual → rest
 ### Ver backups disponibles
 
 ```bash
-python3 scripts/panel_admin.py list-backups mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py list-backups mitienda
 ```
 
 ### El cliente también puede hacer backup/restore
@@ -399,7 +408,7 @@ automático antes de cualquier restauración.
 ### Setup inicial (una sola vez)
 
 ```bash
-python3 scripts/npm_setup.py
+./.venv-scripts/bin/python3 scripts/npm_setup.py
 ```
 
 ### Al crear un cliente nuevo
@@ -410,13 +419,13 @@ automáticamente al final del proceso.
 ### Crear proxy manualmente para un cliente existente
 
 ```bash
-python3 scripts/panel_admin.py
+./.venv-scripts/bin/python3 scripts/panel_admin.py
 # → opción pa (crear proxy NPM)
 ```
 
 O desde CLI:
 ```bash
-python3 scripts/panel_admin.py npm-crear mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py npm-crear mitienda
 ```
 
 ### Prerequisito de DNS
@@ -433,18 +442,18 @@ Para corte por falta de pago u otras situaciones:
 
 ```bash
 # Mostrar estado actual
-python3 scripts/panel_admin.py estado mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py estado mitienda
 
 # Poner en modo aviso (acceso con banner amarillo)
-python3 scripts/panel_admin.py pausar mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py pausar mitienda
 → Mensaje para el cliente: Regularizá tu suscripción para evitar la suspensión.
 
 # Suspender acceso completo
-python3 scripts/panel_admin.py suspender mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py suspender mitienda
 → Mensaje para el cliente: Servicio suspendido por falta de pago. Contactar a soporte.
 
 # Reactivar
-python3 scripts/panel_admin.py activar mitienda
+./.venv-scripts/bin/python3 scripts/panel_admin.py activar mitienda
 ```
 
 El cambio de estado es inmediato — no requiere reiniciar el contenedor.

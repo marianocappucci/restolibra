@@ -2,10 +2,10 @@
 """
 Panel de administración Restolibra.
 Gestiona todos los contenedores de clientes desde un menú interactivo.
-Uso: python3 scripts/panel_admin.py [comando] [slug]
-     python3 scripts/panel_admin.py           → menú interactivo
-     python3 scripts/panel_admin.py listar
-     python3 scripts/panel_admin.py backup micomercio
+Uso: ./.venv-scripts/bin/python3 scripts/panel_admin.py [comando] [slug]
+     ./.venv-scripts/bin/python3 scripts/panel_admin.py           → menú interactivo
+     ./.venv-scripts/bin/python3 scripts/panel_admin.py listar
+     ./.venv-scripts/bin/python3 scripts/panel_admin.py backup micomercio
 
 Wrapper de configuración sobre libracore.provisioning.panel_admin (lógica
 compartida con Contalibra, parametrización de este script — ver
