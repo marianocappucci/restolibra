@@ -114,6 +114,23 @@ describe('la Configuración de Restolibra', () => {
       .toBeInTheDocument()
   })
 
+  it('🔴 MercadoPago ofrece el cartel del QR de la caja', async () => {
+    // El QR de mostrador es un cartel impreso, y conseguirlo era entrar al
+    // panel de MercadoPago y encontrar la caja entre las de todos los productos
+    // —en la cuenta de prueba de esta familia hay diez con nombres parecidos, y
+    // bajar la del vecino no da error: da un cartel que cobra en otra caja—.
+    //
+    // La pantalla es del kit (`libra-ui/configuracion/qr-de-la-caja`) y los dos
+    // endpoints son del motor, así que acá lo único que hay que sostener es que
+    // **este producto la reciba**: hasta el pin de libra-ui v0.56.0 el botón no
+    // existía, y el `mp-qr` de este repo ya prometía en su docstring que estaba
+    // "en Configuración → MercadoPago".
+    montar('/config?seccion=integraciones&integracion=mercadopago')
+
+    expect(await screen.findByRole('button', { name: /Ver QR de la caja/ }))
+      .toBeInTheDocument()
+  })
+
   it('Integraciones agrupa las tres, en el orden de siempre', async () => {
     montar('/config?seccion=integraciones')
 
