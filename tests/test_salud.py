@@ -6,10 +6,19 @@ def test_health(client):
     assert resp.status_code == 200
 
 
-def test_root_redirige_a_dashboard(client):
+def test_root_redirige_al_mapa_de_mesas(client):
+    """🔴 A `/salon` desde el 2026-08-31, no a `/dashboard`.
+
+    Este 307 lo hace el **servidor**, así que no aparece en ninguna búsqueda de
+    rutas del frontend: cuando se retiró la pantalla del Dashboard quedó
+    apuntando ahí, y como la SPA ya redirige `/dashboard` → `/salon`, entrar por
+    la raíz seguía funcionando — con un salto de más, hacia una pantalla que ya
+    no existe. Se encontró mirando el `curl` del deploy en dev, no leyendo el
+    código.
+    """
     resp = client.get("/", follow_redirects=False)
     assert resp.status_code in (302, 307)
-    assert resp.headers["location"] == "/dashboard"
+    assert resp.headers["location"] == "/salon"
 
 
 def test_api_sin_sesion_da_401_json(client):
