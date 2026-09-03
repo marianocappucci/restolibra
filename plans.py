@@ -64,31 +64,29 @@ def modulos_de_plan(plan: str) -> set[str]:
 TODOS_LOS_MODULOS = set(PLAN_MODULOS["premium"])
 
 
-def aplicar_plan_en_db(db_path: str, plan: str):
-    """Aplica un plan escribiendo el estado de módulos directo en la DB SQLite de un
-    cliente (`clientes/<slug>/data/restolibra.db`). Lo usa el backoffice para asignar /
-    subir / bajar el plan de una instancia sin depender del contenedor.
+def aplicar_plan_en_db(db_path: str, plan: str) -> None:
+    """Aplica un plan escribiendo el estado de módulos en la base de un cliente.
+    Lo usa el backoffice para asignar / subir / bajar el plan de una instancia.
 
-    Es idempotente y crea las filas de módulos que falten (INSERT OR IGNORE + UPDATE),
-    así que funciona igual sobre una DB recién seedeada o una existente. Requiere que la
-    tabla `modulos` ya exista (la crea la app al iniciar).
+    🔴 **`db_path` puede ser una ruta SQLite o una URL PostgreSQL**, y esto DELEGA
+    en `libracore.provisioning.apply_plan_modules`, que abre cualquiera de los dos
+    (`libracore.db.core.conectar`). Antes hacía `sqlite3.connect(db_path)` a secas:
+    contra una instancia PostgreSQL —que es lo que corre este producto— eso no
+    abría la base viva (fallaba con *"unable to open database file"* sobre la URL),
+    así que **el plan no se aplicaba** y los módulos quedaban como los dejó el seed
+    (todos prendidos). Es el mismo shim que ya usaban VentaLibra/Gestiolibra; se
+    migró el 2026-09-03 tras verificar el defecto en el VPS (Contalibra tenía el
+    mismo bug — ver wiki/entities/contalibra.md).
+
+    Idempotente (INSERT OR IGNORE + UPDATE). Requiere que la tabla `modulos` exista.
     """
-    import sqlite3
+    from libracore.provisioning import apply_plan_modules
+
     if plan not in PLAN_MODULOS:
         raise ValueError(f"Plan desconocido: {plan!r}")
-    activos = modulos_de_plan(plan)
-    con = sqlite3.connect(db_path)
-    try:
-        for m in sorted(TODOS_LOS_MODULOS):
-            on = 1 if m in activos else 0
-            con.execute(
-                "INSERT OR IGNORE INTO modulos (modulo, habilitado, plan) VALUES (?,?,?)",
-                (m, on, plan),
-            )
-            con.execute(
-                "UPDATE modulos SET habilitado=?, plan=? WHERE modulo=?",
-                (on, plan, m),
-            )
-        con.commit()
-    finally:
-        con.close()
+    apply_plan_modules(
+        db_path,
+        active_modules=modulos_de_plan(plan),
+        all_modules=TODOS_LOS_MODULOS,
+        plan=plan,
+    )
