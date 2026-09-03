@@ -6,7 +6,7 @@ LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
 Restolibra, sin equivalente en Contalibra.
 """
-from app.db_core import get_connection, _ar_now
+from app.db_core import _ar_now, get_connection
 from app.db_stock import _resumen_modificadores
 
 ESTACIONES = ["cocina", "barra"]

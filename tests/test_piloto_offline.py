@@ -173,8 +173,8 @@ def test_si_el_encolado_falla_la_venta_no_queda(admin_client, mesa, como_nodo, m
     y stock. Una venta que el nodo nunca va a sincronizar es peor que un cobro
     que fallo, porque nadie se entera hasta la conciliacion.
     """
-    from app.db_core import get_connection
     from app import db_cobro_pedido
+    from app.db_core import get_connection
 
     def encolado_roto(conn, **datos):
         raise RuntimeError("el outbox no acepta")
@@ -391,6 +391,7 @@ def test_una_tabla_que_el_nodo_no_puede_espejar_corta_el_aprovisionamiento(
     vendiendo contra datos que no están.
     """
     from libracore.db import core
+
     from scripts import nodo_offline
 
     conn = core.get_connection()
@@ -432,6 +433,7 @@ def test_publicar_retira_el_trigger_de_una_tabla_que_salio_de_la_lista(
     """
     from libracore.db import core
     from libraedge.db.changelog import instalar_trigger, listar_cambios
+
     from scripts import nodo_offline
 
     conn = core.get_connection()
@@ -477,7 +479,7 @@ def _un_nodo(node_id="nodo-test", sucursal="test", hace_minutos=1, activo=True):
 
     conn = core.get_connection()
     NodeRepository(conn).register_node(node_id, branch_id=sucursal)
-    visto = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(
+    visto = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
         minutes=hace_minutos
     )
     conn.execute(

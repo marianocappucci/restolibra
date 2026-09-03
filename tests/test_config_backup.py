@@ -54,8 +54,9 @@ def test_backup_ahora_devuelve_un_zip_con_la_base(admin_client):
 def test_el_backup_se_lleva_los_certificados_de_arca(admin_client, tmp_path):
     """El backup propio se llevaba SOLO la base. Sin los certificados, un
     cliente restaurado no puede facturar."""
-    from app.web.routers.config import CERTS_DIR
     import os
+
+    from app.web.routers.config import CERTS_DIR
 
     os.makedirs(CERTS_DIR, exist_ok=True)
     with open(os.path.join(CERTS_DIR, "cert-de-prueba.pem"), "w") as f:

@@ -207,7 +207,8 @@ def transferir_stock(producto_id: int, origen_id: int, destino_id: int,
       el usuario. El mensaje del motor nombra ids (`el deposito 3`), que no le
       dicen nada a quien está mirando una pantalla con nombres.
     """
-    from datetime import date as _date, datetime as _datetime
+    from datetime import date as _date
+    from datetime import datetime as _datetime
     # `fecha` viene como 'YYYY-MM-DD' y el motor espera un datetime. La forma
     # canónica completa es la misma que ya usaba `add_movimiento_stock`, así
     # que los movimientos nuevos siguen ordenando igual que los viejos.

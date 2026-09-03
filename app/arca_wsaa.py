@@ -3,7 +3,7 @@ interno, ver pyproject.toml y wiki/entities/libracore.md). No editar el
 comportamiento acá; los cambios van en el repo libracore."""
 from libracore.arca_wsaa import (  # noqa: F401
     WSAA_URL,
-    validar_archivos,
-    info_certificado,
     autenticar,
+    info_certificado,
+    validar_archivos,
 )

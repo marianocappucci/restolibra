@@ -15,7 +15,8 @@ import httpx
 import pytest
 from libracore import pagos as acreditacion
 
-from app import config_manager, database as db
+from app import config_manager
+from app import database as db
 
 PENDIENTE = acreditacion.EstadoAcreditacion.PENDIENTE.value
 
@@ -52,8 +53,9 @@ def _mockear(monkeypatch, rutas, registro=None):
     """Despacha por URL. Es lo que deja **afirmar a qué URL se llamó**: una
     implementación que le pegue a otro endpoint no matchea y revienta, en vez
     de recibir la respuesta de otra cosa."""
-    import app.mp_api as shim
     from libracore import mp_api as motor
+
+    import app.mp_api as shim
 
     class Transporte(httpx.AsyncBaseTransport):
         async def handle_async_request(self, request):

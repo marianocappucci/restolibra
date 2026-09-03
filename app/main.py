@@ -6,11 +6,11 @@ import os
 import sys
 from datetime import date
 
-from rich.console import Console
-from rich.table import Table
 from rich import box
+from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt, Confirm
+from rich.prompt import Confirm, Prompt
+from rich.table import Table
 
 from app import database as db
 from app import pdf_generator as pdf_gen

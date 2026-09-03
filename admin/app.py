@@ -8,8 +8,8 @@ clientes/.
 from libracore.admin.app import create_admin_app
 
 from admin import auth, services
-from admin.templates_config import templates
 from admin.routers import clientes as clientes_router
+from admin.templates_config import templates
 
 app = create_admin_app(
     product_name="Restolibra",

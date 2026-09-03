@@ -4,8 +4,9 @@ wiki/entities/restolibra.md, migracion a React). Reusa `db_logs.py` (via
 web/api/logs.py de ese repo). Admin-only (gateado en web/app.py con
 require_admin_json). El export CSV (`GET /admin/logs/export`) sigue en
 `web/routers/logs.py` sin tocar, la SPA lo linkea directo."""
-from app import database as db
 from fastapi import APIRouter
+
+from app import database as db
 
 router = APIRouter(prefix="/api/logs", tags=["logs"])
 

@@ -22,7 +22,6 @@ no se estampan.
 > nodo—, no parte del schema del producto.
 """
 from alembic import op
-
 from libracore.db.migraciones import conexion_libracore
 from libraedge.db.changelog import init_changelog_schema
 from libraedge.db.schema import init_schema as init_edge_schema

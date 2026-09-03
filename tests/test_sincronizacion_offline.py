@@ -9,7 +9,8 @@ import json
 
 import pytest
 
-from scripts.nodo_offline import TABLAS_DE_REFERENCIA, main as provisionar
+from scripts.nodo_offline import TABLAS_DE_REFERENCIA
+from scripts.nodo_offline import main as provisionar
 
 
 def _payload(node_id="node-1", sequence=1, numero="V-90001"):

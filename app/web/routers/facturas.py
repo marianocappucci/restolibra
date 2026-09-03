@@ -1,7 +1,8 @@
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import FileResponse
-from typing import Annotated
 
 from app import database as db
 from app import pdf_generator as pdf_gen

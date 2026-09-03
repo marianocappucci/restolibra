@@ -9,9 +9,9 @@ que es exactamente lo que haria el SMTP real.
 import re
 
 import pytest
+from libraauth.email_sender import SmtpConfig
 
 from app import db_usuarios
-from libraauth.email_sender import SmtpConfig
 from tests.conftest import ADMIN_USER
 
 
