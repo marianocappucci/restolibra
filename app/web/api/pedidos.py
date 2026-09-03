@@ -30,10 +30,9 @@ import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator, model_validator
-
 from libracore import medios_pago
 from libracore import pagos as acreditacion
+from pydantic import BaseModel, field_validator, model_validator
 
 from app import database as db
 from app.web.api_auth import get_current_user_json

@@ -1,8 +1,9 @@
 
 import datetime
+from typing import Annotated
+
 from fastapi import APIRouter, Depends
 from fastapi.responses import Response
-from typing import Annotated
 
 from app import database as db
 from app.web.auth import require_auth, require_role

@@ -20,10 +20,10 @@ import contextlib
 from libracore.db.core import Conexion, _ar_now, get_connection
 from libracore.db.turnos import (  # noqa: F401
     create_turno,
-    get_turno_activo,
-    get_turno_activo_any,
     get_all_turnos,
     get_turno,
+    get_turno_activo,
+    get_turno_activo_any,
 )
 
 

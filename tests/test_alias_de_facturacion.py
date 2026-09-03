@@ -28,14 +28,15 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-from app import config_manager
-from app import database as db
 
 # 🔑 Se parchea `libracore.mp_api` y NO `app.mp_api`: éste es un shim
 # (`from libracore.mp_api import ...`), así que su atributo es un binding
 # distinto del que resuelve el motor. Parchear el del producto no intercepta
 # nada y el test sale a la API real de MercadoPago.
 from libracore import mp_api
+
+from app import config_manager
+from app import database as db
 
 RAIZ = Path(__file__).resolve().parent.parent
 

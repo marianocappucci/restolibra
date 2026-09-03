@@ -9,8 +9,7 @@ en `app/db_usuarios.py`.
 """
 from libracore.facturas_router import smtp_efectivo
 
-from app import config_manager
-from app import email_sender
+from app import config_manager, email_sender
 from app.db_usuarios import smtp_config
 
 

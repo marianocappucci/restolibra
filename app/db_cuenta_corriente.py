@@ -18,9 +18,10 @@ directos − abonos) no cambió en ningún momento.
 from functools import partial
 
 from libracore.db import cuenta_corriente as _cc
-from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
+
 # Estas dos no dependen del origen de las ventas: se usan tal cual.
 from libracore.db.cuenta_corriente import (  # noqa: F401
+    VENTAS_LIBRACOMMERCE,
     create_cc_pago,
     delete_cc_pago,
 )

@@ -8,15 +8,16 @@ LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
 Restolibra, sin equivalente en Contalibra.
 """
-from app.db_core import get_connection, _ar_now
-from app.libraedge_integration import encolar_pedido_cobrado
+from libracore import pagos as acreditacion
+
+from app.db_caja import create_caja_movimiento
+from app.db_core import _ar_now, get_connection
 from app.db_modulos import get_modulos
 from app.db_pedidos import get_pedido
-from app.db_ventas import get_next_venta_numero, create_venta, add_venta_pago
-from libracore import pagos as acreditacion
-from app.db_caja import create_caja_movimiento
 from app.db_stock import descontar_stock_venta
 from app.db_turnos import get_turno_activo, vincular_venta_turno
+from app.db_ventas import add_venta_pago, create_venta, get_next_venta_numero
+from app.libraedge_integration import encolar_pedido_cobrado
 
 
 def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,

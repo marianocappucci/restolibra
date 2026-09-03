@@ -31,6 +31,7 @@ pago, así que espejarlas daría la impresión de que funcionan offline.
 
 import argparse
 import sys
+from datetime import UTC
 
 #: El reparto de autoridad de la Fase 0: qué tablas manda el central y el nodo
 #: sólo espeja. **Sólo los nombres** — la clave primaria NO se declara acá.
@@ -395,8 +396,8 @@ def _hace_cuanto(marca: str | None) -> str:
     except ValueError:
         return f"fecha ilegible ({marca!r})"
     if cuando.tzinfo is None:
-        cuando = cuando.replace(tzinfo=timezone.utc)
-    minutos = (datetime.now(timezone.utc) - cuando).total_seconds() / 60
+        cuando = cuando.replace(tzinfo=UTC)
+    minutos = (datetime.now(UTC) - cuando).total_seconds() / 60
     if minutos < 2:
         return "recién"
     if minutos < 120:
@@ -433,7 +434,7 @@ def vigilar(umbral_minutos: int) -> int:
 
     from datetime import datetime, timezone
 
-    ahora = datetime.now(timezone.utc)
+    ahora = datetime.now(UTC)
     callados = []
     vigilados = 0
     for fila in nodos:
@@ -447,7 +448,7 @@ def vigilar(umbral_minutos: int) -> int:
             try:
                 cuando = datetime.fromisoformat(visto)
                 if cuando.tzinfo is None:
-                    cuando = cuando.replace(tzinfo=timezone.utc)
+                    cuando = cuando.replace(tzinfo=UTC)
                 minutos = (ahora - cuando).total_seconds() / 60
             except ValueError:
                 minutos = None

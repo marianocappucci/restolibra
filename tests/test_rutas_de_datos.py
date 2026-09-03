@@ -17,7 +17,6 @@ import pytest
 
 from app.web.routers import config as cfg
 
-
 RUTAS = ("LOGO_DIR", "CERTS_DIR", "BACKUPS_DIR")
 
 

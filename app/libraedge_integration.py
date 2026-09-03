@@ -177,10 +177,11 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
             f"schema {operation.schema_version} de {TIPO_OPERACION} desconocido"
         )
 
+    from libracore import pagos as acreditacion
+
     from app.db_caja import create_caja_movimiento
     from app.db_stock import descontar_stock_venta
     from app.db_ventas import add_venta_pago, create_venta
-    from libracore import pagos as acreditacion
 
     datos = operation.payload
     numero = datos["numero"]

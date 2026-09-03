@@ -17,10 +17,10 @@ la cookie es la misma, porque es el mismo objeto `SessionAuth` de siempre. Una
 sesion abierta no se invalida por este cambio.
 """
 from fastapi import Request
+from libraauth.session_auth import build_json_api_auth_router
 
 from app import config_manager
 from app import database as db
-from libraauth.session_auth import build_json_api_auth_router
 
 
 def _campos_del_producto(request: Request, user: dict) -> dict:

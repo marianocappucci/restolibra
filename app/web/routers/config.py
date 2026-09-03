@@ -1,8 +1,8 @@
 import os
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
-from typing import Annotated
 
 from app import config_manager
 from app import database as db

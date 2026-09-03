@@ -21,14 +21,16 @@ probo y se revirtio el 2026-07-30, ver log.md del wiki).
 """
 import os
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
 from libraauth.bootstrap import ensure_admin_user as _ensure_admin_user
 from libraauth.bootstrap import ensure_demo_user as _ensure_demo_user
+from libraauth.crypto import ClaveDeCifradoAusente  # noqa: F401  (re-exportada)
 from libraauth.hashing import (  # noqa: F401  (re-exportados via database.py)
     DUMMY_PASSWORD_HASH as _DUMMY_PASSWORD_HASH,
+)
+from libraauth.hashing import (
     hash_password as _hash_password,
+)
+from libraauth.hashing import (
     verify_password as _verify_password,
 )
 from libraauth.models import Base as _AuthBase
@@ -38,12 +40,13 @@ from libraauth.password_reset import (  # noqa: F401  (re-exportadas para el rou
     PasswordResetService,
 )
 from libraauth.repository import UserRepository
-from libraauth.crypto import ClaveDeCifradoAusente  # noqa: F401  (re-exportada)
 from libraauth.smtp_settings import (  # noqa: F401  (re-exportados para el router)
     SIN_CAMBIOS,
     SmtpSettingsRepository,
     resolver_smtp_config,
 )
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 from app.db_core import DB_PATH, ES_POSTGRES
 

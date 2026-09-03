@@ -6,8 +6,9 @@ Migrado el 2026-07-30 de `libracore.auth`: el auth salió de LibraCore y pasó a
 ser un motor transversal propio. `SessionAuth` es el mismo objeto con la misma
 API pública, y sigue recibiendo los callbacks a `database` — que ahora los
 resuelve `db_usuarios.py`, adaptador sobre el `UserRepository` de libraauth."""
-from app import database as db
 from libraauth.session_auth import SessionAuth
+
+from app import database as db
 
 _auth = SessionAuth(
     dev_secret_fallback="restolibra-secret-change-me",
