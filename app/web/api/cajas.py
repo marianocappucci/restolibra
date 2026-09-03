@@ -6,11 +6,9 @@ web/api/dashboard.py para el patron general de esta etapa. `GET
 `web/routers/cajas.py` sin tocar, se reusa desde la SPA cuando se migre
 Ventas/Salon."""
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-
-from libracore.db.caja import PuntoDeVentaRepetido
-
 from libracore import medios_pago
+from libracore.db.caja import PuntoDeVentaRepetido
+from pydantic import BaseModel
 
 from app import database as db
 

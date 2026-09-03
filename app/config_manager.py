@@ -7,7 +7,11 @@ panera) se agregan acá como extra_defaults, ya que libracore no conoce nada
 específico de Restolibra."""
 from libracore import config_manager as _core
 from libracore.config_manager import (  # noqa: F401
-    CONFIG_PATH, LOGO_DIR, CERTS_DIR, resolve_logo_path, resolve_cert_paths,
+    CERTS_DIR,
+    CONFIG_PATH,
+    LOGO_DIR,
+    resolve_cert_paths,
+    resolve_logo_path,
 )
 
 _EXTRA_DEFAULTS = {

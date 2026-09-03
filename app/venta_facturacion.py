@@ -43,7 +43,9 @@ from app import config_manager
 from app import database as db
 from app import pdf_generator as pdf_gen
 from app.web.helpers.arca_helper import (
-    ambiente_de, get_next_numero_with_arca, solicitar_cae,
+    ambiente_de,
+    get_next_numero_with_arca,
+    solicitar_cae,
 )
 
 logger = logging.getLogger(__name__)

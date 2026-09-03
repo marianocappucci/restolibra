@@ -1,9 +1,10 @@
 
-from typing import Annotated
-from fastapi import APIRouter, Request, Depends
-from fastapi.responses import StreamingResponse
 import csv
 import io
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, Request
+from fastapi.responses import StreamingResponse
 
 from app import database as db
 from app.web.auth import require_admin

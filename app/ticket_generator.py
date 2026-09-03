@@ -18,7 +18,6 @@ from libracore.ticket_generator import (  # noqa: F401
     recortar_a_contenido,
 )
 
-
 # ── COMANDA de cocina / barra (sin precios) ─────────────────────────────────────
 
 _CANAL_LABEL = {

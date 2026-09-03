@@ -22,10 +22,10 @@ simulado, así que la suite recorre el flujo entero sin tocar ARCA.
 """
 import httpx
 import pytest
+from libracore import mp_api as mp_api_del_motor
 
 from app import config_manager
 from app import database as db
-from libracore import mp_api as mp_api_del_motor
 
 #: El `AsyncClient` de verdad, capturado UNA vez al importar. Sin esto el arnés
 #: se rompe solo: se parchea el `httpx` global, así que el segundo test tomaría

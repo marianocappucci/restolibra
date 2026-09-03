@@ -25,8 +25,9 @@ import sys
 # no /app: sin esto no encuentra el paquete `app`.
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from app.web.routers.webhooks import _es_hosting_mensual  # noqa: E402
 from libracore.mp_sync import sincronizar_y_facturar  # noqa: E402
+
+from app.web.routers.webhooks import _es_hosting_mensual  # noqa: E402
 
 logging.basicConfig(
     level=logging.INFO,

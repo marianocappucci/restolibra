@@ -1,7 +1,6 @@
 """Configuracion, gating de modulos por plan y corte de servicio."""
-from app import config_manager
+from app import config_manager, db_core
 from app import db_usuarios as db
-from app import db_core
 
 
 def test_la_config_ya_no_se_lee_entera_por_un_solo_endpoint(admin_client):

@@ -16,9 +16,9 @@ toca**. Mismo patrón exacto que Contalibra (P7) — copia deliberada.
 from libracore.db.core import get_connection
 from libracore.db.logs import (  # noqa: F401
     _LOG_TIPOS,
-    registrar_auth_event,
-    get_auth_log,
     contar_login_fallidos_recientes,
+    get_auth_log,
+    registrar_auth_event,
 )
 
 

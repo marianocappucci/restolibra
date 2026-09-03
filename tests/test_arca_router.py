@@ -26,7 +26,7 @@ RUTA = "/api/config/arca"
 def _par():
     clave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     nombre = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "test")])
-    ahora = datetime.datetime.now(datetime.timezone.utc)
+    ahora = datetime.datetime.now(datetime.UTC)
     cert = (
         x509.CertificateBuilder()
         .subject_name(nombre).issuer_name(nombre)

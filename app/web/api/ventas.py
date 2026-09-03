@@ -27,12 +27,12 @@ entro. Ver `db_ventas.acreditar_pago_qr`.
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, field_validator, model_validator
-
 from libracore import medios_pago
 from libracore import pagos as acreditacion
+from pydantic import BaseModel, field_validator, model_validator
 
-from app import config_manager, database as db, mp_api, venta_facturacion
+from app import config_manager, mp_api, venta_facturacion
+from app import database as db
 from app.web.api_auth import get_current_user_json, require_role_json
 
 router = APIRouter(prefix="/api/ventas", tags=["ventas"])

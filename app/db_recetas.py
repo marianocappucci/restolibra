@@ -17,7 +17,7 @@ hook `configure_resolver_receta` (Restolibra era el único producto que lo
 configuraba). Ese hook ya no se usa: `db_stock.py` (reescrito en P8) llama
 directo a `get_receta()` de este módulo.
 """
-from app.db_core import get_connection, _ar_now
+from app.db_core import _ar_now, get_connection
 from app.db_productos import get_all_productos
 from app.db_stock import add_movimiento_stock
 

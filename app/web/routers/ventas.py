@@ -1,5 +1,6 @@
 
 from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from app import database as db

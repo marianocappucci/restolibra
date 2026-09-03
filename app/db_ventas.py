@@ -30,8 +30,8 @@ dentro del motor genérico) sino en la tabla `venta_links`, propia de
 Restolibra (mismo patrón que Contalibra), con `venta_id` = `sales.id`.
 """
 import contextlib
-from decimal import Decimal
 import sqlite3
+from decimal import Decimal
 
 from libracore import medios_pago
 from libracore import pagos as acreditacion
@@ -43,6 +43,7 @@ from libracore.db.turnos import get_turno_activo
 
 from app.db_core import get_connection
 from app.db_stock import add_movimiento_stock, descontar_stock_venta
+
 # `vincular_venta_turno` de Restolibra, no el de LibraCore: el turno de una
 # venta vive en `venta_links`, no en la tabla `ventas` vieja.
 from app.db_turnos import vincular_venta_turno
