@@ -1,7 +1,19 @@
-# Contalibra — Guía de Operaciones
+# Restolibra — Guía de Operaciones
 
 Guía de referencia para gestionar el servidor, dar de alta clientes nuevos y
 desplegar actualizaciones del sistema.
+
+> 🔴 **Aviso: fuera de la sección de migraciones, este archivo es una copia literal del
+> `OPERACIONES.md` de Contalibra** — estaba byte por byte idéntico al de ese repo,
+> título incluido. Sólo "Migrar la base antes de desplegar" está escrita para
+> Restolibra y verificada contra el VPS. **Todo el resto nombra a Contalibra**: las
+> rutas (`/root/contalibra`), los contenedores, los puertos, la base y el website.
+>
+> **Y traducir mentalmente `contalibra` → `restolibra` no alcanza**: los nombres de las
+> instancias no son simétricos entre los dos productos. Las de Restolibra son
+> `restolibra-dev`, `restolibra-demo` y `restolibra-sistema`.
+>
+> Adaptar el resto del documento es un trabajo aparte, todavía pendiente.
 
 ---
 
@@ -12,13 +24,14 @@ desplegar actualizaciones del sistema.
 3. [Setup inicial del servidor](#setup-inicial-del-servidor)
 4. [Alta de un cliente nuevo](#alta-de-un-cliente-nuevo)
 5. [Gestión diaria con panel_admin.py](#gestión-diaria-con-panel_adminpy)
-6. [Desplegar una actualización](#desplegar-una-actualización)
-7. [Cuándo reconstruir la imagen vs solo reiniciar](#cuándo-reconstruir-la-imagen-vs-solo-reiniciar)
-8. [Backup y restauración](#backup-y-restauración)
-9. [Proxy y SSL (Nginx Proxy Manager)](#proxy-y-ssl-nginx-proxy-manager)
-10. [Gestión del estado del servicio](#gestión-del-estado-del-servicio)
-11. [Website de marketing (contalibra.com.ar)](#website-de-marketing-contalibracomar)
-12. [Estructura de directorios](#estructura-de-directorios)
+6. [Migrar la base antes de desplegar](#migrar-la-base-antes-de-desplegar)
+7. [Desplegar una actualización](#desplegar-una-actualización)
+8. [Cuándo reconstruir la imagen vs solo reiniciar](#cuándo-reconstruir-la-imagen-vs-solo-reiniciar)
+9. [Backup y restauración](#backup-y-restauración)
+10. [Proxy y SSL (Nginx Proxy Manager)](#proxy-y-ssl-nginx-proxy-manager)
+11. [Gestión del estado del servicio](#gestión-del-estado-del-servicio)
+12. [Website de marketing (contalibra.com.ar)](#website-de-marketing-contalibracomar)
+13. [Estructura de directorios](#estructura-de-directorios)
 
 ---
 
@@ -289,6 +302,105 @@ cd /root/contalibra
 | `sp` | `pausar <slug>` | Pausa (muestra banner de aviso, sin cortar acceso) |
 | `ss` | `suspender <slug>` | Suspende (bloquea el acceso completamente) |
 | `se` | `estado <slug>` | Muestra el estado actual del servicio |
+
+---
+
+## Migrar la base antes de desplegar
+
+> ✅ **Esta sección sí está escrita para Restolibra** y verificada contra el VPS.
+
+**Paso obligatorio de todo deploy que traiga una versión nueva de LibraCore.**
+
+Las tablas del motor —`clients`, facturación, caja, recibos— las define **LibraCore**,
+no este repo, y su schema evoluciona con una cadena de migraciones de Alembic. Cuando
+sube el pin de `libracore` en `pyproject.toml`, el código nuevo puede esperar columnas
+que la base todavía no tiene.
+
+> 🔴 **Sin este paso, el código nuevo escribe contra un schema viejo.** Y no falla al
+> arrancar, que es lo que lo hace peligroso: falla más tarde, cuando alguien toca la
+> pantalla que usa la columna nueva — y para entonces la instancia ya está sirviendo.
+
+### Setup único: el script no llega por `git pull`
+
+`migrar_instancias.sh` vive en el repo de **LibraCore**, en `scripts/` — **fuera del
+paquete Python**, así que no lo trae `pip install libracore` ni el `git pull` de este
+repo. Hace falta un checkout del motor en el servidor:
+
+```bash
+git clone git@github-libracore:marianocappucci/libracore.git /root/libracore
+```
+
+El alias `github-libracore` ya está en el `~/.ssh/config` del VPS, apuntando a la
+deploy key de solo lectura de ese repo.
+
+### Correr las migraciones
+
+En el servidor, **después del `git pull` de este repo y antes de levantar los
+contenedores con la versión nueva**:
+
+```bash
+git -C /root/libracore pull
+
+# 1. DRY-RUN (es el default): dice qué instancias encontró y contra qué base iría
+LIBRACORE_REF=v1.28.4 /root/libracore/scripts/migrar_instancias.sh \
+  restolibra-dev restolibra-demo restolibra-sistema
+
+# 2. Revisada la lista, aplicar:
+LIBRACORE_REF=v1.28.4 /root/libracore/scripts/migrar_instancias.sh --si \
+  restolibra-dev restolibra-demo restolibra-sistema
+```
+
+El dry-run imprime, sin tocar nada:
+
+```
+LibraCore ref: v1.28.4
+MODO DRY-RUN — nada se va a modificar (pasá --si para aplicar)
+
+→ restolibra-dev
+    base: postgresql://***:***@restolibra-postgres:5432/restolibra
+    red:  restolibra-dev-datos
+→ restolibra-demo
+    base: postgresql://***:***@restolibra-demo-postgres:5432/restolibra
+    red:  restolibra-demo-datos
+→ restolibra-sistema
+    base: postgresql://***:***@restolibra-sistema-postgres:5432/restolibra
+    red:  restolibra-sistema-datos
+```
+
+**`LIBRACORE_REF` es el tag que pinea el `pyproject.toml` de _este_ repo**, no un
+número común a la familia: cada producto pinea su propia versión del motor.
+
+```bash
+grep libracore pyproject.toml
+```
+
+**Los argumentos son nombres de contenedor, no slugs.** `restolibra-sistema` es la
+**instancia de cliente real** — no confundirla con la demo.
+
+> **El dry-run no es una formalidad.** La lista sale de inspeccionar contenedores, así
+> que una instancia de cliente pasada por error se migra igual que una de dev. Mirar
+> la lista antes de `--si`.
+
+Antes de aplicar sobre la instancia de cliente, backup:
+
+```bash
+./.venv-scripts/bin/python3 scripts/panel_admin.py backup sistema
+```
+
+### Por qué un contenedor efímero y no `alembic` en el host
+
+> 🔴 **El host no puede resolver la URL de una instancia.** El destino es
+> `postgresql://…@restolibra-postgres:5432/…`, y ese nombre es un **alias de la red de
+> Docker** del sidecar de datos: desde afuera de esa red no existe. Correr las
+> migraciones derecho en el host falla con *"could not translate host name"*.
+
+Por eso el script las corre en un contenedor efímero adosado a la **misma red** que la
+instancia. Las URLs se imprimen siempre enmascaradas: la de PostgreSQL lleva la
+contraseña del sidecar adentro.
+
+> ⚠️ **El orden importa.** Los contenedores levantan con el código nuevo apenas
+> termina el deploy. Si las migraciones no corrieron antes, el código nuevo queda
+> sirviendo contra el schema viejo.
 
 ---
 
