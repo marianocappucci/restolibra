@@ -1,6 +1,7 @@
 """Shim: la lógica de remitos y presupuestos ahora vive en libracore.db.remitos_presupuestos."""
 from libracore.db.remitos_presupuestos import (  # noqa: F401
     auto_vencimiento_presupuestos,
+    convertir_presupuesto_a_remito,
     create_presupuesto,
     create_remito,
     delete_presupuesto,

@@ -210,6 +210,7 @@ from app.db_recetas import (  # noqa: F401
 )
 from app.db_remitos_presupuestos import (  # noqa: F401
     auto_vencimiento_presupuestos,
+    convertir_presupuesto_a_remito,
     create_presupuesto,
     create_remito,
     delete_presupuesto,
