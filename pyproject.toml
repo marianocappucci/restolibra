@@ -83,10 +83,15 @@ dependencies = [
     # que este producto NO tenía en su contenedor (medido) y que
     # `libracore-migrar` necesita para aplicar la cadena del motor. Sin él, el
     # paso del deploy muere con un `ModuleNotFoundError` en vez de correr.
-    # v1.65.0 → v1.66.0 (2026-08-30): trae `cajas.punto_venta`, el punto de venta
-    # de ARCA por mostrador. Sin este bump la columna no existe y la pantalla de
-    # Cajas manda un campo que el motor no conoce.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.75.0",
+    # v1.78.0 (2026-09-03): la cuenta corriente normaliza el CUIT al cruzar
+    # `clients` con `facturas` (sacando los guiones de los dos lados antes de
+    # comparar). Sin esto, un cliente cuyo CUIT tiene guiones en la ficha pero
+    # alguna factura los perdió (las dos grafías conviven en la base real) ve
+    # su deuda por facturas invisible en el saldo de cuenta corriente.
+    # Detectado en producción de Contalibra, ver wiki/entities/contalibra.md;
+    # no se encontró ningún cliente de Restolibra expuesto hoy (demo revisada,
+    # 0 casos), pero el bug es del motor compartido.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.78.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
