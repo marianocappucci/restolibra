@@ -62,18 +62,9 @@ class EmailPayload(BaseModel):
 
 
 def _convertir_a_remito(presupuesto: dict):
-    remito_number = db.get_next_remito_number()
-    remito_id = db.create_remito(
-        number=remito_number, date=presupuesto["date"], client_id=presupuesto["client_id"],
-        client_name=presupuesto["client_name"], client_address=presupuesto.get("client_address", ""),
-        client_cuit=presupuesto.get("client_cuit", ""), client_email=presupuesto.get("client_email", ""),
-        client_phone=presupuesto.get("client_phone", ""), items=presupuesto["items"],
-        subtotal=presupuesto["subtotal"], tax_rate=presupuesto["tax_rate"], tax_amount=presupuesto["tax_amount"],
-        total=presupuesto["total"], observations=presupuesto.get("observations", ""),
-    )
-    pdf_path = pdf_gen.generate_pdf(db.get_remito(remito_id))
-    db.update_remito_pdf_path(remito_id, pdf_path)
-    db.update_presupuesto_remito_id(presupuesto["id"], remito_id)
+    # La lógica vive en el motor (libracore v1.79.0, convertir_presupuesto_a_remito);
+    # acá sólo se enchufa la arista del producto: el generador de PDF de Restolibra.
+    db.convertir_presupuesto_a_remito(presupuesto, generar_pdf=pdf_gen.generate_pdf)
 
 
 @router.get("")
