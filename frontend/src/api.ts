@@ -30,6 +30,7 @@ export { UNIDADES, TIPO_MOVIMIENTO_LABELS, opcionesProducto } from 'libra-ui/com
 export type {
   Producto, CategoriaProducto, Deposito, StockItem, StockListado, MovimientoStock, StockPorDeposito,
 } from 'libra-ui/comercio/tipos'
+export type { ListaPrecio, ItemListaPrecio, Quiebre, ProductoBusqueda } from 'libra-ui/comercio/tipos'
 
 export type {
   BorradorDuplicado, Caja, Factura, FacturaDetalle, FacturaItem,
@@ -675,15 +676,7 @@ export type LogsData = {
 // (no hay "canal" en este modelo; Salon/Pedidos, que reusan este motor
 // para cobrar mesas, son una etapa aparte).
 
-export type ListaPrecio = {
-  id: number
-  nombre: string
-  descripcion: string
-  activa: number
-  es_default: number
-}
 
-export type ProductoBusqueda = { id: number; codigo: string; nombre: string; precio_venta: number; unidad: string }
 
 export type VentaItem = { nombre: string; qty: number; precio: number; subtotal: number; producto_id: number | null }
 export type VentaPago = { id?: number; medio: string; monto: number; referencia: string }
@@ -851,17 +844,6 @@ export type ReporteCostosData = {
   consumo: ConsumoInsumoRow[]
 }
 
-export type ItemListaPrecio = {
-  id: number
-  codigo: string | null
-  nombre: string
-  unidad: string
-  categoria: string
-  precio_venta: number
-  precio_costo: number
-  precio_lista: number
-  en_lista: number
-}
 
 
 
