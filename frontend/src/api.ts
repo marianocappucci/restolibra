@@ -21,6 +21,16 @@ import type { OpcionSelect } from 'libra-ui/SelectBuscable'
 // MEDIOS_PAGO_LABELS se fue: era una copia de la lista del motor y divergia
 // en las dos direcciones. La lista sale de la API; las etiquetas y
 // abreviaturas, de libra-ui/medios-pago. Ver lib/medios-pago.ts.
+import type { Producto } from 'libra-ui/comercio/tipos'
+// Los tipos y helpers del catalogo, el stock y los depositos viven en el kit
+// desde P9-M1 (2026-09-06): son el contrato JSON de las factories de
+// LibraCommerce, el mismo para los dos productos. Se re-exportan con los
+// nombres historicos para que el resto de las pantallas no cambie un import.
+export { UNIDADES, TIPO_MOVIMIENTO_LABELS, opcionesProducto } from 'libra-ui/comercio/tipos'
+export type {
+  Producto, CategoriaProducto, Deposito, StockItem, StockListado, MovimientoStock, StockPorDeposito,
+} from 'libra-ui/comercio/tipos'
+
 export type {
   BorradorDuplicado, Caja, Factura, FacturaDetalle, FacturaItem,
 } from 'libra-ui/facturas'
@@ -722,16 +732,6 @@ export function opcionesProveedor(proveedores: Proveedor[]): OpcionSelect[] {
   }))
 }
 
-export function opcionesProducto(productos: Producto[]): OpcionSelect[] {
-  return productos.map((p) => ({
-    value: String(p.id),
-    // El codigo es lo que se lee de la etiqueta cuando hay varios productos
-    // de nombre parecido; la categoria ubica en la carta.
-    label: p.nombre,
-    hint: [p.codigo, p.categoria, p.activo ? null : 'inactivo']
-      .filter(Boolean).join(' · ') || undefined,
-  }))
-}
 
 // Las categorias se eligen **por nombre, no por id** en las pantallas que las
 // usan (el filtro de Egresos y el alta de gasto guardan el nombre como texto).
@@ -768,43 +768,12 @@ export type KdsFeed = { comandas: Comanda[] }
 // unidad de compra (texto libre + factor, no persistido en `productos`,
 // ver docstring del router).
 
-export type MovimientoStock = {
-  id: number
-  producto_id: number
-  producto_nombre: string
-  unidad: string
-  tipo: 'entrada' | 'salida' | 'ajuste' | 'venta' | 'merma' | 'produccion'
-  cantidad: number
-  referencia: string
-  fecha: string
-  usuario_id: number | null
-  venta_id: number | null
-  created_at: string
-}
 
-export type StockListado = { productos: StockItem[]; alertas: StockItem[] }
 
-export const TIPO_MOVIMIENTO_LABELS: Record<MovimientoStock['tipo'], string> = {
-  entrada: 'Entrada',
-  salida: 'Salida',
-  ajuste: 'Ajuste',
-  venta: 'Venta',
-  merma: 'Merma',
-  produccion: 'Producción',
-}
 
 // Misma lista cerrada que el backend (web/api/stock.py MOTIVOS_MERMA,
 // portada de web/templates/stock/ajuste.html) -- no hay tabla de motivos
 // en el modelo real, es un dropdown fijo.
-export const MOTIVOS_MERMA = [
-  'Quemado',
-  'Caída al piso',
-  'Vencimiento',
-  'Rotura',
-  'Degustación',
-  'Consumo del personal',
-  'Otro',
-] as const
 
 // --- Depósitos / Listas de precio (detalle) / Config -- portados desde
 // Contalibra (frontend/src/api.ts), mismo backend libracore (db_productos.py/
@@ -814,29 +783,13 @@ export const MOTIVOS_MERMA = [
 // ficha técnica/receta) -- DepositoTransferencia.tsx seguía usándolo con un
 // subset (id/codigo/nombre/activo), así que ampliar acá no rompe ese uso.
 
-export type Producto = {
-  id: number
-  codigo: string | null
-  nombre: string
-  descripcion: string
-  precio_venta: number
-  precio_costo: number
-  unidad: string
-  categoria: string
-  stock_minimo: number
-  estacion: string
-  vendible: number
-  activo: number
-}
 
-export const UNIDADES = ['u', 'kg', 'g', 'lt', 'ml', 'm', 'cm', 'm²', 'caja', 'par', 'docena', 'pack']
 export const ESTACIONES = [
   { value: '', label: '— Sin comanda —' },
   { value: 'cocina', label: 'Cocina' },
   { value: 'barra', label: 'Barra' },
 ] as const
 
-export type CategoriaProducto = { id: number; nombre: string }
 
 // --- Recetas / ficha técnica (módulo Productos, Etapa C -- sin equivalente
 // en Contalibra) -- ver web/api/productos.py / db_recetas.py.
@@ -910,27 +863,8 @@ export type ItemListaPrecio = {
   en_lista: number
 }
 
-export type Deposito = {
-  id: number
-  nombre: string
-  descripcion: string
-  es_default: number
-  activo: number
-  total_productos?: number
-}
 
-export type StockItem = {
-  id: number
-  codigo: string | null
-  nombre: string
-  unidad: string
-  categoria: string
-  stock_minimo: number
-  activo: number
-  stock_actual: number
-}
 
-export type StockPorDeposito = { id: number; nombre: string; es_default: number; stock_actual: number }
 
 // `GET /api/config` sigue devolviendo `servicio_estado` y `servicio_mensaje`
 // —viven en el mismo `config.json`—, pero no se declaran acá a propósito: no
