@@ -91,6 +91,7 @@ configure(
     # diga **cuál de las dos** falló.
     migraciones=(
         ("libracore-migrar", "upgrade", "--prefijo", "restolibra"),
+        ("libracommerce-migrar", "upgrade", "--prefijo", "restolibra"),
         ("alembic", "upgrade", "head"),
     ),
     repo_root=REPO_ROOT,
