@@ -10,6 +10,14 @@ from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.session_auth import build_demo_codigos_router, demo_username
 from libraauth.terminos import TerminosRepository, build_terminos_router
+from libracommerce.web.catalogo_router import (
+    MOTIVOS_MERMA_GASTRONOMICOS,
+    OpcionesCatalogo,
+    OpcionesStock,
+    build_depositos_router,
+    build_productos_router,
+    build_stock_router,
+)
 from libracore import arca_credenciales
 from libracore.arca_router import build_arca_router
 from libracore.config_router import (
@@ -25,6 +33,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
 from app import database as db
+from app.db_core import get_connection as _abrir_conexion
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -35,7 +44,6 @@ from app.web.api import clientes as api_clientes_router
 from app.web.api import config as api_config_router
 from app.web.api import cuenta_corriente as api_cc_router
 from app.web.api import dashboard as api_dashboard_router
-from app.web.api import depositos as api_depositos_router
 from app.web.api import egresos as api_egresos_router
 from app.web.api import facturas as api_facturas_router
 from app.web.api import kds as api_kds_router
@@ -50,7 +58,6 @@ from app.web.api import proveedores as api_proveedores_router
 from app.web.api import remitos as api_remitos_router
 from app.web.api import reportes as api_reportes_router
 from app.web.api import salon as api_salon_router
-from app.web.api import stock as api_stock_router
 from app.web.api import tesoreria as api_tesoreria_router
 from app.web.api import turnos as api_turnos_router
 from app.web.api import usuarios as api_usuarios_router
@@ -301,16 +308,28 @@ app.include_router(
     dependencies=[Depends(require_admin_json), Depends(require_module("tesoreria"))],
 )
 app.include_router(
-    api_depositos_router.router,
+    build_depositos_router(conexion=_abrir_conexion, usuario_actual=get_current_user_json),
     dependencies=[_auth_json, Depends(require_module("depositos"))],
 )
 app.include_router(
-    api_stock_router.router,
+    build_stock_router(
+        conexion=_abrir_conexion, usuario_actual=get_current_user_json,
+        opciones=OpcionesStock(motivos_merma=MOTIVOS_MERMA_GASTRONOMICOS),
+    ),
     dependencies=[_auth_json, Depends(require_module("stock"))],
 )
 app.include_router(
     api_listas_precio_router.router,
     dependencies=[_auth_json, Depends(require_module("listas_precio"))],
+)
+# El CRUD de productos y categorias es del motor (P9-M1); el router propio
+# que queda al lado, con el mismo prefijo, es la arista: recetas y costos.
+app.include_router(
+    build_productos_router(
+        conexion=_abrir_conexion, usuario_actual=get_current_user_json,
+        opciones=OpcionesCatalogo(generar_codigo_si_falta=True),
+    ),
+    dependencies=[_auth_json, Depends(require_module("productos"))],
 )
 app.include_router(
     api_productos_router.router,
