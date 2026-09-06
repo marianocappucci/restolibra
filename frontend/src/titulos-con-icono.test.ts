@@ -49,13 +49,17 @@ describe('el icono del título sale del sidebar', () => {
     // de encontrar el Layout, el router o las pantallas: dos listas vacías
     // contra dos listas vacías. Es la forma en que este guard falló mientras se
     // escribía.
+    // P9-M1 (2026-09-06): 6 pantallas de catalogo/stock/depositos pasaron a
+    // ser wrappers de libra-ui/comercio, sin titulo propio que auditar aca: el
+    // piso baja en esa cantidad. Sus iconos son los del kit (Package, Boxes,
+    // Warehouse), los mismos que tiene el sidebar.
     const { rutasDelNav, pantallas, conIcono } = auditarTitulos(SRC)
     // 33 → 32 el 2026-08-31: se retiró la entrada de *Dashboard* del sidebar
     // junto con su pantalla. El piso baja porque bajó de verdad — sigue siendo
     // un número grande, así que un parser que deje de encontrar el Layout
     // seguiría dando 0 y este control seguiría rojo.
     expect(rutasDelNav).toBeGreaterThanOrEqual(32)
-    expect(pantallas).toBeGreaterThanOrEqual(50)
-    expect(conIcono).toBeGreaterThanOrEqual(50)
+    expect(pantallas).toBeGreaterThanOrEqual(44)
+    expect(conIcono).toBeGreaterThanOrEqual(44)
   })
 })
