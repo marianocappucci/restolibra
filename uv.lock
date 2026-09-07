@@ -614,8 +614,8 @@ web = [
 
 [[package]]
 name = "libracore"
-version = "1.88.0"
-source = { git = "https://github.com/marianocappucci/libracore.git?rev=v1.88.0#2e2adb79e649b831ea78ebcb81e498861fa020ec" }
+version = "1.89.0"
+source = { git = "https://github.com/marianocappucci/libracore.git?rev=v1.89.0#3d2e4b5008d3c7446fdbda2bf87ec57b9ec11571" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
@@ -1151,7 +1151,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "libraauth", git = "https://github.com/marianocappucci/libraauth.git?rev=v0.36.0" },
     { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.15.0" },
-    { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.88.0" },
+    { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.89.0" },
     { name = "libraedge", git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.10" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6" },
