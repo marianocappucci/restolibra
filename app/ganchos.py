@@ -2,9 +2,9 @@
 
 Acá vive **lo que hace a Restolibra distinto de Contalibra en el núcleo
 comercial**, expresado como los puntos de extensión que el motor declara en
-`libracommerce.erp.hooks` — sin `if producto` en el motor. M1 engancha el
-primero, `resolver_receta`; M3 va a enganchar el cobro del pedido
-(`al_confirmar_venta`) y los canales del reporte.
+`libracommerce.erp.hooks` — sin `if producto` en el motor. M1 enganchó
+`resolver_receta`; M3 engancha el cierre del pedido del salón cuando la venta
+que lo cobró llega a `cobrada` (`al_confirmar_venta`).
 """
 
 from __future__ import annotations
@@ -56,4 +56,26 @@ def resolver_receta(item_id: int, item: Mapping[str, Any]) -> Sequence[Insumo] |
     return insumos
 
 
-GANCHOS = Hooks(resolver_receta=resolver_receta)
+def cerrar_pedido_cobrado(conn, venta: Mapping[str, Any]) -> None:
+    """🔑 **Si esta venta cerró un pedido del salón, el pedido cierra acá.**
+
+    Queda en `cobrando` desde que se cobró con el QR —que es lo que hace que el
+    mapa diga "esperando pago" y no "cobrada, liberar"—, y pasa a `cobrado`
+    recién cuando entra la plata: el motor llama a este gancho cuando la venta
+    llega a `cobrada`, con la MISMA conexión y dentro de la misma transacción.
+    Si el pedido se cerrara aparte, una caída en el medio dejaría el movimiento
+    de caja escrito y la mesa mostrando que todavía espera el pago.
+
+    `AND estado='cobrando'` para no tocar un pedido que ya se cerró por el otro
+    camino: el webhook y el poll pueden llegar los dos. Y una venta de mostrador
+    sin pedido no encuentra nada, que es lo esperado.
+    """
+    from app.db_core import _ar_now
+
+    conn.execute(
+        "UPDATE pedidos SET estado='cobrado', updated_at=? WHERE venta_id=? AND estado='cobrando'",
+        (_ar_now(), venta["id"]),
+    )
+
+
+GANCHOS = Hooks(resolver_receta=resolver_receta, al_confirmar_venta=cerrar_pedido_cobrado)

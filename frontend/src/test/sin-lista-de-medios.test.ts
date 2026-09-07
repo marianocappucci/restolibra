@@ -87,10 +87,11 @@ describe('el vocabulario de medios de pago no vuelve al frontend', () => {
     // caso de "un cero esperado necesita un positivo".
     const archivos = fuentes()
     expect(archivos.length).toBeGreaterThan(40)
-    expect(archivos.some(({ nombre }) => nombre === 'pages/Ventas.tsx')).toBe(true)
+    // `pages/Ventas.tsx` fue el control hasta P9-M3; desde entonces es un wrapper del kit.
+    expect(archivos.some(({ nombre }) => nombre === 'pages/EgresoDetalle.tsx')).toBe(true)
     // Y que el contenido se lee de verdad, no como cadenas vacías.
-    const ventas = archivos.find(({ nombre }) => nombre === 'pages/Ventas.tsx')!
-    expect(ventas.texto).toContain('useMediosPago')
+    const egreso = archivos.find(({ nombre }) => nombre === 'pages/EgresoDetalle.tsx')!
+    expect(egreso.texto).toContain('medios-pago')
   })
 
   it('el control — sacar comentarios no tapa una lista de verdad', () => {

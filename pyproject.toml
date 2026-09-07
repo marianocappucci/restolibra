@@ -91,14 +91,14 @@ dependencies = [
     # Detectado en producción de Contalibra, ver wiki/entities/contalibra.md;
     # no se encontró ningún cliente de Restolibra expuesto hoy (demo revisada,
     # 0 casos), pero el bug es del motor compartido.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.83.0",
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.86.1",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
     # dos defectos: no eran atomicas y el chequeo corria en otra conexion antes
     # de escribir. v0.7.1 agrega el `reason_code` por pata, sin el cual
     # adoptarlas degradaba `db_logs` de `transferencia_salida` a `transfer_out`.
-    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.12.0",
+    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.13.0",
     "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.35.0",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
@@ -273,4 +273,7 @@ skip_covered = false
 # holgado y lo unico que puede ponerlo en rojo es una regresion. Cuando la
 # cobertura suba de verdad, subir tambien este numero -- nunca bajarlo para
 # que pase un cambio.
-fail_under = 59
+# P9-M3 (2026-09-06): volvio a fijarse 2 puntos por debajo de lo medido (57.6 %)
+# porque ventas, turnos, facturacion de la venta y caja/cajas/turnos se fueron a los
+# motores con sus tests: el denominador cambio, ninguna linea perdio cobertura.
+fail_under = 55
