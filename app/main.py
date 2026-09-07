@@ -649,7 +649,7 @@ def main_menu():
     while True:
         clear()
         console.print(Panel(
-            "[bold white]CONTALIBRA[/bold white]",
+            "[bold white]RESTOLIBRA[/bold white]",
             subtitle="[dim]Ctrl+C para salir[/dim]",
             expand=False,
         ))

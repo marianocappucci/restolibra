@@ -1,4 +1,4 @@
-# Contalibra — Guía de Operaciones
+# Restolibra — Guía de Operaciones
 
 Guía de referencia para gestionar el servidor, dar de alta clientes nuevos y
 desplegar actualizaciones del sistema.
@@ -17,7 +17,7 @@ desplegar actualizaciones del sistema.
 8. [Backup y restauración](#backup-y-restauración)
 9. [Proxy y SSL (Nginx Proxy Manager)](#proxy-y-ssl-nginx-proxy-manager)
 10. [Gestión del estado del servicio](#gestión-del-estado-del-servicio)
-11. [Website de marketing (contalibra.com.ar)](#website-de-marketing-contalibracomar)
+11. [Website de marketing (restolibra.com.ar)](#website-de-marketing-restolibracomar)
 12. [Estructura de directorios](#estructura-de-directorios)
 
 ---
@@ -29,12 +29,21 @@ El sistema maneja dos entornos completamente separados que corren en el mismo se
 | | Desarrollo | Producción |
 |---|---|---|
 | Rama git | `develop` | `main` |
-| Puerto | `8071` | `8070` |
-| Contenedor Docker | `contalibra-dev` | `contalibra` |
-| docker-compose | `docker-compose.yml` | `docker-compose.prod.yml` |
-| Base de datos | `./dev-data/contalibra.db` | `./contalibra.db` |
-| Código | Volumen montado (hot-reload) | Copiado en la imagen |
+| Puerto | `8073` | uno por instancia, desde `8071` |
+| Contenedor Docker | `restolibra-dev` | `restolibra-<slug>` |
+| docker-compose | `docker-compose.yml` (raíz del repo) | `clientes/<slug>/docker-compose.yml`, generado por `nuevo_cliente.py` |
+| Base de datos | PostgreSQL en el sidecar `restolibra-postgres` | PostgreSQL, un sidecar por instancia |
+| Código | Volumen montado (`./:/app`, hot-reload) | **Copiado en la imagen** — sólo monta `./data:/app/data` |
 | Badge en UI | `DEV` amarillo en sidebar | Sin badge |
+
+> 🔴 **`docker-compose.prod.yml` no existe**, y producción no es "un" entorno:
+> son las instancias de cliente bajo `clientes/<slug>/`, cada una con su
+> contenedor, su puerto y su sidecar de PostgreSQL. Ver "Alta de un cliente
+> nuevo".
+>
+> 🔴 **Ninguna instancia usa SQLite.** La familia corre sólo PostgreSQL desde el
+> 2026-08-12; los `.db` que aparecen más abajo en algunos nombres de archivo son
+> del camino viejo.
 
 ### Flujo de trabajo diario
 
@@ -51,8 +60,8 @@ git push origin develop
 ### Arrancar entorno de desarrollo
 
 ```bash
-cd /root/contalibra
-docker compose up -d --build    # usa docker-compose.yml → puerto 8071
+cd /root/restolibra
+docker compose up -d --build    # usa docker-compose.yml → puerto 8073
 ```
 
 ### Promover cambios a producción
@@ -75,9 +84,12 @@ El deploy a producción es `panel_admin.py actualizar`, **desde el VPS**:
 > del sistema en sus 24 ejemplos, y mandó una sesión de deploy contra ese error
 > el 2026-09-01.
 
-> ⚠️ El resto de esta guía dice `contalibra` en casi todos lados: es una copia
-> del archivo de Contalibra que llegó con el fork y nunca se renombró. Los
-> comandos de **esta** sección son los de Restolibra.
+> ✅ **Renombrado el 2026-09-07.** Hasta esa fecha el resto de esta guía decía
+> `contalibra` en casi todos lados —era la copia del archivo de Contalibra que
+> llegó con el fork y nunca se había renombrado—, con puertos, contenedores y
+> base de datos del otro producto. En la misma pasada se corrigieron las tres
+> afirmaciones que el rename habría dejado bien escritas y falsas: la tabla de
+> entornos, el "funciona sin reconstruir la imagen" y la sección de backup.
 
 ```bash
 cd /root/restolibra
@@ -131,16 +143,16 @@ Se muestra en el sidebar de la UI. Cada deploy a producción debe tener su propi
 
 ```
 VPS
-├── /root/contalibra/          ← código fuente del sistema (este repo)
-│   ├── web/                   ← aplicación FastAPI
+├── /root/restolibra/          ← código fuente del sistema (este repo)
+│   ├── app/                   ← aplicación FastAPI (`app/web/app.py` es el entry point)
+│   ├── frontend/              ← SPA React/Vite (se hornea en la imagen)
 │   ├── scripts/               ← herramientas de administración
 │   └── clientes/              ← un subdirectorio por cliente
 │       ├── mitienda/
-│       │   ├── docker-compose.yml
+│       │   ├── docker-compose.yml   ← app + su sidecar PostgreSQL
 │       │   ├── cliente.json   ← metadatos del cliente
-│       │   ├── backups/       ← backups automáticos de la DB
 │       │   └── data/          ← montado en /app/data dentro del contenedor
-│       │       ├── contalibra.db
+│       │       ├── backups/   ← los ZIP de respaldo
 │       │       ├── config.json
 │       │       ├── logos/
 │       │       └── arca_certs/
@@ -149,14 +161,14 @@ VPS
 └── nginx-proxy-manager        ← proxy inverso con SSL automático
 ```
 
-**Principio clave**: el directorio `/root/contalibra` completo se monta como
-volumen en `/app` dentro de cada contenedor. Esto significa que **los cambios
-de código se aplican sin reconstruir la imagen** — solo se necesita reiniciar
-el contenedor. La imagen Docker solo necesita reconstruirse cuando cambian las
-dependencias Python (`pyproject.toml`).
+**Principio clave**: cada instancia de cliente es **autónoma** — su propio
+contenedor, su propio puerto, su propio sidecar PostgreSQL y su propio `data/`.
+No comparten nada entre sí.
 
-Cada cliente tiene su propia base de datos SQLite aislada, sin ningún
-componente compartido entre instancias.
+🔴 **El código de una instancia vive DENTRO de su imagen.** Su compose monta
+sólo `./data:/app/data`. El bind mount `./:/app` con hot-reload es exclusivo de
+`restolibra-dev`. Para que a un cliente le llegue un cambio de código hay que
+**reconstruir**, que es lo que hace `panel_admin.py actualizar`.
 
 ---
 
@@ -168,14 +180,14 @@ Solo se hace una vez cuando se instala el sistema en un VPS nuevo.
 
 ```bash
 cd /root
-git clone <url-del-repo> contalibra
-cd contalibra
+git clone <url-del-repo> restolibra
+cd restolibra
 ```
 
 ### 2. Construir la imagen Docker
 
 ```bash
-docker build -t contalibra:latest .
+docker build -t restolibra:latest .
 ```
 
 Esto tarda 2-3 minutos la primera vez (descarga Python 3.12-slim e instala
@@ -199,7 +211,7 @@ que es el gateway Docker). Guarda la config en `scripts/.npm_config.json`
 ## Alta de un cliente nuevo
 
 ```bash
-cd /root/contalibra
+cd /root/restolibra
 ./.venv-scripts/bin/python3 scripts/nuevo_cliente.py
 ```
 
@@ -207,7 +219,7 @@ El script es interactivo y guía paso a paso:
 
 ```
 ============================================================
-  CONTALIBRA — Alta de nuevo cliente
+  RESTOLIBRA — Alta de nuevo cliente
 ============================================================
 Nombre del comercio / empresa: La Panadería del Centro
 Identificador (slug) [la-panaderia-del-centro]:        ← Enter para aceptar
@@ -224,7 +236,7 @@ Luego muestra un resumen y pide confirmación:
 ------------------------------------------------------------
   Comercio:    La Panadería del Centro
   Slug:        la-panaderia-del-centro
-  Contenedor:  contalibra-la-panaderia-del-centro
+  Contenedor:  restolibra-la-panaderia-del-centro
   Puerto:      8071
   Dominio:     panaderia.midominio.com
   Admin:       admin / xK9mP2nQrT4w
@@ -254,7 +266,7 @@ El cliente ya puede entrar y completar los datos de su empresa en
 ### Habilitar módulos
 
 Los módulos se asignan según el plan del cliente desde el backoffice
-(https://admin.contalibra.com.ar), sección Plan de cada cliente. Ya no existe
+(https://admin.restolibra.com.ar), sección Plan de cada cliente. Ya no existe
 una pantalla de auto-gestión de módulos dentro del sistema del cliente.
 
 ```bash
@@ -267,7 +279,7 @@ una pantalla de auto-gestión de módulos dentro del sistema del cliente.
 ## Gestión diaria con panel_admin.py
 
 ```bash
-cd /root/contalibra
+cd /root/restolibra
 ./.venv-scripts/bin/python3 scripts/panel_admin.py           # menú interactivo
 ./.venv-scripts/bin/python3 scripts/panel_admin.py listar    # lista rápida desde CLI
 ```
@@ -300,7 +312,7 @@ Cuando modificás Python, HTML, CSS o cualquier archivo del sistema y lo
 verificaste localmente:
 
 ```bash
-cd /root/contalibra
+cd /root/restolibra
 
 # 1. Traer los cambios del repo
 git pull
@@ -309,23 +321,33 @@ git pull
 ./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar
 ```
 
-**¿Por qué funciona sin reconstruir la imagen?**
-El directorio `/root/contalibra` está montado como volumen en `/app` dentro
-de cada contenedor. Al reiniciar, uvicorn levanta con el código nuevo que
-ya está en disco.
+> 🔴 **`actualizar` RECONSTRUYE, y tiene que hacerlo.** Hasta el 2026-09-07
+> esta guía decía que *"funciona sin reconstruir la imagen porque
+> `/root/<producto>` está montado como volumen en `/app` dentro de cada
+> contenedor"*. **Eso es cierto sólo para `restolibra-dev`.** El compose que
+> `nuevo_cliente.py` genera para una instancia de cliente monta únicamente
+> `./data:/app/data`: el código va **dentro de la imagen**, así que un `git pull`
+> sin rebuild no le cambia una línea al cliente.
+>
+> Y `cmd_actualizar` tampoco construye desde el checkout: arma un `git worktree`
+> limpio del ref (`contexto_de_build`), justamente para que la rama en la que
+> quedó el checkout del VPS no decida qué código se le despliega a un cliente.
+>
+> El corolario operativo es el de siempre: **rebuild, nunca `restart`**. Un
+> `restart` deja el contenedor `healthy` sirviendo el código viejo.
 
 ### Si cambiaron las dependencias (pyproject.toml)
 
 Cuando agregaste o actualizaste paquetes Python:
 
 ```bash
-cd /root/contalibra
+cd /root/restolibra
 
 # 1. Traer los cambios
 git pull
 
 # 2. Reconstruir la imagen (instala las nuevas dependencias)
-docker build -t contalibra:latest .
+docker build -t restolibra:latest .
 
 # 3. Reiniciar todos los contenedores con la nueva imagen
 ./.venv-scripts/bin/python3 scripts/panel_admin.py actualizar
@@ -373,33 +395,44 @@ docker compose -f clientes/mitienda/docker-compose.yml restart
 ./.venv-scripts/bin/python3 scripts/panel_admin.py backup mitienda
 ```
 
-Genera dos archivos:
-- `clientes/mitienda_backup_YYYYMMDD_HHMMSS.tar.gz` — todo el directorio `data/`
-- `clientes/mitienda/backups/contalibra_YYYYMMDD_HHMMSS.db` — solo la DB
+Genera **un** archivo: el ZIP de respaldo en
+`clientes/mitienda/data/backups/`, con el dump de PostgreSQL (`pg_dump -Fc`)
+más el resto de `data/` adentro.
 
-### Restaurar la DB de un cliente
+> 🔴 **Ya no son "dos archivos", y el cambio importa.** Este producto configura
+> `backup_zip=True` en `scripts/panel_admin.py`, así que el backup del panel y
+> del cron arma **el mismo ZIP que la pantalla de Backups** del cliente: un solo
+> artefacto, una sola retención, y lo que se respalda de noche es exactamente lo
+> que el cliente puede listar, bajar y restaurar solo.
+>
+> El camino viejo —un `tar.gz` de `data/` más un `.db` suelto en
+> `clientes/<slug>/backups/`— dejaba el dump de PostgreSQL **afuera** del tar.
+> Medido el 2026-08-12 sobre las nueve instancias del VPS: en cinco de los seis
+> productos el tar nocturno traía `.db` de SQLite congelados en el corte a
+> PostgreSQL y ningún dump. Los datos no corrían riesgo —el dump estaba al
+> lado— pero el archivo que parecía el backup de la instancia no lo era.
+>
+> `crear_backup` va seguido de `verificar_backup`: que el comando no falle no
+> alcanza para dar el respaldo por bueno.
 
-```bash
-# Interactivo (muestra lista de backups disponibles):
-./.venv-scripts/bin/python3 scripts/panel_admin.py restore-db mitienda
+### Restaurar una instancia
 
-# Pasando el archivo directamente:
-./.venv-scripts/bin/python3 scripts/panel_admin.py restore-db mitienda contalibra_20260512_143022.db
-```
+**El camino vigente es la pantalla del cliente**: `/config` → pestaña **Datos /
+Backup**. Lista los ZIP de `data/backups/`, deja bajar uno y restaurar desde un
+ZIP previo, y hace un respaldo automático del estado actual antes de pisar nada.
+Es `build_backup_router` de LibraCore (`libracore.respaldo.restaurar_backup`),
+montado en `/api/config/backups` desde el 2026-08-12.
 
-El proceso: para el contenedor → backup automático del estado actual → restaura → reinicia.
-
-### Ver backups disponibles
-
-```bash
-./.venv-scripts/bin/python3 scripts/panel_admin.py list-backups mitienda
-```
-
-### El cliente también puede hacer backup/restore
-
-Desde el sistema web: `/config` → pestaña **Datos / Backup**. Puede descargar
-la DB y restaurar desde un archivo `.db` previo. Siempre se hace backup
-automático antes de cualquier restauración.
+> 🔴 **`panel_admin.py restore-db` y `list-backups` NO sirven para este
+> producto.** Los dos hacen `glob("*.db")` sobre `clientes/<slug>/backups/`, que
+> es el directorio y el formato de la era SQLite. Con `backup_zip=True` los
+> respaldos son ZIP y viven en `clientes/<slug>/data/backups/`, así que esos dos
+> comandos imprimen *"Sin backups de DB"* contra una instancia perfectamente
+> respaldada. **Ese "no hay nada" no es un diagnóstico**: es el comando mirando
+> el lugar equivocado.
+>
+> Hasta el 2026-09-07 esta sección los documentaba como el procedimiento normal,
+> con un nombre de archivo `<producto>_YYYYMMDD_HHMMSS.db` que ya no existe.
 
 ---
 
@@ -461,7 +494,7 @@ También se puede gestionar desde dentro del sistema web en `/config` → pesta�
 
 ---
 
-## Website de marketing (contalibra.com.ar)
+## Website de marketing (restolibra.com.ar)
 
 El website de marketing es un contenedor nginx estático independiente del sistema de clientes.
 Se encuentra en `website/` dentro del repositorio.
@@ -493,16 +526,16 @@ website/
 ### Deploy inicial (primera vez)
 
 ```bash
-cd /root/contalibra/website
+cd /root/restolibra/website
 
 # Construir la imagen
-docker build -t contalibra-web:latest .
+docker build -t restolibra-web:latest .
 
 # Levantar el contenedor
 docker compose up -d
 
 # Verificar que está corriendo
-docker ps | grep contalibra-web
+docker ps | grep restolibra-web
 ```
 
 El contenedor escucha en el puerto **8069** y se conecta a la red `stack_stack-net` para que NPM pueda hacer proxy.
@@ -510,19 +543,19 @@ El contenedor escucha en el puerto **8069** y se conecta a la red `stack_stack-n
 ### Configurar proxy en Nginx Proxy Manager
 
 1. En NPM, crear un nuevo Proxy Host:
-   - **Domain Names:** `contalibra.com.ar`, `www.contalibra.com.ar`
-   - **Forward Hostname/IP:** `contalibra-web` (nombre del contenedor)
+   - **Domain Names:** `restolibra.com.ar`, `www.restolibra.com.ar`
+   - **Forward Hostname/IP:** `restolibra-web` (nombre del contenedor)
    - **Forward Port:** `80`
    - **SSL:** habilitar con Let's Encrypt
 
-2. Configurar también el subdominio `docs.contalibra.com.ar` si se desea separar la documentación (opcional — actualmente está bajo `/docs/` en el mismo dominio).
+2. Configurar también el subdominio `docs.restolibra.com.ar` si se desea separar la documentación (opcional — actualmente está bajo `/docs/` en el mismo dominio).
 
 ### Actualizar el website
 
 El website es completamente estático. Cualquier cambio de HTML/CSS requiere **reconstruir la imagen**:
 
 ```bash
-cd /root/contalibra/website
+cd /root/restolibra/website
 
 # Traer los últimos cambios del repo
 git pull
@@ -532,7 +565,7 @@ docker compose build
 docker compose up -d
 
 # Verificar
-docker logs contalibra-web --tail 20
+docker logs restolibra-web --tail 20
 ```
 
 No hay reinicio en caliente — siempre se reconstruye porque el contenido se copia durante el `docker build`.
@@ -542,26 +575,26 @@ No hay reinicio en caliente — siempre se reconstruye porque el contenido se co
 Si la nueva versión tiene problemas:
 
 ```bash
-cd /root/contalibra/website
+cd /root/restolibra/website
 
 # Ver historial de imágenes
-docker images | grep contalibra-web
+docker images | grep restolibra-web
 
 # Si tenés una imagen anterior con otro tag:
 docker compose down
-docker tag contalibra-web:<tag-anterior> contalibra-web:latest
+docker tag restolibra-web:<tag-anterior> restolibra-web:latest
 docker compose up -d
 ```
 
 Para evitar problemas, antes de reconstruir en producción podés hacer:
 
 ```bash
-docker tag contalibra-web:latest contalibra-web:backup
+docker tag restolibra-web:latest restolibra-web:backup
 docker compose build
 docker compose up -d
 ```
 
-Así si algo falla, hacés `docker tag contalibra-web:backup contalibra-web:latest` y levantás la versión anterior.
+Así si algo falla, hacés `docker tag restolibra-web:backup restolibra-web:latest` y levantás la versión anterior.
 
 ### Agregar o editar páginas de documentación
 
@@ -578,7 +611,7 @@ curl -I http://localhost:8069/
 # Respuesta esperada: HTTP/1.1 200 OK
 
 # Ver logs de nginx
-docker logs contalibra-web --tail 50
+docker logs restolibra-web --tail 50
 ```
 
 ---
@@ -586,12 +619,15 @@ docker logs contalibra-web --tail 50
 ## Estructura de directorios
 
 ```
-/root/contalibra/
-├── web/                        ← aplicación FastAPI
-│   ├── app.py                  ← entry point, middleware, rutas
-│   ├── auth.py                 ← autenticación con cookies
-│   ├── routers/                ← un archivo por módulo
-│   └── templates/              ← templates Jinja2
+/root/restolibra/
+├── app/                        ← aplicación FastAPI
+│   ├── web/app.py              ← entry point, middleware, rutas
+│   ├── web/auth.py             ← autenticación con cookies
+│   ├── web/api/                ← un archivo por módulo (la API de la SPA)
+│   ├── web/routers/            ← routers montados desde los motores
+│   ├── db_*.py                 ← capa de datos (varios son shims de los motores)
+│   └── main.py                 ← CLI interactivo de remitos/presupuestos
+├── frontend/                   ← SPA React/Vite (se hornea en la imagen)
 ├── scripts/
 │   ├── nuevo_cliente.py        ← alta de cliente nuevo
 │   ├── panel_admin.py          ← gestión de todos los clientes
@@ -600,23 +636,20 @@ docker logs contalibra-web --tail 50
 │   └── .npm_config.json        ← credenciales NPM (excluido del repo)
 ├── clientes/                   ← datos de clientes (excluido del repo)
 │   └── <slug>/
-│       ├── docker-compose.yml
+│       ├── docker-compose.yml  ← app + sidecar PostgreSQL de esa instancia
 │       ├── cliente.json        ← nombre, puerto, credenciales admin
-│       ├── backups/            ← backups de DB
 │       └── data/               ← montado en /app/data
-│           ├── contalibra.db   ← base de datos SQLite
 │           ├── config.json     ← configuración de la empresa
 │           ├── logos/
 │           ├── arca_certs/
-│           └── backups/        ← backups automáticos (web)
-├── database.py                 ← capa de datos
-├── config_manager.py           ← lectura/escritura de config.json
-├── pdf_generator.py            ← PDFs A4 (facturas, remitos, etc.)
-├── ticket_generator.py         ← PDFs angostos para ticketeadoras
+│           └── backups/        ← los ZIP de respaldo (panel, cron y pantalla)
+├── migrations/                 ← cadena Alembic propia (`alembic_version_restolibra`)
+├── admin/                      ← backoffice de superadmin
+├── plans.py                    ← planes y módulos por plan
 ├── Dockerfile
 ├── pyproject.toml             ← dependencias y metadata del paquete
 ├── OPERACIONES.md              ← este archivo
-└── website/                    ← website de marketing (contalibra.com.ar)
+└── website/                    ← website de marketing (restolibra.com.ar)
     ├── Dockerfile
     ├── nginx.conf
     ├── docker-compose.yml
