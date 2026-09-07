@@ -63,7 +63,7 @@ describe('el icono del título sale del sidebar', () => {
     // seguiría dando 0 y este control seguiría rojo.
     expect(rutasDelNav).toBeGreaterThanOrEqual(32)
     expect(pantallas).toBeGreaterThanOrEqual(21)
-    // F6.2 (2026-09-07): las seis pantallas de remitos y presupuestos pasaron a
+    // El pase de comprobantes al kit (2026-09-07): las seis pantallas de remitos y presupuestos pasaron a
     // ser wrappers de `libra-ui`. El piso de `conIcono` baja **siete** y no
     // seis: el guard cuenta pares ruta↔título y `PresupuestoForm` se monta en
     // dos rutas (`/presupuestos/nuevo` y `/presupuestos/:id/editar`). Los
