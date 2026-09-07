@@ -25,42 +25,43 @@ from libracommerce.web.listas_router import (
 from libracore import arca_credenciales
 from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
+from libracore.clientes_router import build_clientes_router
 from libracore.config_router import (
     build_backup_router,
     build_empresa_admin_router,
     build_empresa_router,
 )
+from libracore.cuenta_corriente_router import build_cuenta_corriente_router
+from libracore.dashboard_router import build_dashboard_router
+from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
+from libracore.egresos_router import build_egresos_router, build_proveedores_router
 from libracore.facturas_router import smtp_efectivo
+from libracore.libros_iva_router import build_libros_iva_export_router, build_libros_iva_router
+from libracore.logs_router import build_logs_export_router, build_logs_router
 from libracore.mp_config_router import build_mp_config_router
+from libracore.reportes_router import build_reportes_export_router, build_reportes_router
 from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
+from libracore.tesoreria_router import build_tesoreria_router
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
+from app.db_reportes import REPORTES
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
 from app.web.api import auth as api_auth_router
-from app.web.api import clientes as api_clientes_router
 from app.web.api import config as api_config_router
-from app.web.api import cuenta_corriente as api_cc_router
-from app.web.api import dashboard as api_dashboard_router
-from app.web.api import egresos as api_egresos_router
 from app.web.api import facturas as api_facturas_router
 from app.web.api import kds as api_kds_router
-from app.web.api import libros_iva as api_libros_iva_router
-from app.web.api import logs as api_logs_router
 from app.web.api import mp_bandeja as api_mp_bandeja_router
 from app.web.api import pedidos as api_pedidos_router
 from app.web.api import presupuestos as api_presupuestos_router
 from app.web.api import productos as api_productos_router
-from app.web.api import proveedores as api_proveedores_router
 from app.web.api import remitos as api_remitos_router
-from app.web.api import reportes as api_reportes_router
 from app.web.api import salon as api_salon_router
-from app.web.api import tesoreria as api_tesoreria_router
 from app.web.api import usuarios as api_usuarios_router
 from app.web.api import ventas as api_ventas_router
 from app.web.api_auth import (  # noqa: F401
@@ -69,14 +70,11 @@ from app.web.api_auth import (  # noqa: F401
     require_admin_o_servicio_json,
     require_role_json,
 )
-from app.web.auth import get_current_user, require_auth
+from app.web.auth import get_current_user, require_admin, require_auth, require_role
 from app.web.modules_gate import require_module  # noqa: F401
 from app.web.routers import config as config_router
 from app.web.routers import facturas, presupuestos, remitos, sincronizacion_offline, webhooks
 from app.web.routers import kds as kds_router
-from app.web.routers import libros_iva as libros_iva_router
-from app.web.routers import logs as logs_router
-from app.web.routers import reportes as reportes_router
 from app.web.routers import ventas as ventas_router
 
 app = FastAPI(title="Restolibra")
@@ -270,9 +268,14 @@ app.include_router(build_buscar_productos_router(
     conexion=_abrir_conexion, usuario_actual=require_auth, solo_vendibles=True,
 ))
 app.include_router(ventas_router.router)
-app.include_router(logs_router.router)
-app.include_router(reportes_router.router)
-app.include_router(libros_iva_router.router)
+# Los exports CSV y REGINFO fuera de `/api/` son del motor (P9-M4), con la
+# misma sesion por cookie y el mismo gate que tenian los routers propios:
+# logs y libros IVA solo admin, reportes cualquier usuario.
+app.include_router(build_logs_export_router(
+    solo_admin=require_admin, nombre_archivo="logs_restolibra.csv", actividad=db.get_actividad_log,
+))
+app.include_router(build_reportes_export_router(sesion=require_auth, reportes=REPORTES))
+app.include_router(build_libros_iva_export_router(solo_admin=require_role("admin")))
 app.include_router(kds_router.router)
 
 # La sincronización del nodo offline: `/sync/v1/push` y `/sync/v1/pull`. Se monta
@@ -294,7 +297,20 @@ app.include_router(api_auth_router.router)
 # Bajo `/api` como el resto de la API de este producto, y **sin gatear desde
 # afuera**: es el unico camino para salir del gate.
 app.include_router(build_terminos_router(prefix="/api/terminos"))
-app.include_router(api_dashboard_router.router)
+
+
+def _extras_del_tablero(hoy: str) -> dict:
+    """Lo que este producto suma al tablero del motor: el salon, los pedidos
+    sin mesa, las reservas del dia y el reporte gastronomico (P9-M4)."""
+    return {
+        "resumen_salon": db.resumen_salon_ahora(),
+        "pedidos_activos": db.get_pedidos_activos(canales=["barra", "takeaway", "delivery"]),
+        "reservas_hoy": db.get_reservas(hoy, estado="pendiente"),
+        "rep_hoy": db.reporte_gastronomia(hoy, hoy),
+    }
+
+
+app.include_router(build_dashboard_router(usuario_actual=get_current_user_json, extra=_extras_del_tablero))
 app.include_router(
     build_caja_router(usuario_actual=get_current_user_json),
     dependencies=[_auth_json, Depends(require_module("caja"))],
@@ -313,7 +329,7 @@ app.include_router(
     dependencies=[_auth_json],
 )
 app.include_router(
-    api_tesoreria_router.router,
+    build_tesoreria_router(usuario_actual=get_current_user_json),
     dependencies=[Depends(require_admin_json), Depends(require_module("tesoreria"))],
 )
 app.include_router(
@@ -431,19 +447,26 @@ app.include_router(
     dependencies=[_auth_json],
 )
 app.include_router(
-    api_clientes_router.router,
+    # Clientes, proveedores, egresos, tesoreria, cuenta corriente, reportes,
+    # libros IVA y logs son factories de LibraCore desde P9-M4; el gate (auth +
+    # modulo) sigue declarado aca.
+    build_clientes_router(),
     dependencies=[_auth_json, Depends(require_module("clientes"))],
 )
 app.include_router(
-    api_proveedores_router.router,
+    build_proveedores_router(),
     dependencies=[_auth_json, Depends(require_module("proveedores"))],
 )
 app.include_router(
-    api_egresos_router.router,
+    build_egresos_router(usuario_actual=get_current_user_json),
     dependencies=[_auth_json, Depends(require_module("egresos"))],
 )
 app.include_router(
-    api_cc_router.router,
+    # Los debitos por venta salen de `sales` (LibraCommerce), no de `ventas`.
+    build_cuenta_corriente_router(
+        usuario_actual=get_current_user_json, solo_admin=require_admin_json,
+        origen=VENTAS_LIBRACOMMERCE, con_recibos=False,
+    ),
     dependencies=[_auth_json, Depends(require_module("cuenta_corriente"))],
 )
 app.include_router(
@@ -459,11 +482,13 @@ app.include_router(
     dependencies=[_auth_json, Depends(require_module("remitos"))],
 )
 app.include_router(
-    api_reportes_router.router,
+    # Ventas, medios, productos, stock bajo y resumen salen de `sales`: el
+    # puerto es `libracommerce.erp.reportes` (ver db_reportes.py).
+    build_reportes_router(reportes=REPORTES),
     dependencies=[_auth_json, Depends(require_module("reportes"))],
 )
 app.include_router(
-    api_libros_iva_router.router,
+    build_libros_iva_router(),
     dependencies=[Depends(require_admin_json), Depends(require_module("libros_iva"))],
 )
 app.include_router(
@@ -527,7 +552,13 @@ app.include_router(
     dependencies=[_auth_json, Depends(require_module("restaurant"))],
 )
 app.include_router(
-    api_logs_router.router,
+    # La tabla de usuarios la declara libraauth y las partes de ventas y stock
+    # de la linea de tiempo leen `sales`/`stock_movements`: los tres van como
+    # puertos (ver db_logs.py).
+    build_logs_router(
+        usuarios=db.get_all_usuarios, actividad=db.get_actividad_log,
+        actividad_count=db.get_actividad_count,
+    ),
     dependencies=[Depends(require_admin_json)],
 )
 
