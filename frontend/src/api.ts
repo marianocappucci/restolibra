@@ -12,7 +12,6 @@
 // dominio propios de Restolibra.
 export { ApiError, api } from 'libra-ui/api-client'
 
-
 // Dominio de facturacion: vive en libra-ui/facturas, compartido con el otro
 // producto que emite comprobantes. Se re-exporta desde aca para que los
 // archivos que ya lo importaban de este modulo sigan andando sin cambios
@@ -30,6 +29,9 @@ export type {
   Producto, CategoriaProducto, Deposito, StockItem, StockListado, MovimientoStock, StockPorDeposito,
 } from 'libra-ui/comercio/tipos'
 export type { ListaPrecio, ItemListaPrecio, Quiebre, ProductoBusqueda } from 'libra-ui/comercio/tipos'
+// Remitos y presupuestos: las seis pantallas se fueron al kit en F6.2
+// (2026-09-07) y los tipos con ellas, al lado de las facturas.
+export type { Remito, RemitoItem, Presupuesto, PresupuestoItem } from 'libra-ui/facturas'
 export type {
   Venta, VentaItem, VentaPago, Turno, ResumenTurno, CajaConfig, CajaMovimiento, ResumenCaja,
 } from 'libra-ui/comercio/tipos'
@@ -66,7 +68,6 @@ export type { Cliente, MpMovimiento, MpPago } from 'libra-ui/mp'
 // La lista de condiciones frente al IVA la fija ARCA, no el producto: vive en
 // `libra-ui/facturas` desde la v0.45.0.
 export { IVA_CONDITIONS } from 'libra-ui/facturas'
-
 
 // role incluye 'mozo' -- rol especifico de Restolibra sin equivalente en
 // Contalibra (ve solo la seccion Salon del sidebar, ver Layout.tsx).
@@ -347,7 +348,6 @@ export type PedidoActivo = {
 // la Etapa B) y el alias de facturacion MP (`AliasFacturacion`), portados
 // del estado actual de Contalibra -- ver web/api/clientes.py.
 
-
 export type ConsultaCuit = {
   nombre?: string
   domicilio?: string
@@ -356,59 +356,14 @@ export type ConsultaCuit = {
   error?: string
 }
 
-
 export type TipoFactura = { value: number; label: string }
-
 
 // Presupuesto/Remito ampliados al shape completo que devuelve
 // GET /api/presupuestos/{id} y GET /api/remitos/{id} (modulos Presupuestos/
 // Remitos, portados desde Contalibra hoy) -- superset de los campos minimos
 // que ya usaba ClienteConComprobantes mas arriba, asi que no rompe ese uso.
-export type Presupuesto = {
-  id: number
-  number: string
-  date: string
-  valid_until: string
-  status: string
-  client_id: number | null
-  client_name: string
-  client_address: string
-  client_cuit: string
-  client_email: string
-  client_phone: string
-  items: { description: string; qty: number; unit_price: number; subtotal: number }[]
-  subtotal: number
-  tax_rate: number
-  tax_amount: number
-  total: number
-  observations: string
-  remito_id: number | null
-}
 
 export const ESTADOS_PRESUPUESTO = ['borrador', 'enviado', 'aceptado', 'rechazado', 'vencido', 'facturado'] as const
-
-export type Remito = {
-  id: number
-  number: string
-  date: string
-  client_id: number | null
-  client_name: string
-  client_address: string
-  client_cuit: string
-  client_email: string
-  client_phone: string
-  items: { description: string; qty: number }[]
-  observations: string
-  total: number
-}
-
-
-
-
-
-
-
-
 
 // --- Caja / Cajas / Turnos / Tesorería -- portados desde Contalibra
 // (frontend/src/api.ts), mismo backend libracore (db_caja.py/db_turnos.py/
@@ -417,16 +372,6 @@ export type Remito = {
 // `Caja` más chico ya declarado arriba, que sigue siendo el que consume
 // Reportes (`cajas_config` en CajaMediosData) -- ambos describen la misma
 // tabla, cada uno con el subset de campos que necesita su pantalla.
-
-
-
-
-
-
-
-
-
-
 
 // --- Reportes / Libros IVA / Logs -- portados desde Contalibra
 // (frontend/src/api.ts), mismo backend libracore. reportes.py de
@@ -455,24 +400,15 @@ export const ROLES = [
   { value: 'mozo', label: 'Mozo' },
 ] as const
 
-
-
 // Caja por medio de cobro (sub-reporte de Reportes, /reportes/caja-medios)
 // -- reusa el tipo `Caja` ya declarado arriba para `cajas_config` (mismos
 // campos id/nombre que necesita el selector).
-
-
-
 
 // --- Ventas (POS de mostrador) / MP Bandeja -- portados desde Contalibra
 // (frontend/src/api.ts). El motor de Ventas es el mismo `db_ventas.py`
 // compartido -- ver web/api/ventas.py, sin campos propios de Restolibra
 // (no hay "canal" en este modelo; Salon/Pedidos, que reusan este motor
 // para cobrar mesas, son una etapa aparte).
-
-
-
-
 
 // --- opciones para los selects con busqueda (libra-ui/SelectBuscable) ------
 //
@@ -483,9 +419,6 @@ export const ROLES = [
 // Mismo criterio que Contalibra, del que este producto es fork: en
 // facturacion el CUIT/DNI es el mejor discriminador, porque es lo que se
 // tiene a mano del papel.
-
-
-
 
 // Las categorias se eligen **por nombre, no por id** en las pantallas que las
 // usan (el filtro de Egresos y el alta de gasto guardan el nombre como texto).
@@ -517,9 +450,6 @@ export type KdsFeed = { comandas: Comanda[] }
 // unidad de compra (texto libre + factor, no persistido en `productos`,
 // ver docstring del router).
 
-
-
-
 // Misma lista cerrada que el backend (web/api/stock.py MOTIVOS_MERMA,
 // portada de web/templates/stock/ajuste.html) -- no hay tabla de motivos
 // en el modelo real, es un dropdown fijo.
@@ -532,13 +462,11 @@ export type KdsFeed = { comandas: Comanda[] }
 // ficha técnica/receta) -- DepositoTransferencia.tsx seguía usándolo con un
 // subset (id/codigo/nombre/activo), así que ampliar acá no rompe ese uso.
 
-
 export const ESTACIONES = [
   { value: '', label: '— Sin comanda —' },
   { value: 'cocina', label: 'Cocina' },
   { value: 'barra', label: 'Barra' },
 ] as const
-
 
 // --- Recetas / ficha técnica (módulo Productos, Etapa C -- sin equivalente
 // en Contalibra) -- ver web/api/productos.py / db_recetas.py.
@@ -599,10 +527,6 @@ export type ReporteCostosData = {
   reporte: ReporteFoodCostRow[]
   consumo: ConsumoInsumoRow[]
 }
-
-
-
-
 
 // `GET /api/config` sigue devolviendo `servicio_estado` y `servicio_mensaje`
 // —viven en el mismo `config.json`—, pero no se declaran acá a propósito: no
