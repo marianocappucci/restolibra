@@ -40,6 +40,8 @@ versión.
 # Desde `app.db_core` y no desde `libracore.db.core`: importarlo es lo que
 # garantiza que `configure()` ya corrió con el destino de ESTA instancia. Es la
 # convención del resto de los `db_*.py` de acá.
+from libracommerce.erp.schema import crear_venta_links
+
 from app.db_core import _ar_now
 
 
@@ -50,20 +52,17 @@ def init_schema_propio(conn) -> None:
     deploy). Las dos con una conexión de `libracore.db.core`, que es la que
     traduce los `PRAGMA` y las excepciones entre SQLite y PostgreSQL.
     """
-    # Referencias cruzadas entre la venta (LibraCommerce) y contextos que
-    # no son suyos: facturación/remitos y turno de caja (LibraCore) y
-    # MercadoPago. No van dentro de `sales` para no meter dominio ajeno en
-    # el motor genérico — ver db_ventas.py.
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS venta_links (
-            venta_id      INTEGER PRIMARY KEY REFERENCES sales(id) ON DELETE CASCADE,
-            factura_id    INTEGER REFERENCES facturas(id) ON DELETE SET NULL,
-            remito_id     INTEGER REFERENCES remitos(id) ON DELETE SET NULL,
-            turno_id      INTEGER REFERENCES turnos_caja(id) ON DELETE SET NULL,
-            mp_order_id   TEXT DEFAULT '',
-            mp_payment_id TEXT DEFAULT ''
-        )
-    """)
+    # Referencias cruzadas entre la venta (LibraCommerce) y contextos que no son
+    # suyos: facturación/remitos y turno de caja (LibraCore) y MercadoPago. No
+    # van dentro de `sales` para no meter dominio ajeno en el motor genérico —
+    # ver db_ventas.py.
+    #
+    # 🔑 El DDL lo declara el motor desde P9-M5 (`libracommerce.erp.schema`):
+    # estaba escrito igual acá, en Restolibra y en el `conftest` de LibraCommerce.
+    # Se sigue creando desde acá, y no desde `init_schema()` del motor, porque las
+    # FK apuntan a `sales` (LibraCommerce) y a `facturas`/`remitos`/`turnos_caja`
+    # (LibraCore): este es el único momento en que las cuatro existen.
+    crear_venta_links(conn)
 
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS recetas (
