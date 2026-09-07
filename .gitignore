@@ -91,3 +91,7 @@ frontend/coverage/
 
 # Reporte JUnit que emite el paso de tests del CI para su gate.
 frontend/vitest.xml
+
+# Artefactos del smoke de navegador (Playwright los escribe al fallar).
+test-results/
+playwright-report/
