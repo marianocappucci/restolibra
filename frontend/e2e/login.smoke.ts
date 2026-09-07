@@ -10,7 +10,13 @@ import { expect, test } from '@playwright/test'
 // botón «Mostrar contraseña», y el nombre del producto es un wordmark, no un
 // heading accesible. La primera pantalla se reconoce por el sidebar de libra-ui
 // (`data-sidebar="sidebar"`).
-test('entra por /login, acepta los Términos y ve la primera pantalla', async ({ page }) => {
+test('entra por /login, ve la primera pantalla y abre los comprobantes', async ({ page }) => {
+  // Un error no atrapado al montar deja la pantalla en blanco y ninguna
+  // aserción de "esto no está" lo distingue de "esto todavía no cargó". Se
+  // escucha y se falla con el mensaje real.
+  const errores: string[] = []
+  page.on('pageerror', (e) => errores.push(e.message))
+
   await page.goto('/login')
   await expect(page.getByRole('button', { name: 'Ingresar' })).toBeVisible()
 
@@ -29,6 +35,43 @@ test('entra por /login, acepta los Términos y ve la primera pantalla', async ({
 
   await expect(page.locator('[data-sidebar="sidebar"]').first()).toBeVisible()
   await expect(page.locator('#username')).toHaveCount(0)
+
+  // ── Los comprobantes ───────────────────────────────────────────────────
+  // Las seis pantallas de remitos y presupuestos viven en libra-ui desde
+  // v0.65.0 y acá sólo se montan. Nada de lo que corría antes veía eso: el
+  // `tsc` prueba que el import resuelve y los tests del kit prueban la
+  // pantalla, pero que el shim la monte dentro del Layout real, con la sesión
+  // real y la API real, no lo probaba nadie —y el «Smoke: SUCCESS» del PR que
+  // las movió no decía nada sobre ellas—.
+  //
+  // 🔑 Los textos que se buscan salen HOY únicamente del kit: las copias
+  // locales se borraron al adoptarlo. Verlos en pantalla prueba el pase entero
+  // —el shim, el `exports` del paquete, el bundle— y no sólo que hay una ruta.
+  //
+  // Ninguno de ellos está en el menú lateral, a propósito: `getByText('Remitos')`
+  // matchearía la entrada del sidebar y pasaría con el cuerpo en blanco.
+  await test.step('la pantalla de remitos rinde', async () => {
+    await page.goto('/remitos')
+    await expect(page.getByRole('link', { name: 'Nuevo remito' })).toBeVisible()
+    await expect(page.getByPlaceholder(/Buscar por número, cliente u observaciones/)).toBeVisible()
+    // El vacío de la tabla es la prueba de que el GET /api/remitos contestó: sin
+    // el módulo, o con un 500, acá habría un `p.text-destructive` y ningún vacío.
+    await expect(page.getByText('No hay remitos registrados aún.')).toBeVisible()
+    await expect(page.locator('p.text-destructive')).toHaveCount(0)
+    // Control cruzado: las pestañas por estado son de presupuestos y acá no
+    // están. Sin esto, los dos pasos podrían estar mirando un mismo cascarón.
+    await expect(page.getByRole('tab', { name: 'Todos' })).toHaveCount(0)
+  })
+
+  await test.step('la pantalla de presupuestos rinde', async () => {
+    await page.goto('/presupuestos')
+    await expect(page.getByRole('link', { name: 'Nuevo presupuesto' })).toBeVisible()
+    await expect(page.getByRole('tab', { name: 'Todos' })).toBeVisible()
+    await expect(page.getByText('No hay presupuestos registrados aún.')).toBeVisible()
+    await expect(page.locator('p.text-destructive')).toHaveCount(0)
+  })
+
+  expect(errores, 'la pantalla tiró un error no atrapado').toEqual([])
 })
 
 test('una credencial mala no entra (control)', async ({ page }) => {
