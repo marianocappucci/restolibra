@@ -5,10 +5,10 @@ import {
   type MenuData, type Pedido, type PedidoItem, type PedidoModificador, type RecetaIngrediente,
 } from '../api'
 import { useMediosPago } from '../lib/medios-pago'
-import { LineasDePago } from '@/components/lineas-de-pago'
+import { LineasDePago } from 'libra-ui/comercio/LineasDePago'
 import {
   lineaVacia, pagosPayload, totalDeclarado, vueltoDe, type LineaDePago,
-} from '@/lib/pagos'
+} from 'libra-ui/comercio/pagos'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

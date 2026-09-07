@@ -112,6 +112,7 @@ describe('el espaciado de los campos no vuelve a divergir', () => {
     // producto no tiene un Login propio, lo arma con `createLogin` de
     // `libra-ui`. Esa referencia la sostiene el guard del motor.
     const conLaConvencion = ARCHIVOS.filter((p) => CAMPO_BIEN.test(readFileSync(p, 'utf8')))
-    expect(conLaConvencion.length).toBeGreaterThan(20)
+    // Eran mas de 20 hasta P9-M3; siete pantallas viven en el kit desde entonces.
+    expect(conLaConvencion.length).toBeGreaterThan(13)
   })
 })

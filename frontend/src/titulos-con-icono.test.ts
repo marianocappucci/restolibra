@@ -53,14 +53,15 @@ describe('el icono del título sale del sidebar', () => {
     // ser wrappers de libra-ui/comercio, sin titulo propio que auditar aca: el
     // piso baja en esa cantidad. Sus iconos son los del kit (Package, Boxes,
     // Warehouse), los mismos que tiene el sidebar. P9-M2: dos mas (listas de
-    // precio, icono Tag).
+    // precio, icono Tag). P9-M3: siete mas (ventas, detalle, caja, cajas y los
+    // tres de turnos).
     const { rutasDelNav, pantallas, conIcono } = auditarTitulos(SRC)
     // 33 → 32 el 2026-08-31: se retiró la entrada de *Dashboard* del sidebar
     // junto con su pantalla. El piso baja porque bajó de verdad — sigue siendo
     // un número grande, así que un parser que deje de encontrar el Layout
     // seguiría dando 0 y este control seguiría rojo.
     expect(rutasDelNav).toBeGreaterThanOrEqual(32)
-    expect(pantallas).toBeGreaterThanOrEqual(42)
-    expect(conIcono).toBeGreaterThanOrEqual(42)
+    expect(pantallas).toBeGreaterThanOrEqual(35)
+    expect(conIcono).toBeGreaterThanOrEqual(35)
   })
 })
