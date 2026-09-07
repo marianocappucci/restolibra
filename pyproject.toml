@@ -273,4 +273,7 @@ skip_covered = false
 # holgado y lo unico que puede ponerlo en rojo es una regresion. Cuando la
 # cobertura suba de verdad, subir tambien este numero -- nunca bajarlo para
 # que pase un cambio.
-fail_under = 59
+# P9-M3 (2026-09-06): volvio a fijarse 2 puntos por debajo de lo medido (57.6 %)
+# porque ventas, turnos, facturacion de la venta y caja/cajas/turnos se fueron a los
+# motores con sus tests: el denominador cambio, ninguna linea perdio cobertura.
+fail_under = 55
