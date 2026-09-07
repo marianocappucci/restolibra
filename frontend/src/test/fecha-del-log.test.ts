@@ -13,9 +13,11 @@
 // familia contra ésta: `libra-ui/Logs` pasó a agrupar por día en `dd-mm-aaaa` y
 // esta pantalla —que es la REFERENCIA visual— seguía en ISO. O sea que la
 // referencia era la que no cumplía la regla.
+// P9-M4 (2026-09-07): la pantalla vive en el kit; el helper también, y esto lo
+// sigue afirmando desde el producto porque es su formato visible.
 import { describe, expect, it } from 'vitest'
 
-import { aFechaLocal } from '../pages/Logs'
+import { aFechaLocal } from 'libra-ui/comercio/Logs'
 
 describe('la fecha del separador de día', () => {
   it('se muestra en dd-mm-aaaa, no en ISO', () => {

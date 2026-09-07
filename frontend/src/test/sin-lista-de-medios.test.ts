@@ -88,10 +88,12 @@ describe('el vocabulario de medios de pago no vuelve al frontend', () => {
     const archivos = fuentes()
     expect(archivos.length).toBeGreaterThan(40)
     // `pages/Ventas.tsx` fue el control hasta P9-M3; desde entonces es un wrapper del kit.
-    expect(archivos.some(({ nombre }) => nombre === 'pages/EgresoDetalle.tsx')).toBe(true)
+    // `pages/EgresoDetalle.tsx` fue el control hasta P9-M4; desde entonces es un wrapper
+    // del kit, como todas las pantallas que usaban el hook. Queda el shim de `lib/`.
+    expect(archivos.some(({ nombre }) => nombre === 'lib/medios-pago.ts')).toBe(true)
     // Y que el contenido se lee de verdad, no como cadenas vacías.
-    const egreso = archivos.find(({ nombre }) => nombre === 'pages/EgresoDetalle.tsx')!
-    expect(egreso.texto).toContain('medios-pago')
+    const shim = archivos.find(({ nombre }) => nombre === 'lib/medios-pago.ts')!
+    expect(shim.texto).toContain('medios-pago')
   })
 
   it('el control — sacar comentarios no tapa una lista de verdad', () => {
