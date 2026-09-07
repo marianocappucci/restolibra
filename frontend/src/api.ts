@@ -29,7 +29,7 @@ export type {
   Producto, CategoriaProducto, Deposito, StockItem, StockListado, MovimientoStock, StockPorDeposito,
 } from 'libra-ui/comercio/tipos'
 export type { ListaPrecio, ItemListaPrecio, Quiebre, ProductoBusqueda } from 'libra-ui/comercio/tipos'
-// Remitos y presupuestos: las seis pantallas se fueron al kit en F6.2
+// Remitos y presupuestos: las seis pantallas se fueron al kit el 2026-09-07
 // (2026-09-07) y los tipos con ellas, al lado de las facturas.
 export type { Remito, RemitoItem, Presupuesto, PresupuestoItem } from 'libra-ui/facturas'
 export type {
