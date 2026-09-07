@@ -113,6 +113,7 @@ describe('el espaciado de los campos no vuelve a divergir', () => {
     // `libra-ui`. Esa referencia la sostiene el guard del motor.
     const conLaConvencion = ARCHIVOS.filter((p) => CAMPO_BIEN.test(readFileSync(p, 'utf8')))
     // Eran mas de 20 hasta P9-M3; siete pantallas viven en el kit desde entonces.
-    expect(conLaConvencion.length).toBeGreaterThan(13)
+    // P9-M4: 11 pantallas mas viven en el kit; el piso baja en esa cantidad.
+    expect(conLaConvencion.length).toBeGreaterThan(2)
   })
 })
