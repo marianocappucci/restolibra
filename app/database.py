@@ -1,6 +1,7 @@
 import os
 
 from libracommerce.db.schema import init_schema as init_commerce_schema
+from libracommerce.erp.ventas import repuntar_fk_ventas_pagos
 from libracore.db.clients import sincronizar_parties_de_clientes
 
 # Infraestructura compartida y módulos por dominio, extraídos de este archivo
@@ -343,119 +344,6 @@ from app.schema_propio import init_schema_propio  # noqa: F401  (lo usa init_db)
 # directo — el hook ya no se usa y LibraCore no se toca.
 
 
-def _repuntar_fk_ventas_pagos_postgres(conn):
-    """Lo mismo que el rebuild de SQLite, pero en dos `ALTER TABLE`.
-
-    PostgreSQL si sabe cambiar una constraint, asi que no hay que reconstruir
-    la tabla ni copiar filas. Sin `PRAGMA`, sin `sqlite_master` y sin mover un
-    solo dato. Mismo criterio que en Contalibra.
-    """
-    definiciones = conn.execute("""
-        SELECT conname, pg_get_constraintdef(oid)
-        FROM pg_constraint
-        WHERE conrelid = 'ventas_pagos'::regclass AND contype = 'f'
-    """).fetchall()
-
-    if any("REFERENCES sales(" in d[1] for d in definiciones):
-        return
-
-    huerfanas = conn.execute("""
-        SELECT COUNT(*) FROM ventas_pagos vp
-        LEFT JOIN sales s ON s.id = vp.venta_id
-        WHERE s.id IS NULL
-    """).fetchone()[0]
-    if huerfanas:
-        print(
-            f"[ADVERTENCIA] ventas_pagos: {huerfanas} fila(s) referencian una venta "
-            "que no esta en `sales`. Se conservan tal cual: revisar a mano.",
-            flush=True,
-        )
-
-    for nombre, definicion in definiciones:
-        if "venta_id" in definicion:
-            conn.execute(f"ALTER TABLE ventas_pagos DROP CONSTRAINT {nombre}")
-
-    # `NOT VALID` cuando hay filas colgadas: es el equivalente exacto de lo que
-    # hace el camino de SQLite, donde el rebuild las copia con el pragma
-    # apagado y la FK queda declarada pero sin verificar sobre ellas. Es
-    # deliberado -- son registros de dinero. PostgreSQL no acepta agregar una FK
-    # que las filas violan, y `NOT VALID` dice lo mismo: no revises lo que ya
-    # esta, aplica la regla de aca en adelante. Se valida a mano despues.
-    sufijo = " NOT VALID" if huerfanas else ""
-    conn.execute(
-        "ALTER TABLE ventas_pagos ADD CONSTRAINT ventas_pagos_venta_id_fkey "
-        f"FOREIGN KEY (venta_id) REFERENCES sales(id) ON DELETE CASCADE{sufijo}"
-    )
-    conn.commit()
-
-
-def _migrar_ventas_pagos_a_sales(conn):
-    """Repunta la FK de `ventas_pagos` de `ventas(id)` (schema de LibraCore)
-    a `sales(id)` (LibraCommerce), que es donde viven las ventas de
-    Restolibra desde P8. Mismo fix que Contalibra (2026-07-30).
-
-    El schema compartido de LibraCore crea la tabla con `REFERENCES
-    ventas(id)`, así que sobre una base desde cero cada INSERT de un pago
-    falla con FOREIGN KEY constraint (el pragma está activo por conexión).
-    Idempotente: si ya apunta a `sales`, no hace nada.
-
-    `ventas_pagos` no tiene tablas hijas, así que el rebuild no pisa la
-    trampa del RENAME de SQLite que reescribe las FK de las hijas — la
-    misma que sí apareció en P8 con `pedidos`/`comandas`.
-    """
-    if ES_POSTGRES:
-        # Contra PostgreSQL no existen ni `sqlite_master` ni el PRAGMA, y el
-        # rebuild de 12 pasos no hace falta: la constraint se cambia y listo.
-        _repuntar_fk_ventas_pagos_postgres(conn)
-        return
-
-    row = conn.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='ventas_pagos'"
-    ).fetchone()
-    if not row or "REFERENCES sales(" in row[0]:
-        return
-
-    # Ver el comentario equivalente en contalibra/database.py: las filas que
-    # no tienen su venta en `sales` no se descartan (son registros de
-    # dinero), se copian igual y se avisa, porque quedan como referencias
-    # colgadas y eso tiene que ser una decisión de alguien.
-    huerfanas = conn.execute("""
-        SELECT COUNT(*) FROM ventas_pagos vp
-        LEFT JOIN sales s ON s.id = vp.venta_id
-        WHERE s.id IS NULL
-    """).fetchone()[0]
-    if huerfanas:
-        print(
-            f"[ADVERTENCIA] ventas_pagos: {huerfanas} fila(s) referencian una venta "
-            "que no está en `sales` (entorno a medio migrar de P8). Se conservan "
-            "tal cual, pero quedan como referencias colgadas: revisar a mano.",
-            flush=True,
-        )
-
-    conn.execute("PRAGMA foreign_keys=OFF")
-    try:
-        conn.execute("ALTER TABLE ventas_pagos RENAME TO ventas_pagos_old")
-        conn.execute("""
-            CREATE TABLE ventas_pagos (
-                id         INTEGER PRIMARY KEY AUTOINCREMENT,
-                venta_id   INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
-                medio      TEXT NOT NULL,
-                monto      REAL NOT NULL,
-                referencia TEXT DEFAULT '',
-                created_at TEXT DEFAULT (datetime('now','-3 hours'))
-            )
-        """)
-        conn.execute("""
-            INSERT INTO ventas_pagos (id, venta_id, medio, monto, referencia, created_at)
-            SELECT id, venta_id, medio, monto, referencia, created_at
-            FROM ventas_pagos_old
-        """)
-        conn.execute("DROP TABLE ventas_pagos_old")
-        conn.commit()
-    finally:
-        conn.execute("PRAGMA foreign_keys=ON")
-
-
 def init_db():
     with get_connection() as conn:
         init_core_schema(conn)
@@ -465,7 +353,12 @@ def init_db():
         # `cobrar_pedido` cruzan ambos motores en una única transacción
         # atómica. Mismo patrón que Contalibra (P7).
         init_commerce_schema(conn)
-        _migrar_ventas_pagos_a_sales(conn)
+        # La FK de `ventas_pagos` apunta a `ventas` en el schema de LibraCore y acá
+        # las ventas viven en `sales`. La repunta el motor desde P9-M5: este producto
+        # tenía su copia, y el rebuild de SQLite recreaba la tabla con una lista fija
+        # de columnas que **perdía `estado`** —la que LibraCore agregó después—. La del
+        # motor toma el DDL de `sqlite_master` y sólo reescribe el REFERENCES.
+        repuntar_fk_ventas_pagos(conn)
 
         # Depósito por defecto: LibraCommerce no seed-ea ninguna location, y
         # sin al menos una cualquier movimiento de stock revienta con NOT

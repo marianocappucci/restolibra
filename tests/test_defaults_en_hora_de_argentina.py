@@ -54,7 +54,12 @@ def test_el_barrido_encuentra_el_ddl():
     encontradas = sum(
         len(defaults_con_reloj(f.read_text(encoding="utf-8"))) for f in _fuentes()
     )
-    assert encontradas >= 12, f"el barrido encontro solo {encontradas} columnas con reloj"
+    # 12 hasta P9-M5. La que falta estaba dentro de `_migrar_ventas_pagos_a_sales`,
+    # el rebuild de `ventas_pagos` que se retiro cuando esa migracion paso a ser
+    # `libracommerce.erp.ventas.repuntar_fk_ventas_pagos`. Las 11 que quedan son las
+    # de `schema_propio.py`, que es el DDL propio de este producto. (Contalibra, que
+    # solo tenia esa, quedo en cero y su control paso a medir otra cosa.)
+    assert encontradas >= 11, f"el barrido encontro solo {encontradas} columnas con reloj"
 
 
 @pytest.mark.parametrize("archivo", sorted(_fuentes()), ids=lambda f: f.name)
