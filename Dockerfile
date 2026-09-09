@@ -9,7 +9,7 @@
 # compartido, sumado a Restolibra en la migracion documentada en
 # wiki/entities/libra-ui.md) via git+https, mismo motivo que
 # libracore/libracommerce en el stage de Python: funciona tambien en dev
-# local en WSL sin identidad SSH propia. Este stage node:20-slim es
+# local en WSL sin identidad SSH propia. Este stage de node es
 # independiente del stage de Python de mas abajo, asi que necesita su
 # propia copia de git+openssh-client + deploy key de solo lectura
 # (id_ed25519_libra_ui en el VPS). Mount SSH con id propio (no el
