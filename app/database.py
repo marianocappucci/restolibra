@@ -136,7 +136,7 @@ from app.db_mesas import (  # noqa: F401
     set_mesa_estado,
     update_mesa,
 )
-from app.db_modulos import apply_plan, get_modulos  # noqa: F401
+from app.db_modulos import apply_plan, get_modulos, set_addon  # noqa: F401
 from app.db_mp import (  # noqa: F401
     crear_alias_facturacion,
     create_mp_movimiento,
@@ -417,6 +417,9 @@ def init_db():
             ("listas_precio",     1, "estandar"),
             ("libros_iva",        1, "estandar"),
             ("restaurant",        1, "basico"),
+            # Add-on (`plans.ADDONS`): APAGADO de fábrica. Lo prende el
+            # backoffice por instancia con `set_addon`; ningún plan lo toca.
+            ("resguardo_externo", 0, "addon"),
         ]
         for modulo, habilitado, plan in _MODULOS_DEFAULT:
             conn.execute(

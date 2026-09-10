@@ -63,6 +63,19 @@ def modulos_de_plan(plan: str) -> set[str]:
 # Superset de todos los módulos gateables = los del plan más alto (Premium).
 TODOS_LOS_MODULOS = set(PLAN_MODULOS["premium"])
 
+# Add-ons opcionales: módulos que se habilitan por instancia y NO pertenecen a
+# ningún plan. No entran en `PLAN_MODULOS` ni en `TODOS_LOS_MODULOS`, así que ni
+# `apply_plan` (motor) ni `aplicar_plan_en_db` (acá) los tocan al aplicar un
+# plan — un add-on prendido sobrevive a subir o bajar de plan. Vienen apagados
+# (seed `_MODULOS_DEFAULT` en database.py) y los prende el backoffice, que
+# valida contra este set y escribe con `app.database.set_addon`.
+# `libracore.db.modulos.apply_plan` lee este set con
+# `getattr(plans, "ADDONS", set())`: sin él, cambiar de plan apagaría el add-on.
+#   - resguardo_externo: copia de los backups en la nube del cliente (Google
+#     Drive / Dropbox), enlazada por el propio cliente desde Configuración ->
+#     Datos / Backup (`libracore.resguardo_enlace`, LibraCore v1.93.0).
+ADDONS = {"resguardo_externo"}
+
 
 def aplicar_plan_en_db(db_path: str, plan: str) -> None:
     """Aplica un plan escribiendo el estado de módulos en la base de un cliente.
@@ -79,6 +92,10 @@ def aplicar_plan_en_db(db_path: str, plan: str) -> None:
     mismo bug — ver wiki/entities/contalibra.md).
 
     Idempotente (INSERT OR IGNORE + UPDATE). Requiere que la tabla `modulos` exista.
+
+    `- ADDONS`: aplicar un plan nunca toca un add-on (`resguardo_externo`). Hoy
+    es equivalente a `TODOS_LOS_MODULOS` (los add-ons ya están afuera), pero deja
+    la invariante escrita.
     """
     from libracore.provisioning import apply_plan_modules
 
@@ -87,6 +104,6 @@ def aplicar_plan_en_db(db_path: str, plan: str) -> None:
     apply_plan_modules(
         db_path,
         active_modules=modulos_de_plan(plan),
-        all_modules=TODOS_LOS_MODULOS,
+        all_modules=TODOS_LOS_MODULOS - ADDONS,
         plan=plan,
     )
