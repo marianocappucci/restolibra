@@ -40,6 +40,7 @@ from libracore.libros_iva_router import build_libros_iva_export_router, build_li
 from libracore.logs_router import build_logs_export_router, build_logs_router
 from libracore.mp_config_router import build_mp_config_router
 from libracore.reportes_router import build_reportes_export_router, build_reportes_router
+from libracore.resguardo_enlace import build_resguardo_enlace_router
 from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
 from libracore.tesoreria_router import build_tesoreria_router
@@ -431,6 +432,26 @@ app.include_router(
         config_router.BACKUPS_DIR,
     ),
     dependencies=[Depends(require_admin_json)],
+)
+# Enlace de la copia externa (LibraCore v1.93.0): el cliente conecta su Google
+# Drive o Dropbox desde Configuracion -> Datos / Backup, y el cron del host sube
+# ahi los backups. Rutas bajo `/api/config/resguardo-externo/enlace`.
+#
+# 🔴 Doble gate, y el segundo es el que importa: `resguardo_externo` es un
+# ADD-ON (`plans.ADDONS`), apagado de fabrica y prendido por instancia desde el
+# backoffice. `require_module` lee `db.get_modulos().get(nombre, False)`, asi
+# que una instancia sin la fila tambien da 403 — falla cerrado. La pantalla
+# (libra-ui) lee ese 403 como "sin plan" y no ofrece el boton.
+#
+# `volver_a` con `/config`: es donde vive la pantalla de Configuracion de este
+# producto (`frontend/src/App.tsx`), no el `/configuracion` del default.
+app.include_router(
+    build_resguardo_enlace_router(
+        config_router.BACKUPS_DIR,
+        carpeta="Resguardo Restolibra",
+        volver_a="/config?seccion=datos",
+    ),
+    dependencies=[Depends(require_admin_json), Depends(require_module("resguardo_externo"))],
 )
 app.include_router(
     api_ventas_router.router,
