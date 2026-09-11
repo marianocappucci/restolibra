@@ -1,3 +1,4 @@
+import asyncio
 import os
 import re
 
@@ -44,6 +45,7 @@ from libracore.resguardo_enlace import build_resguardo_enlace_router
 from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
 from libracore.tesoreria_router import build_tesoreria_router
+from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
@@ -140,30 +142,53 @@ def _mozo_puede_ver(path: str) -> bool:
     return path in _MOZO_ALLOWED_EXACT or path.startswith(_MOZO_ALLOWED_PREFIXES)
 
 
+def _leer_estado_del_request(username: str | None) -> dict:
+    """Todo lo que el middleware lee de la base y del disco, en un solo viaje.
+
+    🔴 **Corre en el threadpool y no en el loop**, y por una razón que se
+    multiplica: el middleware atiende TODOS los requests. Con un solo proceso
+    de uvicorn, estas cuatro lecturas sincrónicas —el usuario, `config.json`,
+    los módulos y los pagos de MP pendientes— frenaban el loop entero mientras
+    duraban, así que una base lenta demoraba a todos los requests a la vez,
+    `/health` incluido. Un solo `run_in_threadpool` y no cuatro: el salto al
+    hilo se paga una vez.
+
+    Los `try` son los mismos que había inline y fallan igual: el usuario
+    propaga —un 500, como antes— y el resto cae a su default.
+    """
+    estado = {
+        "current_user": db.get_usuario_by_username(username) if username else None,
+    }
+    try:
+        cfg = config_manager.load()
+        estado["empresa_nombre"]   = cfg.get("empresa_nombre", "")
+        estado["servicio_estado"]  = cfg.get("servicio_estado", "activo")
+        estado["servicio_mensaje"] = cfg.get("servicio_mensaje", "")
+    except Exception:
+        estado["empresa_nombre"]   = ""
+        estado["servicio_estado"]  = "activo"
+        estado["servicio_mensaje"] = ""
+    try:
+        mods = db.get_modulos()
+        estado["modulos"] = {m for m, on in mods.items() if on}
+    except Exception:
+        estado["modulos"] = set()
+    try:
+        estado["mp_pending_count"] = db.get_mp_pending_count()
+    except Exception:
+        estado["mp_pending_count"] = 0
+    return estado
+
+
 class CurrentUserMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         if request.url.path.startswith("/static"):
             return await call_next(request)
+        # Leer la cookie firmada es CPU y nada más: se queda en el loop.
         username = get_current_user(request)
-        request.state.current_user = db.get_usuario_by_username(username) if username else None
-        try:
-            cfg = config_manager.load()
-            request.state.empresa_nombre   = cfg.get("empresa_nombre", "")
-            request.state.servicio_estado  = cfg.get("servicio_estado", "activo")
-            request.state.servicio_mensaje = cfg.get("servicio_mensaje", "")
-        except Exception:
-            request.state.empresa_nombre   = ""
-            request.state.servicio_estado  = "activo"
-            request.state.servicio_mensaje = ""
-        try:
-            mods = db.get_modulos()
-            request.state.modulos = {m for m, on in mods.items() if on}
-        except Exception:
-            request.state.modulos = set()
-        try:
-            request.state.mp_pending_count = db.get_mp_pending_count()
-        except Exception:
-            request.state.mp_pending_count = 0
+        estado = await run_in_threadpool(_leer_estado_del_request, username)
+        for clave, valor in estado.items():
+            setattr(request.state, clave, valor)
 
         # Corte de servicio: redirigir todo excepto rutas de bypass y archivos
         # estáticos. Para /api/* se devuelve JSON 503 en vez de un redirect --
@@ -627,7 +652,11 @@ async def api_auth_verify(request: Request):
     if request.state.servicio_estado != "activo":
         return JSONResponse({"valid": False})
 
-    user = db.check_usuario_credentials(username, password)
+    # Sigue siendo `async` por el `await request.json()` de arriba, pero esto
+    # va al threadpool: es una consulta a la base **más el hash de la
+    # contraseña**, que es lento a propósito. Inline, con un solo proceso de
+    # uvicorn, cada intento de login de la landing frenaba a toda la instancia.
+    user = await run_in_threadpool(db.check_usuario_credentials, username, password)
     if not user:
         return JSONResponse({"valid": False})
 
@@ -665,7 +694,13 @@ async def mp_probar(user: str = Depends(require_auth)):
 
 
 @app.get("/api/consultar-cuit/{cuit}", include_in_schema=False)
-async def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
+def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
+    # 🔴 `def` y no `async def`: lee la base (la config de ARCA) y resuelve el
+    # par en disco, y autenticar contra el WSAA firma con `openssl` por
+    # subproceso. Todo sincrónico, y con un solo proceso de uvicorn frenaba a
+    # la instancia entera mientras duraba. Como `def` corre en el threadpool;
+    # lo que sí es asincrónico de verdad —las dos llamadas SOAP— va abajo en un
+    # loop propio de este hilo.
     cuit_limpio = re.sub(r"[^0-9]", "", cuit)
     if len(cuit_limpio) != 11:
         return JSONResponse({"error": "CUIT inválido. Debe tener 11 dígitos."}, status_code=400)
@@ -696,14 +731,22 @@ async def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
             {"error": "Configurá los certificados ARCA en Configuración para habilitar la consulta de CUIT."},
             status_code=503,
         )
-    try:
+    async def _padron():
         ta = await arca_wsaa.autenticar(
             cert_path, clave_path, arca["ambiente"],
             servicio="ws_sr_padron_a13",
         )
-        datos = await arca_wspadron.consultar_persona(
+        return await arca_wspadron.consultar_persona(
             arca["cuit"], cuit_limpio, ta["token"], ta["sign"], arca["ambiente"]
         )
+
+    try:
+        # En un loop propio de este hilo: `autenticar` es `async` pero firma el
+        # TRA con `openssl` por subproceso, que es sincrónico — con `await`
+        # desde el loop de uvicorn eso frenaba a toda la instancia. Las
+        # excepciones salen de `asyncio.run` tal cual, así que los `except` de
+        # abajo ven lo mismo que antes.
+        datos = asyncio.run(_padron())
         return JSONResponse(datos)
 
     except RuntimeError as e:
