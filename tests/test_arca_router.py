@@ -1,9 +1,16 @@
 """La pantalla de ARCA, ahora del motor.
 
-El mecanismo lo prueba `libracore`. Lo que se prueba acá es **el montaje**: que
-las rutas nuevas existan y estén gateadas, que las viejas ya no, y —lo que este
-producto no tenía— que subir un archivo equivocado se rechace **antes** de
-tocar el disco.
+El mecanismo lo prueba `libracore` en `tests/test_arca_router.py`: que el `.csr`
+y la clave en el campo del certificado se rechacen sin tocar el disco, que una
+clave de otro par no pise la que estaba, el estado con el vencimiento, el
+borrado de las credenciales y `probar` sin configuracion. Hasta el 2026-09-11
+esos casos estaban escritos tambien aca, byte a byte en los dos productos
+hermanos.
+
+Lo que se prueba aca es **el montaje**: que las rutas nuevas existan en el
+prefijo que consume la SPA y esten gateadas por el admin de ESTE producto, que
+las viejas ya no, y que un par subido por la API de este producto quede donde
+esta instancia lo lee (`certificado-info`, que el motor no cubre).
 
 > 🔴 Hasta el 2026-08-24 `POST /api/config/arca/certificados` escribía los bytes
 > que llegaran. Subir el `.csr` —el pedido— en vez del `.crt` que ARCA devuelve
@@ -44,16 +51,6 @@ def _par():
     )
 
 
-def _csr():
-    """El pedido, que es lo que se sube por error en vez del certificado."""
-    clave = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    return (
-        x509.CertificateSigningRequestBuilder()
-        .subject_name(x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "pedido")]))
-        .sign(clave, hashes.SHA256())
-    ).public_bytes(serialization.Encoding.PEM)
-
-
 def _subir(cliente, que, contenido, nombre="archivo.pem"):
     return cliente.post(
         f"{RUTA}/{que}",
@@ -65,8 +62,8 @@ def _subir(cliente, que, contenido, nombre="archivo.pem"):
 
 @pytest.mark.parametrize("ruta", [RUTA, f"{RUTA}/estado"])
 def test_las_rutas_nuevas_existen(admin_client, ruta):
-    """No 404. El contenido lo prueban los tests de abajo; acá lo que se fija es
-    que el router esté montado en el prefijo que la SPA consume.
+    """No 404. El contenido lo prueba el motor; acá lo que se fija es que el
+    router esté montado en el prefijo que la SPA consume.
 
     ⚠️ `certificado-info` no entra en esta lista: **devuelve 404 legítimo**
     cuando la instancia no tiene configuración, así que "no da 404" no
@@ -139,20 +136,7 @@ def test_todo_el_router_es_de_admin(client):
     assert client.get(RUTA).status_code == 200
 
 
-# ── Alta y lectura ──────────────────────────────────────────────────────────
-
-def test_guardar_y_leer(admin_client):
-    r = admin_client.put(RUTA, json={
-        "empresa": "default", "cuit": "20289933604",
-        "punto_venta": 5, "ambiente": "produccion",
-    })
-    assert r.status_code == 200, r.text
-    leido = admin_client.get(RUTA).json()
-    assert leido["cuit"] == "20289933604"
-    assert leido["punto_venta"] == 5
-    assert leido["ambiente"] == "produccion"
-    assert leido["tiene_certificado"] is False
-
+# ── Alta y lectura, por la API de este producto ─────────────────────────────
 
 def test_la_configuracion_de_arca_se_relee_por_su_propio_endpoint(admin_client):
     """Sacar el `PUT` de `/api/config` no puede haberse llevado la lectura.
@@ -166,75 +150,12 @@ def test_la_configuracion_de_arca_se_relee_por_su_propio_endpoint(admin_client):
     assert admin_client.get(RUTA).json()["cuit"] == "20289933604"
 
 
-# ── Lo que ahora se rechaza al subir ────────────────────────────────────────
-
-def test_el_csr_se_rechaza_y_no_deja_nada_cargado(admin_client):
-    """🔑 El error más común, y el que este producto aceptaba."""
-    r = _subir(admin_client, "certificado", _csr(), "pedido.csr")
-    assert r.status_code == 422, r.text
-    assert ".csr" in r.json()["detail"]
-    assert admin_client.get(RUTA).json() is None, "no puede haber quedado configuración"
-
-
-def test_la_clave_en_el_campo_del_certificado_se_rechaza(admin_client):
-    _, clave = _par()
-    assert _subir(admin_client, "certificado", clave).status_code == 422
-
-
 def test_el_par_bueno_entra(admin_client):
+    """El camino feliz de la subida, contra el `DATA_DIR` de esta instancia: el
+    rechazo de los archivos equivocados lo prueba el motor."""
     certificado, clave = _par()
     assert _subir(admin_client, "certificado", certificado).status_code == 200
     r = _subir(admin_client, "clave", clave)
     assert r.status_code == 200, r.text
     assert r.json()["tiene_certificado"] is True
     assert r.json()["tiene_clave"] is True
-
-
-def test_una_clave_de_otro_par_no_pisa_la_que_estaba(admin_client):
-    """🔑 El chequeo que ningún nombre de archivo puede dar, y su contracara:
-    que el rechazo no deje la instancia con la mitad cambiada."""
-    certificado, clave = _par()
-    _subir(admin_client, "certificado", certificado)
-    _subir(admin_client, "clave", clave)
-
-    _, clave_ajena = _par()
-    r = _subir(admin_client, "clave", clave_ajena)
-    assert r.status_code == 422
-    assert "pareja" in r.json()["detail"]
-
-    with open(admin_client.get(RUTA).json()["clave_path"], "rb") as f:
-        assert f.read() == clave, "la clave buena tenía que seguir en el disco"
-
-
-# ── Estado y borrado, que la pantalla no tenía ──────────────────────────────
-
-def test_el_estado_dice_cuando_vence(admin_client):
-    """🔑 Los certificados de ARCA duran dos años y el día que vencen la
-    facturación deja de andar sin que nadie haya tocado nada. Antes la pantalla
-    no lo mostraba."""
-    certificado, clave = _par()
-    _subir(admin_client, "certificado", certificado)
-    _subir(admin_client, "clave", clave)
-
-    estado = admin_client.get(f"{RUTA}/estado").json()
-    assert estado["configurado"] is True
-    assert estado["vencido"] is False
-    assert 700 < estado["dias_para_vencer"] <= 730
-    assert estado["vence"].count("-") == 2, "dd-mm-aaaa"
-
-
-def test_se_pueden_sacar_las_credenciales(admin_client):
-    """Antes no había forma de desconectar ARCA desde la pantalla."""
-    certificado, clave = _par()
-    _subir(admin_client, "certificado", certificado)
-    _subir(admin_client, "clave", clave)
-
-    r = admin_client.delete(f"{RUTA}/credenciales")
-    assert r.status_code == 200, r.text
-    assert r.json()["tiene_certificado"] is False
-    assert admin_client.get(f"{RUTA}/estado").json()["configurado"] is False
-
-
-def test_probar_sin_configuracion(admin_client):
-    """`probar` pasó de `GET /api/arca/probar` a `POST` acá."""
-    assert admin_client.post(f"{RUTA}/probar").status_code == 400
