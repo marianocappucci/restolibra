@@ -76,6 +76,8 @@ if _ROOT not in sys.path:
 
 import pytest
 from fastapi.testclient import TestClient
+from libraauth import session_auth
+from libraauth.captcha import Captcha
 
 from app import database as db  # noqa: F401  (re-exporta todo el dominio)
 from app import db_core, db_usuarios
@@ -220,6 +222,55 @@ def _terminos_ya_aceptados(request):
     # VentaLibra.
     mp = pytest.MonkeyPatch()
     mp.setattr(TerminosRepository, "esta_aceptada", lambda self: True)
+    yield
+    mp.undo()
+
+
+# ── El captcha del login: dado por bueno para el resto de la suite ──────────
+
+#: La funcion real que usa el router para conseguir el captcha. Queda guardada
+#: aca para que `test_captcha_login.py` la restaure: ese archivo es el unico que
+#: tiene que ver el captcha de verdad.
+CAPTCHA_DE_ORIGINAL = session_auth._captcha_de
+
+
+class _CaptchaQueSiempreVale:
+    """Emite desafios de verdad —baratos— y acepta cualquier solucion."""
+
+    def __init__(self):
+        self._real = Captcha("clave-de-prueba", costo=1, contador_min=1, contador_rango=5)
+
+    def emitir(self) -> dict:
+        return self._real.emitir()
+
+    def verificar(self, payload: str) -> bool:
+        return True
+
+
+@pytest.fixture(autouse=True)
+def _captcha_resuelto():
+    """Desde libraauth v0.40.0 el login y forgot-password exigen un captcha
+    ALTCHA (`captcha=True` en `app/web/api/auth.py`), y sin el contestan 400.
+
+    La suite postea a `/api/login` en muchos lugares —la fixture `admin_client`
+    y una docena de tests que entran con otro usuario—, y resolver un desafio
+    en cada uno no prueba nada de este producto: firma, vencimiento y
+    anti-replay los prueba libraauth. Aca solo se cablea. Por eso el router
+    recibe un doble que acepta cualquier cosa, y `test_captcha_login.py`
+    restaura la funcion real (`CAPTCHA_DE_ORIGINAL`) para fijar que el captcha
+    esta prendido y en `/api/captcha`.
+
+    Se parchea `session_auth._captcha_de` porque es lo que el router consulta
+    en cada request; `app.state.captcha` no alcanzaria, porque
+    `test_demo_publica.py` recarga la app.
+
+    `MonkeyPatch()` propio y no el fixture, por lo mismo que en
+    `_terminos_ya_aceptados`: hay tests que llaman `monkeypatch.undo()` en el
+    cuerpo, y eso desharia tambien este parche a mitad del test.
+    """
+    doble = _CaptchaQueSiempreVale()
+    mp = pytest.MonkeyPatch()
+    mp.setattr("libraauth.session_auth._captcha_de", lambda request: doble)
     yield
     mp.undo()
 

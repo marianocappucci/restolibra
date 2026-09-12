@@ -232,6 +232,11 @@ fi
 # el compose de la demo con contrasenas distintas, asi que usar la equivocada da
 # un 401 que no dice por que.
 # --- 2. Sembrar -----------------------------------------------------------
+# El seed entra resolviendo el captcha ALTCHA (libraauth v0.40.0) y para eso
+# importa `altcha`. Corre ADENTRO del contenedor, donde `python3` es el de
+# /opt/venv (el Dockerfile lo pone primero en el PATH): el venv de la app, que
+# trae `altcha` con libraauth. No es el python3 del sistema del VPS ni el de
+# `.venv-scripts`, que no lo tienen: no cambiar este `python3` por ellos.
 docker cp "$SEED_LOCAL" "$CONTENEDOR:/tmp/seed.py"
 docker exec -i "$CONTENEDOR" sh -c '
   python3 /tmp/seed.py \

@@ -719,6 +719,60 @@ def _sembrar_tesoreria(api: Api, contar) -> None:
             print(f"  -- transferencia: {e}")
 
 
+def _desafio_captcha(api) -> dict | None:
+    """El desafio ALTCHA de la instancia, o `None` si no tiene captcha.
+
+    🔴 **Un 404 no es un error.** `reset_demo.sh` toma este archivo de
+    `origin/develop`, pero la demo corre la imagen de `main`: entre que el
+    captcha entra a develop y se promueve, la instancia no sirve `/api/captcha`.
+    Si eso cortara el seed, el reset dejaria la demo vacia —la base ya se borro
+    cuando esto corre—, que es lo que paso el 2026-08-06.
+
+    Lo mismo si contesta algo que no es JSON (el index.html de un catch-all):
+    `Api` lo intenta decodificar y tira `ValueError`. Ahi tampoco hay captcha.
+    """
+    try:
+        desafio = api.get("/api/captcha")
+    except RuntimeError as e:
+        if " -> 404:" in str(e):
+            return None
+        raise
+    except ValueError:
+        return None
+    if isinstance(desafio, dict) and isinstance(desafio.get("parameters"), dict) \
+            and isinstance(desafio.get("signature"), str):
+        return desafio
+    return None
+
+
+def _resolver_captcha(desafio: dict) -> str:
+    """Lo que hace el widget en el navegador: la prueba de trabajo (~1 s)."""
+    try:
+        from altcha import Challenge, Payload, solve_challenge
+    except ImportError:
+        raise SystemExit(
+            "ERROR: la instancia pide captcha (libraauth v0.40.0) y resolverlo "
+            "necesita el paquete `altcha`, que viene con libraauth. Correr este "
+            "script con el python del producto: dentro del contenedor, `python3` "
+            "(/opt/venv); fuera, un venv con las dependencias del producto "
+            "(`uv sync`). El `python3` del sistema no lo tiene."
+        ) from None
+    ch = Challenge.from_dict(desafio)
+    return Payload(ch, solve_challenge(ch)).to_base64()
+
+
+def _entrar(api, usuario: str, clave: str):
+    """`POST /api/login`, con el captcha resuelto si la instancia lo pide.
+
+    Un desafio sirve una sola vez, asi que se pide uno por login.
+    """
+    cuerpo = {"username": usuario, "password": clave}
+    desafio = _desafio_captcha(api)
+    if desafio is not None:
+        cuerpo["captcha"] = _resolver_captcha(desafio)
+    return api.post("/api/login", cuerpo)
+
+
 def _sesion_del_visitante(api):
     """Una sesión con el usuario de la demo, si la instancia es una demo.
 
@@ -735,7 +789,7 @@ def _sesion_del_visitante(api):
         return None
     sesion = Api(base)
     try:
-        sesion.post("/api/login", {"username": usuario, "password": clave})
+        _entrar(sesion, usuario, clave)
     except RuntimeError as e:
         print(f"  -- no se pudo entrar como {usuario}: {e}")
         return None
@@ -1016,7 +1070,7 @@ def main() -> int:
         return 2
 
     api = Api(args.url)
-    api.post("/api/login", {"username": args.usuario, "password": args.password})
+    _entrar(api, args.usuario, args.password)
     sembrar(api)
     return 0
 
