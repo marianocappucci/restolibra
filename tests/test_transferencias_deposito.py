@@ -1,9 +1,16 @@
 """Transferencias entre depositos, delegadas en LibraCommerce desde v0.7.1.
 
-No habia ningun test de esto antes de la adopcion. Los que importan son los
-tres del final: fijan lo que la delegacion **no** tenia que cambiar --el texto
-del error que ve el usuario y el `reason_code` que lee la pantalla de
-actividad-- porque son las dos cosas que se degradaban en silencio.
+El mecanismo lo arma `libracommerce` y lo prueba ahi, contra SQLite y
+PostgreSQL: el caso de uso en `tests/test_inventory_usecases.py` (que no
+transfiera de mas, que el rechazo no deje movimientos, que la segunda pata no
+quede sin la primera) y la factory HTTP en `tests/test_web_catalogo.py` (el 422
+con el texto para humanos y cuanto hay, el vocabulario `transferencia_*` que
+lee la pantalla de actividad, la observacion en el movimiento). Hasta el
+2026-09-11 esos casos estaban escritos tambien aca, byte a byte en los dos
+productos hermanos.
+
+**Lo que queda aca es la integracion**: la transferencia por la API de ESTE
+producto, y el rollback sobre la conexion que arma este producto.
 """
 
 import pytest
@@ -68,30 +75,6 @@ def test_transferir_mueve_el_stock(admin_client, escenario):
     assert admin_client.get(f"/api/stock/{producto['id']}").json()["stock_actual"] == 100
 
 
-def test_no_transfiere_mas_de_lo_que_hay(admin_client, escenario):
-    producto, origen, destino = escenario
-
-    resp = admin_client.post("/api/depositos/transferir", json={
-        "producto_id": producto["id"], "origen_id": origen["id"],
-        "destino_id": destino["id"], "cantidad": 101,
-    })
-
-    assert resp.status_code == 422
-
-
-def test_el_rechazo_no_deja_ningun_movimiento(admin_client, escenario):
-    """La guarda tiene que abortar antes de escribir, no despues."""
-    producto, origen, destino = escenario
-
-    admin_client.post("/api/depositos/transferir", json={
-        "producto_id": producto["id"], "origen_id": origen["id"],
-        "destino_id": destino["id"], "cantidad": 101,
-    })
-
-    assert _stock_en(admin_client, producto["id"], origen["id"]) == 100
-    assert _stock_en(admin_client, producto["id"], destino["id"]) == 0
-
-
 def test_si_falla_la_segunda_escritura_no_queda_la_primera(
     admin_client, escenario, monkeypatch
 ):
@@ -102,8 +85,8 @@ def test_si_falla_la_segunda_escritura_no_queda_la_primera(
     salian del origen y no llegaban al destino, sin ningun error visible
     despues.
 
-    El motor tiene su propio test de esto, pero contra un SQLite en memoria.
-    Aca se ejercita la conexion real que arma `libracore.db.core`, que es la
+    El motor tiene su propio test de esto, contra sus dos motores. Aca se
+    ejercita la conexion que le pasa ESTE producto a la factory, que es la
     unica que prueba que el rollback funcione **en este producto**.
     """
     from libracommerce.db.repository import SqliteCommerceRepository
@@ -135,70 +118,3 @@ def test_si_falla_la_segunda_escritura_no_queda_la_primera(
         "la salida quedo grabada sin su entrada: se perdio mercaderia"
     )
     assert _stock_en(admin_client, producto["id"], destino["id"]) == 0
-
-
-# ── Lo que la delegacion NO tenia que cambiar ────────────────────────────
-
-
-def test_el_mensaje_de_stock_insuficiente_sigue_siendo_el_de_contalibra(
-    admin_client, escenario
-):
-    """El endpoint devuelve `str(e)` en el 422 y lo lee una persona.
-
-    El mensaje del motor nombra ids ('el deposito 3 para el item 7'), que no
-    le dicen nada a quien esta mirando una pantalla con nombres. Por eso
-    `transferir_stock` traduce `StockInsuficienteError` a su propio ValueError.
-    """
-    producto, origen, destino = escenario
-
-    resp = admin_client.post("/api/depositos/transferir", json={
-        "producto_id": producto["id"], "origen_id": origen["id"],
-        "destino_id": destino["id"], "cantidad": 101,
-    })
-
-    detalle = resp.json()["detail"]
-    assert "Stock insuficiente en depósito origen" in detalle
-    assert "100" in detalle, "el mensaje tiene que decir cuanto hay disponible"
-
-
-def test_los_movimientos_conservan_el_vocabulario_de_contalibra(
-    admin_client, escenario
-):
-    """`db_logs` muestra `COALESCE(reason_code, movement_type)` **sin mapa**.
-
-    Si la delegacion no pasara el `reason_code`, esta pantalla pasaria a decir
-    'transfer_out' en produccion. El motor acepta el parametro desde v0.7.1
-    justamente para esto.
-    """
-    producto, origen, destino = escenario
-
-    admin_client.post("/api/depositos/transferir", json={
-        "producto_id": producto["id"], "origen_id": origen["id"],
-        "destino_id": destino["id"], "cantidad": 10,
-    })
-
-    movimientos = admin_client.get(
-        f"/api/stock/movimientos?producto_id={producto['id']}"
-    ).json()
-    tipos = {m["tipo"] for m in movimientos}
-
-    assert "transferencia_salida" in tipos
-    assert "transferencia_entrada" in tipos
-    assert "transfer_out" not in tipos
-
-
-def test_la_observacion_queda_en_el_movimiento(admin_client, escenario):
-    producto, origen, destino = escenario
-
-    admin_client.post("/api/depositos/transferir", json={
-        "producto_id": producto["id"], "origen_id": origen["id"],
-        "destino_id": destino["id"], "cantidad": 5,
-        "observaciones": "Remito 5054 para Concordia",
-    })
-
-    movimientos = admin_client.get(
-        f"/api/stock/movimientos?producto_id={producto['id']}"
-    ).json()
-    referencias = {m.get("referencia") for m in movimientos}
-
-    assert "Remito 5054 para Concordia" in referencias

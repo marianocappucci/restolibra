@@ -1,5 +1,16 @@
-"""Clientes y cuenta corriente: el cargo nace de una venta con medio
-cuenta_corriente y el pago lo cancela."""
+"""Cuenta corriente: el cargo nace de una venta de ESTE producto con medio
+cuenta_corriente y el pago lo cancela.
+
+El alta, la edicion, la baja de clientes y los 404 de la cuenta corriente los
+arman `libracore.clientes_router` y `libracore.cuenta_corriente_router`, y los
+prueba el motor (`tests/test_financiero_routers.py`). Hasta el 2026-09-11 esos
+casos estaban escritos tambien aca, byte a byte en los dos productos hermanos.
+
+**Lo que queda aca es la integracion**: la deuda la genera `POST /api/ventas`,
+que es de este producto, y la lee el router del motor. El motor la prueba con
+un debito insertado a mano; lo que solo se ve de este lado es que una venta
+real deje el cargo donde la cuenta corriente lo va a buscar.
+"""
 import datetime
 
 HOY = datetime.date.today().isoformat()
@@ -11,35 +22,6 @@ def _cliente(client, name="Almacen Don Pepe", **extra):
     resp = client.post("/api/clientes", json=payload)
     assert resp.status_code == 200, resp.text
     return resp.json()
-
-
-def test_crear_y_listar_cliente(admin_client):
-    _cliente(admin_client, "Almacen Don Pepe", cuit_dni="20304050607")
-    listado = admin_client.get("/api/clientes").json()
-    items = listado if isinstance(listado, list) else listado["items"]
-    assert any(c["name"] == "Almacen Don Pepe" for c in items)
-
-
-def test_detalle_cliente(admin_client):
-    c = _cliente(admin_client, "Con detalle", email="pepe@test.com")
-    detalle = admin_client.get(f"/api/clientes/{c['id']}").json()
-    cliente = detalle.get("cliente", detalle)
-    assert cliente["email"] == "pepe@test.com"
-
-
-def test_actualizar_cliente(admin_client):
-    c = _cliente(admin_client, "Viejo nombre")
-    resp = admin_client.put(f"/api/clientes/{c['id']}", json={"name": "Nuevo nombre"})
-    assert resp.status_code == 200
-    detalle = admin_client.get(f"/api/clientes/{c['id']}").json()
-    cliente = detalle.get("cliente", detalle)
-    assert cliente["name"] == "Nuevo nombre"
-
-
-def test_desactivar_y_activar_cliente(admin_client):
-    c = _cliente(admin_client, "Intermitente")
-    assert admin_client.post(f"/api/clientes/{c['id']}/desactivar").status_code == 200
-    assert admin_client.post(f"/api/clientes/{c['id']}/activar").status_code == 200
 
 
 def test_venta_en_cuenta_corriente_genera_deuda(admin_client):
@@ -78,9 +60,3 @@ def test_pago_parcial_deja_saldo(admin_client):
     resp = admin_client.post(f"/api/cuenta-corriente/{c['id']}/pagar",
                              json={"monto": 400.0, "fecha": HOY})
     assert resp.json()["saldo"] == 600.0
-
-
-def test_cc_cliente_inexistente_404(admin_client):
-    assert admin_client.get("/api/cuenta-corriente/99999").status_code == 404
-    assert admin_client.post("/api/cuenta-corriente/99999/pagar",
-                             json={"monto": 1.0, "fecha": HOY}).status_code == 404

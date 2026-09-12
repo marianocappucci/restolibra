@@ -1,137 +1,92 @@
-"""La ruta que llena la bandeja de MercadoPago en una demo.
+"""La ruta que llena la bandeja de MercadoPago en una demo, en el armado de
+ESTE producto.
 
-🔴 **Lo que estos tests protegen no es que la bandeja se llene: es que esta
-ruta NO EXISTA en la instancia de un cliente.** Es una puerta que escribe cobros
-en la base sin pasar por MercadoPago; en un sistema que factura, eso no puede
-estar disponible ni siquiera detrás de un rol.
+🔴 **Lo que se protege no es que la bandeja se llene: es que esta ruta NO
+EXISTA en la instancia de un cliente.** Es una puerta que escribe cobros en la
+base sin pasar por MercadoPago; en un sistema que factura, eso no puede estar
+disponible ni siquiera detras de un rol.
 
-La garantía es más fuerte que un `if` adentro del endpoint: el `include_router`
-se decide **al importar**, mirando `DEMO_MODE`. Sin esa variable la ruta ni
-figura en el openapi. Por eso los tests reimportan el módulo con el entorno
-cambiado en vez de llamar al endpoint con un flag distinto.
+La decision la toma `libracore.mp_bandeja_router` al armar el router, mirando
+`DEMO_MODE`, y la prueba el motor en `tests/test_mp_bandeja_router.py`: que sin
+la variable la ruta no exista ni figure en el openapi, que `DEMO_MODE=0` no la
+encienda, que la siembra sea idempotente y deje los cobros pendientes. Hasta el
+2026-09-11 esos casos estaban escritos tambien aca, byte a byte en los dos
+productos hermanos.
 
-Existe porque la bandeja se llena sincronizando contra MercadoPago de verdad
-—`/sincronizar` exige el Access Token de la cuenta y sale a la red— y una demo
-pública no tiene cuenta de MP ni puede tenerla. Era la última pantalla que
-seguía abriéndose vacía.
+**Lo que queda aca es lo unico que el motor no puede saber**: que este producto
+arma el router SIN forzar `permitir_siembra_de_demo`, o sea que en su caso
+manda el entorno. Un `permitir_siembra_de_demo=True` en
+`app/web/api/mp_bandeja.py` le abriria la puerta a todos los clientes y la
+suite del motor seguiria en verde. Se mira la tabla de rutas del router, que
+se arma al importar: por eso el reimport.
 """
 import importlib
 
 import pytest
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
 
 
-def _app_con_entorno(monkeypatch, demo: bool):
-    """Una app con el router de la bandeja, importado con o sin DEMO_MODE.
-
-    El reimport es el punto: la decisión se toma en tiempo de importación.
-    """
-    if demo:
-        monkeypatch.setenv("DEMO_MODE", "1")
-    else:
+def _rutas_con_entorno(monkeypatch, demo_mode):
+    if demo_mode is None:
         monkeypatch.delenv("DEMO_MODE", raising=False)
-
+    else:
+        monkeypatch.setenv("DEMO_MODE", demo_mode)
     import app.web.api.mp_bandeja as modulo
     importlib.reload(modulo)
-
-    app = FastAPI()
-    app.include_router(modulo.router)
-
-    # La base la crea el evento startup de la app real; esta es una app armada
-    # a mano para poder reimportar el router, asi que se inicializa a mano.
-    from app import database as db
-    from tests.conftest import _reset_data_dir
-    _reset_data_dir()
-    db.init_db()
-
-    return TestClient(app), modulo
+    return {getattr(r, "path", "") for r in modulo.router.routes}
 
 
 @pytest.fixture(autouse=True)
 def _devolver_el_modulo_como_estaba():
-    """Reimportar deja el módulo tocado para el resto de la suite."""
+    """Reimportar deja el modulo tocado para el resto de la suite."""
     yield
     import app.web.api.mp_bandeja as modulo
     importlib.reload(modulo)
 
 
-ITEMS = [
-    {"mp_payment_id": "test-1", "monto": 1000, "payer_name": "Alguien",
-     "clase": "pago"},
-    {"mp_payment_id": "test-2", "monto": 2000, "payer_name": "Otro",
-     "clase": "transferencia"},
-]
+def test_en_la_instancia_de_un_cliente_la_siembra_no_existe(monkeypatch):
+    rutas = _rutas_con_entorno(monkeypatch, None)
+    assert "/api/mp-bandeja" in rutas, "el control: el router del producto esta armado"
+    assert "/api/mp-bandeja/demo/sembrar" not in rutas
 
 
-# ── 🔴 Fuera de una demo la ruta no existe ────────────────────────────────
-
-def test_sin_demo_mode_la_ruta_no_existe(monkeypatch):
-    """La mitad que sostiene todo. Sin esto, cualquier instancia tendría una
-    puerta para escribir cobros sin pasar por MercadoPago."""
-    cliente, _ = _app_con_entorno(monkeypatch, demo=False)
-
-    assert cliente.post("/api/mp-bandeja/demo/sembrar", json=ITEMS).status_code == 404
+def test_en_una_demo_la_siembra_existe(monkeypatch):
+    """La otra mitad: sin esta, la de arriba pasaria igual con un producto que
+    no arma nunca la ruta, y la demo se abriria con la bandeja vacia."""
+    assert "/api/mp-bandeja/demo/sembrar" in _rutas_con_entorno(monkeypatch, "1")
 
 
-def test_sin_demo_mode_ni_aparece_en_el_openapi(monkeypatch):
-    """Que dé 404 podría ser un `if`; que no esté en el openapi prueba que el
-    router directamente no la registró."""
-    cliente, _ = _app_con_entorno(monkeypatch, demo=False)
+def test_la_app_de_la_suite_no_la_expone():
+    """La app real, tal como la levanta la suite (sin `DEMO_MODE`)."""
+    from app.web.app import app
 
-    rutas = cliente.get("/openapi.json").json()["paths"]
-
-    assert not any("demo/sembrar" in r for r in rutas)
+    assert not any("demo/sembrar" in r for r in app.openapi()["paths"])
 
 
-def test_un_valor_raro_de_demo_mode_no_la_enciende(monkeypatch):
-    """`DEMO_MODE=0` es lo que escribiría alguien para apagarla."""
-    monkeypatch.setenv("DEMO_MODE", "0")
-    import app.web.api.mp_bandeja as modulo
-    importlib.reload(modulo)
-    app = FastAPI()
-    app.include_router(modulo.router)
-
-    assert TestClient(app).post("/api/mp-bandeja/demo/sembrar", json=ITEMS).status_code == 404
+# ── Lo que el middleware lee en cada request ──────────────────────────────
 
 
-# ── En una demo, llena las dos solapas ────────────────────────────────────
+@pytest.mark.parametrize("lectura", ["get_mp_pending_count", "get_modulos"])
+def test_si_una_lectura_del_middleware_falla_la_app_sigue_contestando(admin_client, monkeypatch, lectura):
+    """`CurrentUserMiddleware` lee en CADA request los cobros de MP pendientes
+    (el numerito de la bandeja) y los modulos habilitados. Si una de esas
+    lecturas falla, la pantalla que se pidio tiene que salir igual, sin ese
+    dato: un contador no puede tumbar la app entera.
 
-def test_en_una_demo_siembra_las_dos_solapas(monkeypatch):
-    """La pantalla tiene cobros y transferencias: con una sola llena queda a
-    medias."""
-    cliente, _ = _app_con_entorno(monkeypatch, demo=True)
+    Hasta el 2026-09-11 el caso de los pendientes lo recorria de casualidad uno
+    de los tests que se sacaron de este archivo, y se midio al recortarlo: era
+    lo unico que lo cubria. El de los modulos no lo cubria nadie.
+    """
+    from app import database as db
 
-    r = cliente.post("/api/mp-bandeja/demo/sembrar", json=ITEMS)
+    llamadas = []
+
+    def falla():
+        llamadas.append(1)
+        raise RuntimeError(f"{lectura} fallo")
+
+    monkeypatch.setattr(db, lectura, falla)
+
+    r = admin_client.get("/api/terminos")
+
     assert r.status_code == 200, r.text
-    assert r.json()["creados"] == 2
-
-    bandeja = cliente.get("/api/mp-bandeja").json()
-    assert len(bandeja["pendientes"]) == 1
-    assert len(bandeja["transferencias"]) == 1
-
-
-def test_correrla_dos_veces_no_duplica(monkeypatch):
-    """El reset diario la vuelve a llamar: sin idempotencia la bandeja crecería
-    todas las noches."""
-    cliente, _ = _app_con_entorno(monkeypatch, demo=True)
-    cliente.post("/api/mp-bandeja/demo/sembrar", json=ITEMS)
-
-    r = cliente.post("/api/mp-bandeja/demo/sembrar", json=ITEMS)
-
-    assert r.json()["creados"] == 0
-    bandeja = cliente.get("/api/mp-bandeja").json()
-    assert len(bandeja["pendientes"]) == 1
-    assert len(bandeja["transferencias"]) == 1
-
-
-def test_quedan_pendientes_y_no_facturados(monkeypatch):
-    """Lo que la pantalla tiene que mostrar es la acción disponible —el botón de
-    facturar—, no un historial cerrado."""
-    cliente, _ = _app_con_entorno(monkeypatch, demo=True)
-    cliente.post("/api/mp-bandeja/demo/sembrar", json=ITEMS)
-
-    bandeja = cliente.get("/api/mp-bandeja").json()
-
-    assert bandeja["pendientes"][0]["estado_factura"] == "pendiente"
-    assert bandeja["historial"] == []
+    assert llamadas, "el control: el middleware tiene que haber intentado leer"
