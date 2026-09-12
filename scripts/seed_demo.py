@@ -727,6 +727,9 @@ def _desafio_captcha(api) -> dict | None:
     captcha entra a develop y se promueve, la instancia no sirve `/api/captcha`.
     Si eso cortara el seed, el reset dejaria la demo vacia —la base ya se borro
     cuando esto corre—, que es lo que paso el 2026-08-06.
+
+    Lo mismo si contesta algo que no es JSON (el index.html de un catch-all):
+    `Api` lo intenta decodificar y tira `ValueError`. Ahi tampoco hay captcha.
     """
     try:
         desafio = api.get("/api/captcha")
@@ -734,6 +737,8 @@ def _desafio_captcha(api) -> dict | None:
         if " -> 404:" in str(e):
             return None
         raise
+    except ValueError:
+        return None
     if isinstance(desafio, dict) and isinstance(desafio.get("parameters"), dict) \
             and isinstance(desafio.get("signature"), str):
         return desafio

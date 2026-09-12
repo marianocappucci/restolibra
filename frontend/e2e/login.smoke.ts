@@ -5,10 +5,24 @@ import { expect, type Page, test } from '@playwright/test'
 // a que el widget termine la prueba de trabajo de verdad —del orden de un
 // segundo— contra el `/api/captcha` real: es lo único que ve si el worker del
 // widget no carga con la CSP, o si la ruta del desafío no es la que monta el
-// backend. `getByRole` atraviesa el shadow DOM del web component.
+// backend.
+//
+// Se hace clic en el LABEL y no en el input: ALTCHA 3 dibuja una casilla
+// propia sobre un `<input>` con `appearance: none`, y en el CI Playwright nunca
+// dio por accionable al input (30 s de «waiting for element to be visible,
+// enabled and stable»). El label es texto plano y dispara lo mismo.
+//
+// Se espera el `data-state` del widget y no sólo el botón: si la prueba de
+// trabajo falla, el rojo dice en qué estado quedó (`error`, `unverified`) en
+// vez de un «Ingresar sigue deshabilitado» que no distingue una causa de otra.
 async function tildarNoSoyUnRobot(page: Page) {
-  await page.getByRole('checkbox', { name: 'No soy un robot' }).click()
-  await expect(page.getByRole('button', { name: 'Ingresar' })).toBeEnabled({ timeout: 20_000 })
+  const widget = page.locator('altcha-widget .altcha')
+  await expect(widget).toHaveAttribute('data-state', 'unverified')
+  await page.locator('altcha-widget label', { hasText: 'No soy un robot' }).click()
+  await expect(widget, 'el captcha no llegó a verificarse').toHaveAttribute('data-state', 'verified', {
+    timeout: 20_000,
+  })
+  await expect(page.getByRole('button', { name: 'Ingresar' })).toBeEnabled()
 }
 
 // Lo único que un unitario no puede ver: que la SPA construida, servida por la
