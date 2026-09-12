@@ -40,6 +40,7 @@ const MAPA_SALON = {
   reservas_por_mesa: {},
 }
 const RUTA_SESION = '/api/me'
+const RUTA_CAPTCHA = '/api/captcha'
 
 let fetchMock: ReturnType<typeof vi.fn>
 
@@ -54,9 +55,25 @@ function json(body: unknown, status = 200) {
   })
 }
 
-/** Sin sesion: la ruta de sesion responde 401, como con la cookie vencida. */
+/** Sin sesion: la ruta de sesion responde 401, como con la cookie vencida.
+ *
+ *  La sonda del captcha contesta 404 y no 401: el backend real la sirve sin
+ *  sesion, y el api-client de libra-ui trata un 401 como sesion vencida. Con
+ *  404 la pantalla se dibuja sin el recuadro, que es lo que miden estos tests
+ *  (el recuadro en si lo prueba libra-ui). */
 function sinSesion() {
-  fetchMock.mockImplementation(() => Promise.resolve(json({ detail: 'No autenticado' }, 401)))
+  fetchMock.mockImplementation((url: string) =>
+    Promise.resolve(
+      String(url).includes(RUTA_CAPTCHA)
+        ? json({ detail: 'Not Found' }, 404)
+        : json({ detail: 'No autenticado' }, 401),
+    ),
+  )
+}
+
+/** Las URLs que se consultaron hasta ahora. */
+function consultadas() {
+  return fetchMock.mock.calls.map(([u]) => String(u))
 }
 
 /** Con sesion: devuelve un usuario; el resto de las llamadas, vacio. */
@@ -134,6 +151,31 @@ describe('guard de rutas', () => {
     // Y que el usuario de la sesion llego hasta la UI, no solo que hubo shell.
     expect(await screen.findAllByText('Ana')).not.toHaveLength(0)
     expect(screen.queryByLabelText('Usuario')).not.toBeInTheDocument()
+  })
+})
+
+describe('el captcha', () => {
+  // Lo unico de este producto en el captcha: que las pantallas le pregunten a
+  // la ruta que monta `web/api/auth.py` (`/api/captcha`), y no al
+  // `/auth/captcha` del default de libraauth. Con la ruta equivocada la sonda
+  // da 404, el recuadro no aparece y el login contesta 400 a todo.
+  it('el login pregunta por el captcha a /api/captcha', async () => {
+    sinSesion()
+    montar('/login')
+    await waitFor(() => expect(consultadas()).toContain(RUTA_CAPTCHA))
+  })
+
+  it('«olvide mi contraseña» tambien', async () => {
+    sinSesion()
+    montar('/forgot-password')
+    await waitFor(() => expect(consultadas()).toContain(RUTA_CAPTCHA))
+  })
+
+  it('el reset de contraseña no (control)', async () => {
+    sinSesion()
+    montar('/reset-password?token=abc123')
+    expect(await screen.findByLabelText('Contraseña nueva')).toBeInTheDocument()
+    expect(consultadas()).not.toContain(RUTA_CAPTCHA)
   })
 })
 

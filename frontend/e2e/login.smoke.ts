@@ -1,4 +1,15 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
+
+// El captcha «No soy un robot» (libraauth v0.40.0 + libra-ui v0.69.2): hasta
+// tildarlo, «Ingresar» queda deshabilitado. Se tilda como el humano y se espera
+// a que el widget termine la prueba de trabajo de verdad —del orden de un
+// segundo— contra el `/api/captcha` real: es lo único que ve si el worker del
+// widget no carga con la CSP, o si la ruta del desafío no es la que monta el
+// backend. `getByRole` atraviesa el shadow DOM del web component.
+async function tildarNoSoyUnRobot(page: Page) {
+  await page.getByRole('checkbox', { name: 'No soy un robot' }).click()
+  await expect(page.getByRole('button', { name: 'Ingresar' })).toBeEnabled({ timeout: 20_000 })
+}
 
 // Lo único que un unitario no puede ver: que la SPA construida, servida por la
 // app real, deje entrar y muestre una pantalla de dominio. Si el bundle quedó
@@ -22,6 +33,7 @@ test('entra por /login, ve la primera pantalla y abre los comprobantes', async (
 
   await page.locator('#username').fill(process.env.SMOKE_USER ?? 'admin')
   await page.locator('#password').fill(process.env.SMOKE_PASSWORD ?? '')
+  await tildarNoSoyUnRobot(page)
   await page.getByRole('button', { name: 'Ingresar' }).click()
   await expect(page).toHaveURL(/\/salon/)
 
@@ -80,6 +92,9 @@ test('una credencial mala no entra (control)', async ({ page }) => {
   await page.goto('/login')
   await page.locator('#username').fill('admin')
   await page.locator('#password').fill('esta-no-es')
+  // Con el captcha resuelto: sin él el rechazo sería el 400 del captcha y no
+  // el de la credencial, y este control dejaría de medir lo que dice.
+  await tildarNoSoyUnRobot(page)
   await page.getByRole('button', { name: 'Ingresar' }).click()
   await expect(page).toHaveURL(/\/login/)
   await expect(page.locator('p.text-destructive')).toBeVisible()

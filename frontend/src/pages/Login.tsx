@@ -23,6 +23,11 @@ export const Login = createLogin<User>({
   // GET /api/demo al montar y solo lo pinta si la instancia contesta que es
   // una demo -- en sistema.restolibra.com.ar esa ruta da 404.
   demoPath: '/api/demo',
+  // Recuadro «No soy un robot» (captcha ALTCHA, libra-ui v0.69.0): el backend
+  // lo emite desde que `web/api/auth.py` monta el router con `captcha=True`.
+  // Igual que la demo, sólo se dibuja si esta ruta contesta con un desafío, y
+  // hasta tildarlo «Ingresar» queda deshabilitado.
+  captchaPath: '/api/captcha',
   // 🔴 Desde el 2026-08-31 **todos los roles caen en el mapa de mesas**, no
   // sólo el mozo: el Dashboard se dio de baja y la pantalla de arranque de un
   // restaurante es el salón. Antes esto partía por rol, y el `if` sobrevivió
