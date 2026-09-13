@@ -24,9 +24,20 @@ general de esta etapa. Portado desde ~/proyectos/contalibra/web/api/usuarios.py
    `require_admin_json` -- el resto de este modulo (`router`, listar/crear/
    actualizar/eliminar) sigue admin-only, gateado a nivel include_router en
    web/app.py, igual que en Contalibra ("usuarios" no esta en la tabla
-   `modulos`, no se gatea con require_module)."""
+   `modulos`, no se gatea con require_module).
+
+**Contrato doble, aditivo (2026-09-13):** este router lo llama tanto el
+frontend propio (`nombre`/`activo`) como libra-backoffice, que hace de
+proxy hacia acá con el contrato de libraauth (`name`/`role`/`active`, y
+`email` en el componente Usuarios.tsx). Antes `UsuarioUpdatePayload` sólo
+aceptaba `nombre`/`activo`, así que un PUT del backoffice con `name`/
+`active` (sin `nombre`) fallaba con 422 "field required" -- guardar el
+nombre desde el backoffice no hacía nada, sin verse en la pantalla porque
+la instancia nunca llegaba a persistir. Las entradas aceptan ambas formas
+(`AliasChoices`); las respuestas devuelven las dos a la vez, sin sacar
+ninguna, para no romper al frontend propio."""
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from app import database as db
 from app.web.api_auth import get_current_user_json
@@ -41,18 +52,31 @@ VALID_ROLES = {"admin", "operador", "cajero", "mozo"}
 
 
 class UsuarioCreatePayload(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     username: str
-    nombre: str
+    nombre: str = Field(validation_alias=AliasChoices("nombre", "name"))
     email: str = ""
     password: str
+    # Sin alias para `role`: backoffice y frontend propio ya mandan la misma
+    # clave. OJO -- el default de libra-ui/backoffice para un alta es
+    # "staff", que no está en VALID_ROLES y sigue dando 422; es un desacople
+    # de vocabulario entre productos, no lo que este cambio ataca.
     role: str = "operador"
 
 
 class UsuarioUpdatePayload(BaseModel):
-    nombre: str
-    email: str = ""
+    model_config = ConfigDict(populate_by_name=True)
+
+    nombre: str = Field(validation_alias=AliasChoices("nombre", "name"))
+    # `None` (ausente) = no tocar el email; `""` = borrarlo. El backoffice no
+    # manda `email` en absoluto (su propio modelo `UsuarioUpdate` no lo tiene),
+    # así que con un default de "" cada edición desde ahí borraba el correo en
+    # silencio -- `UserRepository.update()` ya distingue None de "" para esto
+    # mismo, sólo faltaba no pisarlo acá arriba.
+    email: str | None = None
     role: str = "operador"
-    activo: bool = True
+    activo: bool = Field(default=True, validation_alias=AliasChoices("activo", "active"))
     new_password: str = ""
 
 
@@ -64,6 +88,14 @@ def _sin_password(usuario: dict) -> dict:
     return {k: v for k, v in usuario.items() if k != "password_hash"}
 
 
+def _con_contrato_libraauth(usuario: dict) -> dict:
+    """Aditivo: además de `nombre`/`activo` (contrato viejo, lo que lee el
+    frontend propio) agrega `name`/`active` (contrato de libraauth, lo que
+    lee libra-ui `Usuarios.tsx` a través del backoffice) apuntando a los
+    mismos valores. Ninguna clave existente se saca."""
+    return {**usuario, "name": usuario["nombre"], "active": bool(usuario["activo"])}
+
+
 def _validar_role(role: str):
     if role not in VALID_ROLES:
         raise HTTPException(422, f"Rol inválido: {role}")
@@ -71,7 +103,7 @@ def _validar_role(role: str):
 
 @router.get("")
 def listar():
-    return [_sin_password(u) for u in db.get_all_usuarios()]
+    return [_con_contrato_libraauth(_sin_password(u)) for u in db.get_all_usuarios()]
 
 
 @router.post("")
@@ -86,7 +118,7 @@ def crear(payload: UsuarioCreatePayload):
         )
     except Exception as e:
         raise HTTPException(422, str(e))
-    return _sin_password(db.get_usuario_by_id(uid))
+    return _con_contrato_libraauth(_sin_password(db.get_usuario_by_id(uid)))
 
 
 @router.put("/{uid}")
@@ -99,13 +131,16 @@ def actualizar(uid: int, payload: UsuarioUpdatePayload):
         admins = [u for u in db.get_all_usuarios() if u["role"] == "admin"]
         if len(admins) <= 1:
             raise HTTPException(422, "No se puede cambiar el rol del único administrador.")
-    db.update_usuario(uid, nombre=payload.nombre.strip(), email=payload.email.strip(),
-                       role=payload.role, activo=1 if payload.activo else 0)
+    db.update_usuario(
+        uid, nombre=payload.nombre.strip(),
+        email=(payload.email.strip() if payload.email is not None else None),
+        role=payload.role, activo=1 if payload.activo else 0,
+    )
     if payload.new_password:
         if len(payload.new_password) < 6:
             raise HTTPException(422, "La contraseña debe tener al menos 6 caracteres.")
         db.update_usuario_password(uid, payload.new_password)
-    return _sin_password(db.get_usuario_by_id(uid))
+    return _con_contrato_libraauth(_sin_password(db.get_usuario_by_id(uid)))
 
 
 @router.delete("/{uid}")
