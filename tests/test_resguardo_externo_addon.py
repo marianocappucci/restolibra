@@ -83,7 +83,7 @@ def test_un_usuario_no_admin_no_entra_aunque_el_addon_este_prendido(admin_client
     assert admin_client.get(RUTA).status_code == 200
 
     alta = admin_client.post("/api/usuarios", json={
-        "username": "mozo-resguardo", "nombre": "Mozo", "password": "clave-inicial",
+        "username": "mozo-resguardo", "name": "Mozo", "password": "clave-inicial",
         "role": "operador",
     })
     assert alta.status_code in (200, 201), alta.text

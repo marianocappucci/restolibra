@@ -91,7 +91,7 @@ def test_el_token_puede_dar_de_alta_un_usuario(client, monkeypatch):
     r = client.post(
         "/api/usuarios",
         headers={SERVICE_TOKEN_HEADER: TOKEN},
-        json={"username": "ana-servicio", "nombre": "Ana", "password": "clave-inicial",
+        json={"username": "ana-servicio", "name": "Ana", "password": "clave-inicial",
               "role": "operador"},
     )
     assert r.status_code in (200, 201), r.text

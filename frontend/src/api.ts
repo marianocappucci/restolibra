@@ -72,6 +72,11 @@ export { IVA_CONDITIONS } from 'libra-ui/facturas'
 // role incluye 'mozo' -- rol especifico de Restolibra sin equivalente en
 // Contalibra (ve solo la seccion Salon del sidebar, ver Layout.tsx).
 export type User = {
+  // `id` lo manda el motor desde siempre (`_UserOut.id`, ver
+  // `libraauth.session_auth`); no se declaraba acá porque nada lo leía --
+  // ahora lo necesita `Usuarios.tsx` para `usuarioActualId` (libra-ui
+  // v0.71.0), que oculta el botón «Eliminar» en la fila del propio usuario.
+  id: string
   username: string
   nombre: string
   role: 'admin' | 'operador' | 'cajero' | 'mozo'
@@ -378,27 +383,11 @@ export const ESTADOS_PRESUPUESTO = ['borrador', 'enviado', 'aceptado', 'rechazad
 // Restolibra no mezcla reportes gastronomicos (Salon/Pedidos/KDS) con
 // estos, asi que el reuso es directo -- ver web/api/reportes.py.
 
-// Usuario minimo -- solo lo que consume Logs.tsx (selector de usuario en
-// los filtros). Si el modulo Usuarios se porta por separado y ya declaro
-// un tipo Usuario mas completo, unificar con ese en vez de duplicar.
-export type Usuario = {
-  id: number
-  username: string
-  nombre: string
-  email: string
-  role: 'admin' | 'operador' | 'cajero' | 'mozo'
-  activo: number
-}
-
-// Portado desde Contalibra (ROLES de frontend/src/api.ts), con 'mozo' agregado
-// -- rol exclusivo de Restolibra sin equivalente en Contalibra (ver comentario
-// de `User` mas arriba). Usado en el Select de rol de Usuarios.tsx.
-export const ROLES = [
-  { value: 'admin', label: 'Admin' },
-  { value: 'operador', label: 'Operador' },
-  { value: 'cajero', label: 'Cajero' },
-  { value: 'mozo', label: 'Mozo' },
-] as const
+// `Usuario`/`ROLES` (contrato propio `{id: number, nombre, activo}`) se
+// fueron el 2026-09-13 (ADR-018 de libraauth v0.43.0): `Usuarios.tsx` pasó a
+// ser un shim sobre `libra-ui/Usuarios`, que trae su propio tipo `User`
+// (`{id: string, name, active, email}`, el contrato único de la familia) y
+// su propia lista de roles vía la prop `roles`. Ver ese archivo.
 
 // Caja por medio de cobro (sub-reporte de Reportes, /reportes/caja-medios)
 // -- reusa el tipo `Caja` ya declarado arriba para `cajas_config` (mismos

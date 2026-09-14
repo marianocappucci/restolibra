@@ -132,7 +132,15 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/
 # `/api/logout` (2026-09-14): faltaba, y el mozo recibía 403 al cerrar su
 # propia sesión — sólo salía cuando vencía la cookie. Cerrar la sesión propia
 # no expone ningún dato, así que no le abre nada de más.
-_MOZO_ALLOWED_EXACT = {"/api/usuarios/me/password", "/api/logout",
+#
+# 2026-09-13 (ADR-018 de libraauth v0.43.0): `/api/usuarios/me/password`
+# (router propio, se borró) pasó a ser `/api/change-password` (el
+# autoservicio del motor, `build_json_api_auth_router(prefix="/api")` en
+# `app/web/api/auth.py` -- lo sirve siempre, sin distinción de rol). Sin este
+# cambio un mozo quedaría bloqueado por ESTE middleware antes de llegar al
+# router, aunque el router ya lo dejara pasar -- ver docstring de
+# `web/api/usuarios.py`.
+_MOZO_ALLOWED_EXACT = {"/api/change-password", "/api/logout",
                        "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
 _MOZO_ALLOWED_PREFIXES = ("/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
 # /api/salon/config y /api/salon/reportes quedan deliberadamente FUERA
@@ -540,13 +548,13 @@ app.include_router(
     build_libros_iva_router(),
     dependencies=[Depends(require_admin_json), Depends(require_module("libros_iva"))],
 )
-app.include_router(
-    # Acepta ADEMÁS el token de servicio (libraauth v0.7.0): es lo que le
-    # permite al backoffice de la suite (admin.restolibra.com.ar) administrar
-    # los usuarios de esta instancia sin ser usuario de ella.
-    api_usuarios_router.router,
-    dependencies=[Depends(require_admin_o_servicio_json)],
-)
+# El guard (admin de la instancia O token de servicio -- lo que le permite al
+# backoffice de la suite, admin.restolibra.com.ar, administrar los usuarios
+# de esta instancia sin ser usuario de ella) ya va DENTRO del router: se lo
+# pasa como `admin_guard` a `build_users_router()` (ver
+# `app/web/api/usuarios.py`), no acá -- una sola dependencia y no dos
+# ejecutando lo mismo por request.
+app.include_router(api_usuarios_router.router)
 app.include_router(
     # Sólo el correo saliente, no todo `/api/config` — ver el comentario en
     # web/api/config.py sobre por qué es un router aparte.
@@ -565,13 +573,6 @@ app.include_router(
     # el que este producto ya publico.
     build_smtp_probe_router(db_usuarios.smtp_config, prefix="/api/config/smtp"),
     dependencies=[Depends(require_admin_o_servicio_json)],
-)
-app.include_router(
-    # "Mi Cuenta" (autoservicio de la propia contraseña) -- NO admin-only,
-    # ver comentario en web/api/usuarios.py sobre el bug preexistente que
-    # esto corrige (require_admin -> get_current_user_json/_auth_json).
-    api_usuarios_router.me_router,
-    dependencies=[_auth_json],
 )
 app.include_router(
     # KDS es exclusivo de cocina/barra -- el rol mozo NO tiene acceso (ver

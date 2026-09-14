@@ -43,7 +43,7 @@ def _dar_email_al_admin(client):
     usuarios = client.get("/api/usuarios").json()
     uid = next(u["id"] for u in usuarios if u["username"] == ADMIN_USER)
     resp = client.put(f"/api/usuarios/{uid}", json={
-        "nombre": admin["nombre"], "email": "admin@suite.test", "role": "admin",
+        "name": admin["nombre"], "email": "admin@suite.test", "role": "admin",
     })
     assert resp.status_code == 200
     client.post("/api/logout")
