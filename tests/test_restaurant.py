@@ -77,6 +77,27 @@ def test_mozo_no_es_admin(admin_client):
     assert admin_client.get("/api/usuarios").status_code == 403
 
 
+def test_mozo_puede_cerrar_su_sesion(admin_client):
+    """`/api/logout` faltaba en la allowlist de mozo de `CurrentUserMiddleware`:
+    el mozo recibía 403 "No tenés acceso a este módulo" al cerrar sesión y
+    sólo salía cuando vencía la cookie. Ningún test lo veía porque todos
+    loguean un mozo y nunca lo desloguean en la misma sesión."""
+    admin_client.post("/api/usuarios", json={
+        "username": "mozo4", "nombre": "Mozo Cuatro",
+        "password": "clave-123456", "role": "mozo"})
+    admin_client.post("/api/logout")
+    login = admin_client.post("/api/login",
+                              json={"username": "mozo4", "password": "clave-123456"})
+    assert login.status_code == 200
+    assert login.json()["role"] == "mozo"
+    # Control: habilitar el logout no le abre nada más al mozo.
+    assert admin_client.get("/api/usuarios").status_code == 403
+
+    resp = admin_client.post("/api/logout")
+    assert resp.status_code == 200, resp.text
+    assert admin_client.get("/api/me").status_code == 401
+
+
 # ── Pedido de mesa: el flujo completo ────────────────────────────────────
 
 def test_abrir_mesa_crea_pedido(admin_client, salon_con_mesa):
