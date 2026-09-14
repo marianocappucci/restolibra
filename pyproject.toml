@@ -103,7 +103,7 @@ dependencies = [
     # (`build_json_api_auth_router(captcha=True)`, ADR-014), que trae `altcha`
     # como dependencia. v0.39.0, incluida, arregla la IP del bloqueo por
     # intentos detras del proxy (`ip_del_request`).
-    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.40.0",
+    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.43.1",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera
