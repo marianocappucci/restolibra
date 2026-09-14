@@ -129,7 +129,10 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/
 # /kds/comanda/{id}/ticket (era HTML, no /api/) -- nunca estuvo bloqueado
 # para ningún otro rol, así que dejar de chequearlo para mozo no cambia su
 # acceso real, solo elimina un caso especial que ya no aplicaba.
-_MOZO_ALLOWED_EXACT = {"/api/usuarios/me/password",
+# `/api/logout` (2026-09-14): faltaba, y el mozo recibía 403 al cerrar su
+# propia sesión — sólo salía cuando vencía la cookie. Cerrar la sesión propia
+# no expone ningún dato, así que no le abre nada de más.
+_MOZO_ALLOWED_EXACT = {"/api/usuarios/me/password", "/api/logout",
                        "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
 _MOZO_ALLOWED_PREFIXES = ("/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
 # /api/salon/config y /api/salon/reportes quedan deliberadamente FUERA
