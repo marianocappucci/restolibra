@@ -15,21 +15,27 @@ import { useState } from 'react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 const passwordSchema = z.object({
+  current_password: z.string().min(1, 'Ingresá tu contraseña actual'),
   new_password: z.string().min(6, 'Mínimo 6 caracteres'),
 })
 type PasswordFormValues = z.infer<typeof passwordSchema>
 
-// Portado tal cual desde Contalibra (frontend/src/pages/MiCuenta.tsx).
-// Autoservicio de cambio de contraseña -- PUT /api/usuarios/me/password,
-// gateado en el backend solo por sesion activa (get_current_user_json),
-// NO por require_admin_json, a diferencia del resto del modulo Usuarios --
-// ver web/api/usuarios.py (me_router) y web/app.py. Corrige un bug
-// preexistente del router HTML viejo (web/routers/usuarios.py), donde
-// GET/POST /mi-cuenta estaba gateado con require_admin en vez de
-// require_auth: un usuario no-admin (incluido el rol 'mozo', exclusivo de
-// Restolibra) nunca pudo cambiar su propia contraseña por esa ruta. El link
-// vive en el footer del sidebar (ver components/Layout.tsx), visible para
-// cualquier usuario logueado sin importar su rol.
+// Autoservicio de cambio de contraseña. Visible para cualquier usuario
+// logueado sin importar su rol (incluido 'mozo', exclusivo de Restolibra) --
+// el link vive en el footer del sidebar (ver components/Layout.tsx).
+//
+// **2026-09-13 (ADR-018, libraauth v0.43.0): dejó de llamar
+// `PUT /api/usuarios/me/password`.** Ese endpoint vivía en `me_router`
+// (`app/web/api/usuarios.py`), un router aparte que este producto tuvo que
+// crear porque el router admin-only común no le servía para un autoservicio
+// de "cualquier rol" -- y cambiaba la contraseña SIN pedir la actual. La
+// contraparte del motor, `POST /api/change-password`
+// (`build_json_api_auth_router(prefix="/api")`, ya montado en
+// `app/web/api/auth.py`), YA es autoservicio para cualquier rol sin
+// necesidad de un router propio, y sí pide la actual -- por eso el
+// formulario suma el campo. No se usa el diálogo compartido
+// `libra-ui/CambiarPassword`: llama a una ruta hardcodeada `/auth/
+// change-password`, y este producto sirve su auth bajo `/api`, no `/auth`.
 export function MiCuenta() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -39,7 +45,7 @@ export function MiCuenta() {
 
   const form = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
-    defaultValues: { new_password: '' },
+    defaultValues: { current_password: '', new_password: '' },
   })
 
   function describeError(err: unknown): string {
@@ -52,8 +58,10 @@ export function MiCuenta() {
     setError(null)
     setSaved(false)
     try {
-      await api.put('/api/usuarios/me/password', { new_password: values.new_password })
-      form.reset({ new_password: '' })
+      await api.post('/api/change-password', {
+        current_password: values.current_password, new_password: values.new_password,
+      })
+      form.reset({ current_password: '', new_password: '' })
       setSaved(true)
     } catch (err) {
       setError(describeError(err))
@@ -82,10 +90,17 @@ export function MiCuenta() {
           {saved && <p className="mb-3 text-sm text-emerald-600 dark:text-emerald-400">Contraseña actualizada.</p>}
           <Form {...form}>
             <form className="grid gap-4" onSubmit={form.handleSubmit(handleSubmit)}>
+              <FormField control={form.control} name="current_password" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Contraseña actual</FormLabel>
+                  <FormControl><PasswordInput {...field} autoFocus /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )} />
               <FormField control={form.control} name="new_password" render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nueva contraseña</FormLabel>
-                  <FormControl><PasswordInput {...field} placeholder="Mínimo 6 caracteres" autoFocus /></FormControl>
+                  <FormControl><PasswordInput {...field} placeholder="Mínimo 6 caracteres" /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />

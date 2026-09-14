@@ -8,7 +8,7 @@ esperaba JSON). Estas dependencias devuelven 401/403 en su lugar. Ambas
 conviven sobre la misma cookie hasta que las rutas HTML se borren en la
 etapa de corte de la migracion. Mismo patron que gestiolibra/app/auth.py.
 """
-from fastapi import Depends, HTTPException, Request
+from fastapi import Depends, HTTPException, Request, Response
 from libraauth.session_auth import (
     SERVICE_USER,
     permite_lectura_de_demo,
@@ -20,7 +20,7 @@ from app import database as db
 from app.web.auth import get_current_user as _get_username_from_cookie
 
 
-def get_current_user_json(request: Request) -> dict:
+def get_current_user_json(request: Request, response: Response = None) -> dict:
     """El usuario logueado, **y con los Terminos del Servicio aceptados**.
 
     🔴 **El gate de Terminos vive aca, y no en `require_role_json`**, porque en
@@ -38,8 +38,16 @@ def get_current_user_json(request: Request) -> dict:
     - El router de Terminos, por lo mismo.
     - El token de servicio del backoffice sale antes en
       `require_admin_o_servicio_json`.
+
+    `response` habilita la renovacion deslizante de la cookie de sesion (8h
+    sin uso, ADR-017 de libraauth v0.43.0): FastAPI lo inyecta solo por estar
+    anotado aca, sin que el endpoint que use esta dependencia lo declare. Sin
+    esto -- pasarle solo `request` a `SessionAuth.get_current_user` -- la
+    sesion sigue siendo valida pero nunca se renueva, y el motor lo señala
+    como la excepcion a "sube el pin y ya": ver README de libraauth, seccion
+    "Sesion por inactividad de 8 horas".
     """
-    username = _get_username_from_cookie(request)
+    username = _get_username_from_cookie(request, response)
     if not username:
         raise HTTPException(401, "No autenticado")
     user = db.get_usuario_by_username(username)
@@ -72,7 +80,7 @@ def require_role_json(*roles: str):
 require_admin_json = require_role_json("admin")
 
 
-def require_admin_o_servicio_json(request: Request) -> dict:
+def require_admin_o_servicio_json(request: Request, response: Response = None) -> dict:
     """Rol admin **o** token de servicio (libraauth v0.7.0).
 
     Lo necesita el backoffice compartido de la suite
@@ -87,12 +95,16 @@ def require_admin_o_servicio_json(request: Request) -> dict:
     **Opt-in por ausencia**: sin `LIBRA_SERVICE_TOKEN` en el entorno,
     `token_de_servicio_valido` devuelve False sin mirar el header y esto se
     comporta igual que `require_admin_json`.
+
+    `response`, igual que en `get_current_user_json`: de este guard cuelga
+    `/api/usuarios` (el router de libraauth) -- sin propagarlo, un admin que
+    sólo entra a administrar usuarios nunca vería renovada su sesión.
     """
     if token_de_servicio_valido(request):
         return dict(SERVICE_USER)
     # El token sale arriba; a partir de aca es un usuario de la instancia, y
     # `get_current_user_json` ya le exige los Terminos aceptados.
-    usuario = get_current_user_json(request)
+    usuario = get_current_user_json(request, response)
     if usuario["role"] == "admin":
         return usuario
     # Misma excepción de lectura, y hace falta acá aparte: éste no pasa por

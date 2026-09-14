@@ -8,7 +8,7 @@ from libracore.db.clients import sincronizar_parties_de_clientes
 # como parte del split en módulos lógicos (Fase 3 de LibraCore, sub-paso
 # previo dentro de cada producto, sin cambiar comportamiento — ver
 # wiki/entities/libracore.md). Re-exportados acá para que los call sites
-# existentes (`db.get_connection()`, `db.DB_PATH`, `db.create_usuario(...)`,
+# existentes (`db.get_connection()`, `db.DB_PATH`, `db.get_all_usuarios()`,
 # etc.) no cambien una línea.
 from libracore.db.schema import init_core_schema
 from libraedge.db.changelog import init_changelog_schema
@@ -302,12 +302,10 @@ from app.db_usuarios import (  # noqa: F401
     _verify_password,
     borrar_config_smtp,
     check_usuario_credentials,
-    create_usuario,
     delete_usuario,
     ensure_admin_user,
     ensure_demo_user,
     get_all_usuarios,
-    get_usuario_by_id,
     get_usuario_by_username,
     guardar_config_smtp,
     # Config SMTP por backoffice, cifrada en reposo (libraauth v0.6.0).
@@ -315,8 +313,6 @@ from app.db_usuarios import (  # noqa: F401
     resetear_password_con_token,
     # Recuperacion de contrasena por correo (libraauth v0.5.0).
     solicitar_reset_password,
-    update_usuario,
-    update_usuario_password,
 )
 from app.db_ventas import (  # noqa: F401
     acreditar_pago_qr,

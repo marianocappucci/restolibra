@@ -1,17 +1,33 @@
 """Usuarios: adaptador sobre `libraauth` que preserva la API vieja.
 
 Migrado el 2026-07-30 de `libracore.db.usuarios` a libraauth (ver
-wiki/entities/libraauth.md). Antes este archivo era un re-export directo de 12
-funciones; ahora esas mismas 12 delegan en el `UserRepository` de libraauth
-(SQLAlchemy) y **traducen la forma del dict de vuelta a la de siempre**.
+wiki/entities/libraauth.md).
 
-**Por que un adaptador y no reescribir el consumidor**: `web/api/usuarios.py`
-devuelve estos dicts **directo a la SPA**, y el tipo `Usuario` del frontend
-(`frontend/src/api.ts`) espera `{id: number, username, nombre, email, role,
-activo: number}`. El repositorio de libraauth devuelve `name`/`active` e `id`
-como **string**. Reescribir el consumidor contra el repositorio habria roto la
-pantalla de Usuarios. Traduciendo aca, `database.py` y `web/api/usuarios.py` no
-se tocan.
+**2026-09-13 (ADR-018, libraauth v0.43.0): `web/api/usuarios.py` dejo de usar
+este adaptador.** Adopto `libraauth.usuarios.build_users_router`, que lee y
+escribe directo contra `request.app.state.users` (el `UserRepository` de
+`user_repository()`, mas abajo) -- sin pasar por `_a_forma_vieja`, porque el
+contrato ya no es el viejo `{id: int, nombre, activo}` sino el unico de la
+familia: `{id: str, name, active, email}`. Por eso las funciones que solo
+existian para ESE router (`create_usuario`, `update_usuario`,
+`update_usuario_password`, `get_usuario_by_id`) se borraron de aca: no les
+quedo ningun consumidor (verificado con grep sobre `app/` y `tests/`) --
+incluido `me_router.cambiar_mi_password`, que tambien se borro (ver el
+docstring de `web/api/usuarios.py` sobre por que ese endpoint tenia su propio
+router en este producto).
+
+Lo que sigue abajo son las funciones que SI tienen otros consumidores
+(login, credenciales, el middleware que resuelve `current_user`, el borrado
+del usuario de demo) y siguen traduciendo la forma del dict a la de siempre --
+`get_usuario_by_username`/`check_usuario_credentials` alimentan
+`app/web/auth.py` (`SessionAuth`), `app/web/api_auth.py` y
+`app/web/app.py` (`CurrentUserMiddleware`), que **no** hablan el contrato de
+libraauth.
+
+**Por que un adaptador y no reescribir estos consumidores**: el repositorio
+de libraauth devuelve `name`/`active` e `id` como **string**; estas funciones
+siguen devolviendo `{id: int, nombre, activo: number}`, que es lo que ya
+esperan esos módulos y el resto del dominio.
 
 **La tabla `usuarios` no se movio**: vive en `restolibra.db`, que es tambien la
 base de LibraCore, y el engine apunta ahi. Es a proposito — 11 tablas de
@@ -183,31 +199,12 @@ def _a_forma_vieja(u: dict | None) -> dict | None:
     }
 
 
-def create_usuario(username: str, nombre: str, email: str,
-                   password: str, role: str = "operador") -> int:
-    creado = _repo.create(username=username, name=nombre, password=password,
-                          role=role, email=email)
-    return int(creado["id"])
-
-
 def get_usuario_by_username(username: str) -> dict | None:
     return _a_forma_vieja(_repo.get_by_username(username))
 
 
-def get_usuario_by_id(uid) -> dict | None:
-    return _a_forma_vieja(_repo.get_by_id(str(uid)))
-
-
 def get_all_usuarios() -> list:
     return [_a_forma_vieja(u) for u in _repo.list()]
-
-
-def update_usuario(uid, nombre: str, email: str, role: str, activo):
-    _repo.update(str(uid), name=nombre, role=role, active=bool(activo), email=email)
-
-
-def update_usuario_password(uid, new_password: str):
-    _repo.update_password(str(uid), new_password)
 
 
 def delete_usuario(uid):

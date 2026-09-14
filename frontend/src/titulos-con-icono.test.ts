@@ -69,6 +69,14 @@ describe('el icono del título sale del sidebar', () => {
     // dos rutas (`/presupuestos/nuevo` y `/presupuestos/:id/editar`). Los
     // iconos son los del kit (FileText y Calculator), los mismos que ya tenía
     // el sidebar — `sinIcono` sigue vacío, que es lo que lo prueba.
-    expect(conIcono).toBeGreaterThanOrEqual(14)
+    //
+    // 2026-09-13 (ADR-018 de libraauth v0.43.0): `Usuarios.tsx` pasó a ser un
+    // shim sobre `libra-ui/Usuarios` -- exactamente el caso que el comentario
+    // de arriba del archivo ya anticipaba ("las pantallas que libra-ui rinde
+    // enteras... a ésas las cubriría el TIPO"): el `TituloPantalla` ahora
+    // vive DENTRO del componente compartido, no en este archivo, así que el
+    // piso baja uno (de 14 a 13). El tipo de `icono` sigue siendo obligatorio
+    // en `Usuarios` de libra-ui, así que el shim no puede montarla sin pasarlo.
+    expect(conIcono).toBeGreaterThanOrEqual(13)
   })
 })

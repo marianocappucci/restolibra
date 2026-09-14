@@ -89,7 +89,7 @@ def test_detalle_inexistente_404(admin_client):
 def test_anular_es_admin_only(admin_client):
     venta = _venta(admin_client)
     admin_client.post("/api/usuarios", json={
-        "username": "vendedor", "nombre": "V", "password": "clave-123456", "role": "operador"})
+        "username": "vendedor", "name": "V", "password": "clave-123456", "role": "operador"})
     admin_client.post("/api/logout")
     admin_client.post("/api/login", json={"username": "vendedor", "password": "clave-123456"})
     assert admin_client.post(f"/api/ventas/{venta['id']}/anular").status_code == 403

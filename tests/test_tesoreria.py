@@ -19,7 +19,7 @@ def test_tesoreria_es_admin_only(admin_client):
     # la otra mitad para que el rojo diga cual de las dos cosas se rompio.
     assert admin_client.get("/api/tesoreria").status_code == 200
     admin_client.post("/api/usuarios", json={
-        "username": "operador2", "nombre": "O", "password": "clave-123456", "role": "operador"})
+        "username": "operador2", "name": "O", "password": "clave-123456", "role": "operador"})
     admin_client.post("/api/logout")
     admin_client.post("/api/login", json={"username": "operador2", "password": "clave-123456"})
     assert admin_client.get("/api/tesoreria").status_code == 403
