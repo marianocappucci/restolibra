@@ -212,7 +212,7 @@ def test_borrar_es_admin_only(admin_client):
     factura = _factura(admin_client)
     fid = factura.get("factura", factura)["id"]
     admin_client.post("/api/usuarios", json={
-        "username": "cajero9", "nombre": "C", "password": "clave-123456", "role": "cajero"})
+        "username": "cajero9", "name": "C", "password": "clave-123456", "role": "cajero"})
     admin_client.post("/api/logout")
     admin_client.post("/api/login", json={"username": "cajero9", "password": "clave-123456"})
     assert admin_client.delete(f"/api/facturas/{fid}").status_code == 403

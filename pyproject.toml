@@ -91,7 +91,7 @@ dependencies = [
     # Detectado en producción de Contalibra, ver wiki/entities/contalibra.md;
     # no se encontró ningún cliente de Restolibra expuesto hoy (demo revisada,
     # 0 casos), pero el bug es del motor compartido.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.95.0",
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.97.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -99,11 +99,17 @@ dependencies = [
     # de escribir. v0.7.1 agrega el `reason_code` por pata, sin el cual
     # adoptarlas degradaba `db_logs` de `transferencia_salida` a `transfer_out`.
     "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.15.0",
-    # v0.40.0 (2026-09-12): el captcha ALTCHA del login y de forgot-password
+    # v0.43.0 trae la sesion por inactividad de 8h con renovacion deslizante
+    # (ADR-017) y el router de usuarios unico (`libraauth.usuarios.
+    # build_users_router`, ADR-018) que reemplaza a `app/web/api/usuarios.py`
+    # + `app/db_usuarios.py` -- ver wiki/entities/restolibra.md. v0.40.0,
+    # incluida (2026-09-12): el captcha ALTCHA del login y de forgot-password
     # (`build_json_api_auth_router(captcha=True)`, ADR-014), que trae `altcha`
-    # como dependencia. v0.39.0, incluida, arregla la IP del bloqueo por
-    # intentos detras del proxy (`ip_del_request`).
-    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.40.0",
+    # como dependencia.
+    # v0.43.1: borrar un usuario con filas que lo referencian por FK (ej. un
+    # turno de caja abierto) daba 500 -- ahora es 409, con rollback de la
+    # sesion. Ver tests/test_usuarios.py.
+    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.43.1",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera

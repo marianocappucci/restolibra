@@ -5,6 +5,9 @@ de espejar la suite del upstream — cubren el flujo real de un servicio:
 abrir mesa -> cargar items -> enviar a cocina -> avanzar la comanda ->
 cobrar, mas el rol `mozo`, que solo existe en este producto.
 """
+from fastapi.testclient import TestClient
+
+from app.web.app import app
 from tests.conftest import ADMIN_PASS, ADMIN_USER
 
 
@@ -50,15 +53,15 @@ def test_salon_requiere_sesion(client):
 
 def test_alta_de_mozo(admin_client):
     resp = admin_client.post("/api/usuarios", json={
-        "username": "mozo1", "nombre": "Mozo Uno",
+        "username": "mozo1", "name": "Mozo Uno",
         "password": "clave-123456", "role": "mozo"})
-    assert resp.status_code == 200, resp.text
+    assert resp.status_code == 201, resp.text
     assert resp.json()["role"] == "mozo"
 
 
 def test_mozo_puede_operar_el_salon(admin_client, salon_con_mesa):
     admin_client.post("/api/usuarios", json={
-        "username": "mozo2", "nombre": "Mozo Dos",
+        "username": "mozo2", "name": "Mozo Dos",
         "password": "clave-123456", "role": "mozo"})
     admin_client.post("/api/logout")
     login = admin_client.post("/api/login",
@@ -70,11 +73,61 @@ def test_mozo_puede_operar_el_salon(admin_client, salon_con_mesa):
 
 def test_mozo_no_es_admin(admin_client):
     admin_client.post("/api/usuarios", json={
-        "username": "mozo3", "nombre": "Mozo Tres",
+        "username": "mozo3", "name": "Mozo Tres",
         "password": "clave-123456", "role": "mozo"})
     admin_client.post("/api/logout")
     admin_client.post("/api/login", json={"username": "mozo3", "password": "clave-123456"})
     assert admin_client.get("/api/usuarios").status_code == 403
+
+
+def test_mozo_puede_cerrar_su_sesion(admin_client):
+    """`/api/logout` faltaba en la allowlist de mozo de `CurrentUserMiddleware`:
+    el mozo recibía 403 "No tenés acceso a este módulo" al cerrar sesión y
+    sólo salía cuando vencía la cookie. Ningún test lo veía porque todos
+    loguean un mozo y nunca lo desloguean en la misma sesión."""
+    admin_client.post("/api/usuarios", json={
+        "username": "mozo5", "name": "Mozo Cinco",
+        "password": "clave-123456", "role": "mozo"})
+    admin_client.post("/api/logout")
+    login = admin_client.post("/api/login",
+                              json={"username": "mozo5", "password": "clave-123456"})
+    assert login.status_code == 200
+    assert login.json()["role"] == "mozo"
+    # Control: habilitar el logout no le abre nada más al mozo.
+    assert admin_client.get("/api/usuarios").status_code == 403
+
+    resp = admin_client.post("/api/logout")
+    assert resp.status_code == 200, resp.text
+    assert admin_client.get("/api/me").status_code == 401
+
+
+def test_mozo_puede_cambiar_su_propia_password(admin_client):
+    """2026-09-13 (ADR-018, libraauth v0.43.0): `PUT /api/usuarios/me/
+    password` (router propio, admin-only por accidente en Contalibra pero
+    corregido acá con `me_router`) se elimina; la contraparte del motor,
+    `POST /api/change-password`, es autoservicio para cualquier rol -- pero
+    el `CurrentUserMiddleware` de este producto tiene su PROPIA allowlist
+    para "mozo" (`_MOZO_ALLOWED_EXACT`) y hay que actualizarla en el mismo
+    cambio, o el middleware bloquea al mozo ANTES de que la request llegue
+    al router (403 "No tenés acceso a este módulo", ni siquiera el 400 del
+    router por una contraseña actual incorrecta).
+
+    La verificación final entra con un `TestClient` NUEVO, así que prueba la
+    contraseña nueva sin depender del logout del mozo, que tiene su propio
+    test (`test_mozo_puede_cerrar_su_sesion`, arreglo aparte del 2026-09-14)."""
+    admin_client.post("/api/usuarios", json={
+        "username": "mozo4", "name": "Mozo Cuatro",
+        "password": "clave-123456", "role": "mozo"})
+    admin_client.post("/api/logout")
+    admin_client.post("/api/login", json={"username": "mozo4", "password": "clave-123456"})
+
+    resp = admin_client.post("/api/change-password", json={
+        "current_password": "clave-123456", "new_password": "nueva-clave-99"})
+    assert resp.status_code == 200, resp.text
+
+    otro = TestClient(app, base_url="https://testserver")
+    assert otro.post("/api/login", json={
+        "username": "mozo4", "password": "nueva-clave-99"}).status_code == 200
 
 
 # ── Pedido de mesa: el flujo completo ────────────────────────────────────
