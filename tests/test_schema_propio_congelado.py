@@ -215,9 +215,21 @@ def test_las_dos_cadenas_no_comparten_la_tabla_de_version():
         "las dos cadenas escribieron la misma revisión: están compartiendo la "
         "tabla de versión."
     )
-    assert del_motor[0].startswith("000"), (
-        f"la tabla del motor quedó en {del_motor[0]!r}, que no parece una "
-        "revisión de LibraCore"
+
+    # 🔴 No un `startswith("000")`: LibraCore v1.99.0 trajo la revisión
+    # `0010_recibido_en_ventas_pagos`, y esa heurística no aguanta el número
+    # de dos cifras. Lo que hace a una revisión "del motor" es que exista en
+    # SU cadena de migraciones instalada, no la forma de su nombre.
+    from alembic.script import ScriptDirectory
+    from libracore.migrar import DIRECTORIO as _DIR_MIGRACIONES_LIBRACORE
+
+    revisiones_de_libracore = {
+        rev.revision
+        for rev in ScriptDirectory(str(_DIR_MIGRACIONES_LIBRACORE)).walk_revisions()
+    }
+    assert del_motor[0] in revisiones_de_libracore, (
+        f"la tabla del motor quedó en {del_motor[0]!r}, que no es una revisión "
+        "de la cadena de LibraCore instalada"
     )
 
 
