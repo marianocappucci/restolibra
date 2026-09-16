@@ -109,7 +109,7 @@ dependencies = [
     # v0.43.1: borrar un usuario con filas que lo referencian por FK (ej. un
     # turno de caja abierto) daba 500 -- ahora es 409, con rollback de la
     # sesion. Ver tests/test_usuarios.py.
-    "libraauth @ git+https://github.com/marianocappucci/libraauth.git@v0.43.1",
+    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.43.1",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera

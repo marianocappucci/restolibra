@@ -91,6 +91,8 @@ configure(
     # diga **cuál de las dos** falló.
     migraciones=(
         ("libracore-migrar", "upgrade", "--prefijo", "restolibra"),
+        # libraauth: sus seis tablas viven en la base del dominio (medido 2026-09-16), por eso --base dominio.
+        ("libraauth-migrar", "upgrade", "--prefijo", "restolibra", "--base", "dominio"),
         ("libracommerce-migrar", "upgrade", "--prefijo", "restolibra"),
         ("alembic", "upgrade", "head"),
     ),
