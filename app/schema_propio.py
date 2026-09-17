@@ -9,7 +9,7 @@ las mantiene por su cuenta:
 |---|---|---|
 | `libracore` | 33 | cadena de Alembic (`alembic_version`), vía `libracore-migrar` |
 | `libracommerce` | 19 + `schema_migrations` | runner numerado propio, dentro de `init_schema()` |
-| `libraauth` | 6 (`usuarios`, `auth_log`, `demo_codigos`, `password_reset_tokens`, `smtp_settings`, `aceptaciones_terminos`) | `Base.metadata.create_all()` al arrancar |
+| `libraauth` | 6 (`usuarios`, `auth_log`, `demo_codigos`, `password_reset_tokens`, `smtp_settings`, `aceptaciones_terminos`) | cadena de Alembic (`alembic_version_libraauth`), vía `libraauth-migrar`; el arranque la exige |
 | **Restolibra** | **las 9 de arriba** | **esta función + `migrations/versions/`** |
 
 Este módulo existe para que esas 9 tengan **una sola fuente de verdad**. Antes el
