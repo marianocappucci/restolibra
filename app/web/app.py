@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
+from libraauth.migrar import exigir_schema_al_dia
 from libraauth.session_auth import build_demo_codigos_router, demo_username
 from libraauth.terminos import TerminosRepository, build_terminos_router
 from libracommerce.web.catalogo_router import (
@@ -616,6 +617,11 @@ app.include_router(
 @app.on_event("startup")
 def startup():
     db.init_db()
+    # 🔴 La cadena de LibraAuth tiene que haber corrido (libraauth v0.45.0). Si no,
+    # la app no arranca y el error dice el comando. Reemplaza al `create_all()` que
+    # `app/db_usuarios.py` corría al importarse. Va después de `init_db()` y antes
+    # de sembrar usuarios, que es lo primero que toca esas tablas.
+    exigir_schema_al_dia(db_usuarios._engine, prefijo="restolibra", base="dominio")
     db.ensure_admin_user()
     # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
     db.ensure_demo_user()
