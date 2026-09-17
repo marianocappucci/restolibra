@@ -650,8 +650,8 @@ wheels = [
 
 [[package]]
 name = "libraauth"
-version = "0.44.0"
-source = { git = "https://github.com/marianocappucci/libraauth.git?rev=v0.44.0#853b90729f9d987bb7574394cd4e931654758408" }
+version = "0.45.1"
+source = { git = "https://github.com/marianocappucci/libraauth.git?rev=v0.45.1#c03fc7815a0ffcc03fd5e3b42c90d877b3e0c7f8" }
 dependencies = [
     { name = "altcha" },
     { name = "argon2-cffi" },
@@ -670,7 +670,7 @@ migrations = [
 
 [[package]]
 name = "libracommerce"
-version = "0.16.4.dev4"
+version = "0.16.4"
 source = { git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.16.4#4249836d0579aa480f60af1c9346d6390636221d" }
 
 [package.optional-dependencies]
@@ -714,8 +714,8 @@ migrations = [
 
 [[package]]
 name = "libraedge"
-version = "0.6.10"
-source = { git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.10#ad0ea30a787af6a6c9bec90ce43e4831940ab222" }
+version = "0.6.12"
+source = { git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.12#2eb3291e46a9335affea6afb44fc92c9688ec691" }
 
 [[package]]
 name = "mako"
@@ -1224,10 +1224,10 @@ requires-dist = [
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27.0" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "libraauth", extras = ["migrations"], git = "https://github.com/marianocappucci/libraauth.git?rev=v0.44.0" },
+    { name = "libraauth", extras = ["migrations"], git = "https://github.com/marianocappucci/libraauth.git?rev=v0.45.1" },
     { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.16.4" },
     { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.105.0" },
-    { name = "libraedge", git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.10" },
+    { name = "libraedge", git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.12" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6" },
     { name = "python-multipart", specifier = ">=0.0.9" },
