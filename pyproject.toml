@@ -91,7 +91,7 @@ dependencies = [
     # Detectado en producción de Contalibra, ver wiki/entities/contalibra.md;
     # no se encontró ningún cliente de Restolibra expuesto hoy (demo revisada,
     # 0 casos), pero el bug es del motor compartido.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.106.1",
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.108.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -109,7 +109,7 @@ dependencies = [
     # v0.43.1: borrar un usuario con filas que lo referencian por FK (ej. un
     # turno de caja abierto) daba 500 -- ahora es 409, con rollback de la
     # sesion. Ver tests/test_usuarios.py.
-    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.45.1",
+    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.46.0",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera

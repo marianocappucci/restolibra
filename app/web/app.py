@@ -625,6 +625,12 @@ def startup():
     db.ensure_admin_user()
     # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
     db.ensure_demo_user()
+    # Saca de `config.json` los secretos que quedaron en claro (2026-09-17). Va
+    # DESPUES de `exigir_schema_al_dia`: la tabla `secretos_instancia` es de la
+    # revision `0002` de libraauth, y escribir en ella antes de saber que existe
+    # convertiria un schema viejo en un 500 en vez del error que dice el comando.
+    # Idempotente: la segunda vez no hace nada.
+    db_usuarios.migrar_secretos()
 
 
 @app.get("/", include_in_schema=False)

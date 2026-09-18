@@ -35,6 +35,7 @@ LibraCore declaran `usuario_id REFERENCES usuarios(id)` y esas FK resuelven
 contra el archivo donde esta la tabla; moverla rompe facturacion y caja (se
 probo y se revirtio el 2026-07-30, ver log.md del wiki).
 """
+import logging
 import os
 
 from libraauth.bootstrap import ensure_admin_user as _ensure_admin_user
@@ -55,11 +56,13 @@ from libraauth.password_reset import (  # noqa: F401  (re-exportadas para el rou
     PasswordResetService,
 )
 from libraauth.repository import UserRepository
+from libraauth.secretos import SecretosRepository
 from libraauth.smtp_settings import (  # noqa: F401  (re-exportados para el router)
     SIN_CAMBIOS,
     SmtpSettingsRepository,
     resolver_smtp_config,
 )
+from libracore import config_manager as _lc_config_manager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -98,6 +101,62 @@ _repo = UserRepository(_sessions, roles=ROLES)
 # Config SMTP editable por backoffice (libraauth v0.6.0), con la contrasena
 # cifrada en reposo. Mismo `_sessions` que el resto del motor.
 _smtp_settings = SmtpSettingsRepository(_sessions)
+
+# 🔴 Los secretos de terceros de `config.json` —el access token y la firma de
+# webhook de MercadoPago, y la contrasena SMTP— dejan de vivir en texto plano
+# (libracore v1.108.0 + libraauth v0.46.0, 2026-09-17). Se enchufa ACA porque es
+# donde nace `_sessions`, que apunta a la base donde viven las tablas de
+# libraauth (`restolibra.db`, la misma base que usa `UserRepository`). La tabla
+# `secretos_instancia` la crea la revision `0002` de la cadena de libraauth —no
+# un `create_all`, que este modulo dejo de correr en la v0.45.0—, y
+# `exigir_schema_al_dia()` del arranque no deja levantar la app si esa revision
+# no se aplico.
+#
+# LibraCore no importa libraauth: recibe el almacen. Por eso el enganche es del
+# producto, que es el unico que tiene los dos paquetes.
+#
+# Desde aca, `config_manager.load()` sigue devolviendo el secreto en claro a sus
+# consumidores (incluido `app/config_manager.py`, el shim con los
+# `extra_defaults` de cubierto/panera de este producto, que no son secretos y
+# no pasan por el almacen), pero lo trae de la base cifrada y no del archivo. La
+# migracion de lo que ya estaba en el JSON corre en el arranque: ver
+# `migrar_secretos()`.
+_secretos = SecretosRepository(_sessions)
+_lc_config_manager.usar_almacen_de_secretos(_secretos)
+
+_log = logging.getLogger(__name__)
+
+
+def migrar_secretos() -> dict:
+    """Saca de `config.json` los secretos que quedaron en claro. Idempotente.
+
+    Corre en cada arranque, asi la migracion de una instancia viva **es su
+    deploy**. Loguea NOMBRES de claves, nunca valores: un log con el secreto lo
+    muda del archivo a una superficie peor, porque los logs se copian y se
+    mandan.
+
+    Si cifrar falla, el `config.json` **no se toca** —la instancia sigue
+    cobrando con la credencial que tiene— y se loguea como error, que es lo
+    que despues ve la sonda `auditar_secretos.py`.
+    """
+    informe = _lc_config_manager.migrar_secretos_al_almacen()
+    if informe["migradas"]:
+        _log.warning(
+            "secretos movidos de config.json al almacen cifrado: %s",
+            ", ".join(informe["migradas"]),
+        )
+    if informe["ya_estaban"]:
+        _log.warning(
+            "config.json tenia una copia vieja de %s; se vacio (el almacen manda)",
+            ", ".join(informe["ya_estaban"]),
+        )
+    if informe["fallaron"]:
+        _log.error(
+            "no se pudieron cifrar y QUEDAN EN CLARO en config.json: %s",
+            ", ".join(f"{k} ({v})" for k, v in informe["fallaron"].items()),
+        )
+    return informe
+
 
 _password_reset = PasswordResetService(
     _sessions,
