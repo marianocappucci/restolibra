@@ -93,7 +93,9 @@ def test_mp_qr_sin_configurar_lo_dice_antes_de_salir_a_la_red(admin_client):
     vid = _venta_por_qr(admin_client)
     r = admin_client.post(f"/api/ventas/{vid}/mp-qr")
     assert r.status_code == 400
-    assert "POS ID" in r.json()["detail"]
+    # Desde libracore v1.110.0 lo primero que se pide es el token y el User ID:
+    # sin ellos no tiene sentido hablar del POS.
+    assert "Access Token" in r.json()["detail"]
 
 
 def test_mp_qr_con_token_pero_sin_pos_id_tampoco_sale(admin_client, monkeypatch):
@@ -111,8 +113,10 @@ def test_mp_qr_con_token_pero_sin_pos_id_tampoco_sale(admin_client, monkeypatch)
     try:
         vid = _venta_por_qr(admin_client)
         r = admin_client.post(f"/api/ventas/{vid}/mp-qr")
-        assert r.status_code == 400
-        assert "POS ID" in r.json()["detail"]
+        # Desde libracore v1.110.0 el POS vive en la caja: sin él es 422 y el mensaje
+        # manda a configurarlo en la caja, no en la integración.
+        assert r.status_code == 422
+        assert "POS de MercadoPago" in r.json()["detail"]
     finally:
         config_manager.save({**config_manager.load(), "mp_access_token": "",
                              "mp_user_id": "", "mp_pos_id": ""})
