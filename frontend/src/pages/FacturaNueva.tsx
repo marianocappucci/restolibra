@@ -197,7 +197,7 @@ export function FacturaNueva() {
       <TituloPantalla icono={Receipt}>Nueva factura</TituloPantalla>
 
       {ventaId && (
-        <p className="rounded-md border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950/40">
+        <p className="rounded-md border border-exito/40 bg-exito/10 p-3 text-sm">
           Datos precargados desde la venta #{ventaId}. Revisá cliente e ítems antes de emitir.
         </p>
       )}
