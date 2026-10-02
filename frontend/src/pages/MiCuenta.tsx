@@ -87,7 +87,7 @@ export function MiCuenta() {
         <CardHeader><CardTitle className="text-base">Cambiar contraseña</CardTitle></CardHeader>
         <CardContent>
           {error && <p className="mb-3 text-sm text-destructive">{error}</p>}
-          {saved && <p className="mb-3 text-sm text-emerald-600 dark:text-emerald-400">Contraseña actualizada.</p>}
+          {saved && <p className="mb-3 text-sm text-exito">Contraseña actualizada.</p>}
           <Form {...form}>
             <form className="grid gap-4" onSubmit={form.handleSubmit(handleSubmit)}>
               <FormField control={form.control} name="current_password" render={({ field }) => (
