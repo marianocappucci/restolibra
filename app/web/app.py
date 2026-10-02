@@ -45,6 +45,7 @@ from libracore.reportes_router import build_reportes_export_router, build_report
 from libracore.resguardo_enlace import build_resguardo_enlace_router
 from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
+from libracore.tema_router import build_tema_admin_router, build_tema_router
 from libracore.tesoreria_router import build_tesoreria_router
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -141,7 +142,10 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/
 # cambio un mozo quedaría bloqueado por ESTE middleware antes de llegar al
 # router, aunque el router ya lo dejara pasar -- ver docstring de
 # `web/api/usuarios.py`.
-_MOZO_ALLOWED_EXACT = {"/api/change-password", "/api/logout",
+#
+# `/api/tema` (2026-10-01, tema de la suite): la lectura es pública y el mozo logueado la hace igual; este middleware la cortaba con 403
+# antes de que corriera el router. Sólo deja pasar la RUTA: el `PUT` lo sigue frenando la guarda del router (admin o token de servicio).
+_MOZO_ALLOWED_EXACT = {"/api/change-password", "/api/logout", "/api/tema",
                        "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
 _MOZO_ALLOWED_PREFIXES = ("/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
 # /api/salon/config y /api/salon/reportes quedan deliberadamente FUERA
@@ -413,6 +417,12 @@ app.include_router(
 # el logo viejo puede volver solo, en el comprobante.
 app.include_router(build_empresa_router(), dependencies=[Depends(require_admin_json)])
 app.include_router(build_empresa_admin_router(), dependencies=[Depends(require_admin_json)])
+
+# El tema de la suite (libracore ADR-012, libra-ui ADR-007/008): los colores que el backoffice de la suite empuja a esta instancia. La
+# lectura es PÚBLICA a propósito (el login también va con los colores de la suite y no expone nada sensible). La escritura es del admin O
+# del token de servicio del backoffice: 🔴 con `require_admin_json` a secas el backoffice NO entraría (esa guarda no conoce el token).
+app.include_router(build_tema_router())
+app.include_router(build_tema_admin_router(), dependencies=[Depends(require_admin_o_servicio_json)])
 # MercadoPago, del motor. Reemplaza al `PUT /api/config/mp` propio.
 #
 # 🔴 Lo que cambia y no es cosmetico: el token vuelve ENMASCARADO. El
