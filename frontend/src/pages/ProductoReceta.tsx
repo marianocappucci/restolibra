@@ -308,7 +308,7 @@ export function ProductoReceta() {
                   <strong>{detalle.producto.nombre}</strong>. Stock actual:{' '}
                   <strong>{Math.round(detalle.stock_actual)} {detalle.producto.unidad}</strong>.
                 </p>
-                {produccionMsg && <p className="text-sm text-emerald-600 dark:text-emerald-400">{produccionMsg}</p>}
+                {produccionMsg && <p className="text-sm text-exito">{produccionMsg}</p>}
                 <div className="flex gap-2">
                   <Input
                     type="number" min="0" step="any" value={cantidadProducir}

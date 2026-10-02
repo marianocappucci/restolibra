@@ -21,13 +21,13 @@ const ESTADO_BORDER: Record<ComandaEstado, string> = {
 const ESTADO_BUTTON: Record<ComandaEstado, string> = {
   pendiente: 'bg-destructive text-white hover:bg-destructive/90',
   preparacion: 'bg-amber-500 text-white hover:bg-amber-500/90',
-  listo: 'bg-emerald-600 text-white hover:bg-emerald-600/90',
+  listo: 'bg-exito text-exito-foreground hover:bg-exito/90',
 }
 
 const COLUMNAS: { estado: ComandaEstado; label: string; icon: typeof Hourglass; color: string }[] = [
   { estado: 'pendiente', label: 'Pendientes', icon: Hourglass, color: 'text-destructive' },
   { estado: 'preparacion', label: 'En preparación', icon: Flame, color: 'text-amber-600 dark:text-amber-400' },
-  { estado: 'listo', label: 'Listas', icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400' },
+  { estado: 'listo', label: 'Listas', icon: CheckCircle2, color: 'text-exito' },
 ]
 
 function horaDe(s: string): string {
