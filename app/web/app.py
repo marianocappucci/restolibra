@@ -142,7 +142,10 @@ _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/
 # cambio un mozo quedaría bloqueado por ESTE middleware antes de llegar al
 # router, aunque el router ya lo dejara pasar -- ver docstring de
 # `web/api/usuarios.py`.
-_MOZO_ALLOWED_EXACT = {"/api/change-password", "/api/logout",
+#
+# `/api/tema` (2026-10-01, tema de la suite): la lectura es pública y el mozo logueado la hace igual; este middleware la cortaba con 403
+# antes de que corriera el router. Sólo deja pasar la RUTA: el `PUT` lo sigue frenando la guarda del router (admin o token de servicio).
+_MOZO_ALLOWED_EXACT = {"/api/change-password", "/api/logout", "/api/tema",
                        "/api/salon/mapa", "/api/salon/reservas", "/api/pedidos"}
 _MOZO_ALLOWED_PREFIXES = ("/api/salon/mesa/", "/api/salon/reservas/", "/api/pedidos/")
 # /api/salon/config y /api/salon/reportes quedan deliberadamente FUERA

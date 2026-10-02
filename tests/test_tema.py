@@ -64,3 +64,17 @@ def test_un_token_equivocado_o_sin_la_variable_no_escribe(client, monkeypatch):
 def test_lo_que_no_tiene_la_forma_de_un_color_es_422(admin_client):
     assert admin_client.put("/api/tema", json={"tema": {"menuActivoFondo": "verde"}}).status_code == 422
     assert admin_client.get("/api/tema").json() == {"tema": {}}
+
+
+def test_un_mozo_logueado_lee_el_tema_pero_no_lo_escribe(admin_client):
+    """El middleware de Restolibra corta a un mozo en toda ruta fuera de su lista: la lectura pública del tema tiene que estar en ella, y el
+    `PUT` sigue siendo del admin (lo frena la guarda del router, no el middleware)."""
+    alta = admin_client.post("/api/usuarios", json={
+        "username": "mozo-tema", "name": "M", "password": "clave-123456", "role": "mozo"})
+    assert alta.status_code == 201, alta.text
+    admin_client.put("/api/tema", json={"tema": TEMA})
+    admin_client.post("/api/logout")
+    assert admin_client.post("/api/login", json={"username": "mozo-tema", "password": "clave-123456"}).status_code == 200
+    assert admin_client.get("/api/tema").json() == {"tema": NORMALIZADO}
+    assert admin_client.put("/api/tema", json={"tema": {}}).status_code == 403
+    assert admin_client.get("/api/tema").json() == {"tema": NORMALIZADO}
