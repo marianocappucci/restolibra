@@ -10,9 +10,9 @@ exactamente el accidente que este archivo existe para impedir.
 El proceso de pytest tiene un solo DATA_DIR (los modulos congelan las
 rutas al importarse), asi que el aislamiento POR TEST no es "otro
 directorio" sino "misma ruta, base recreada": la fixture `client`
-dispone el engine de SQLAlchemy (db_usuarios lo fija en import), borra
-el archivo .db y deja que el evento startup de web/app.py (init_db +
-ensure_admin_user) lo reconstruya de cero.
+dispone el engine de SQLAlchemy (db_usuarios lo fija en import), deja la
+base del worker como nueva (ver "Una base por worker" mas abajo) y deja que
+el evento startup de web/app.py (init_db + ensure_admin_user) la complete.
 """
 
 # --- Zona horaria de la suite ---------------------------------------------
@@ -55,6 +55,34 @@ if not os.environ.get("RESTOLIBRA_DATABASE_URL"):
         "retiro el 2026-08-12: una suite verde sobre SQLite no dice nada "
         "sobre el motor real."
     )
+
+# --- Una base de PostgreSQL por worker, restaurada desde una plantilla ---
+#
+# Cada test que pide `client` arranca de una base **nueva**, y rearmarla
+# costaba ~2 s (medido sobre PostgreSQL 16: la cadena de Alembic de auth
+# ~0,6 s, `init_db()` sobre una base vacia ~1,0 s, y el resto del arranque).
+# Ahora la base sale de `CREATE DATABASE ... TEMPLATE` (~0,1 s) desde una
+# plantilla armada la primera vez que se pide en cada worker. El mecanismo (una
+# base por worker de xdist, plantillas, `FORCE` para echar las conexiones del
+# test anterior) vive en `libracore.testing.pg_por_worker`; aca queda lo propio
+# de Restolibra: que hay en cada plantilla (`_construir_vacia`/`_construir_armada`).
+#
+# 🔴 Va ANTES de importar el producto: `app/db_core.py` lee
+# `RESTOLIBRA_DATABASE_URL` al importarse y de ahi salen `DB_PATH`, el engine de
+# `db_usuarios` y la configuracion de `libracore.db.core`. Pisarla despues no
+# alcanzaria. Con `db_core.DB_PATH` apuntando a la base del worker, los tests que
+# componen algo con esa URL (`test_aplicar_plan_postgres`, los scripts por
+# `subprocess` de `test_schema_propio_congelado`, que heredan el entorno) quedan
+# sobre la base del worker sin tocar nada.
+#
+# 🔴 Algunos tests importan `conftest` y otros `tests.conftest`: son DOS modulos y
+# este codigo corre dos veces por proceso. `base_por_worker` es idempotente a
+# proposito (la segunda vez ve la URL ya pisada y no recrea la base).
+from libracore.testing.pg_por_worker import base_por_worker  # noqa: E402
+
+_PG = base_por_worker("restolibra", os.environ["RESTOLIBRA_DATABASE_URL"])
+os.environ["RESTOLIBRA_DATABASE_URL"] = _PG.url
+
 # SessionAuth (libraauth) exige SECRET_KEY fuera de development y la app
 # no levanta sin el. Un valor fijo ademas hace deterministas las cookies.
 os.environ["SECRET_KEY"] = "suite-secret-no-productivo"
@@ -88,37 +116,51 @@ ADMIN_USER = "admin"
 ADMIN_PASS = os.environ["ADMIN_PASSWORD"]
 
 
-def _vaciar_postgres():
-    """El equivalente de borrar el .db, cuando no hay .db.
+def _construir_vacia(url: str) -> None:
+    """Plantilla "vacia": solo la cadena de libraauth, sin una tabla del dominio.
 
-    Se borra el SCHEMA y no la base: DROP DATABASE exige que no quede ninguna
-    conexion abierta. Antes se termina a las que dejo el test anterior: una
-    conexion "idle in transaction" sostiene locks sobre `public` y el DROP se
-    queda esperandola SIN FALLAR -- 20 minutos de cuelgue silencioso, medido en
-    VentaLibra. Y `IF EXISTS` porque una corrida interrumpida a mitad de este
-    bloque deja la base sin `public` y envenena todas las siguientes.
+    Es EXACTAMENTE lo que dejaba antes `_reset_data_dir()` (`DROP SCHEMA public` +
+    `CREATE SCHEMA public` + `crear_schema_de_auth`), asi que los tests que
+    prueban el arranque o las migraciones desde cero ven lo mismo que siempre.
     """
-    import psycopg
-
-    with psycopg.connect(
-        db_core.DB_PATH.replace("postgresql+psycopg://", "postgresql://", 1),
-        autocommit=True,
-    ) as conexion:
-        conexion.execute(
-            "SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
-            "WHERE datname = current_database() AND pid <> pg_backend_pid()"
-        )
-        conexion.execute("DROP SCHEMA IF EXISTS public CASCADE")
-        conexion.execute("CREATE SCHEMA public")
+    crear_schema_de_auth(url)
 
 
-def _reset_data_dir():
+def _construir_armada(url: str) -> None:
+    """Plantilla "armada": la cadena de libraauth y el schema que deja `init_db()`.
+
+    Es lo que el evento `startup` le hacia a la base vacia que dejaba
+    `_construir_vacia`, salvo sembrar usuarios (`ensure_admin_user` va por el engine
+    de `db_usuarios`, que apunta a la base del worker, y cuesta ~0,05 s por test).
+    Su `startup` posterior es idempotente sobre ella (~0,2 s), que es lo que el
+    producto hace en cada reinicio del contenedor.
+
+    `init_db()` abre su conexion por `libracore.db.core`, configurada una vez para
+    el proceso: se la apunta a la plantilla mientras se arma y se la devuelve a la
+    base del worker. Las fixtures corren de a una, asi que nadie mas la usa en el medio.
+    """
+    from libracore.db import core
+
+    crear_schema_de_auth(url)
+    core.configure(db_path=url, timeout=15)
+    try:
+        db.init_db()
+    finally:
+        core.configure(db_path=db_core.DB_PATH, timeout=15)
+
+
+def _reset_data_dir(armada: bool = False):
     """Base y config de cero, misma ruta.
 
+    Sin argumentos deja la base **vacia** (solo la cadena de libraauth), que es
+    desde donde parten los tests que prueban el arranque o las migraciones.
+    Con `armada=True` la deja con el schema de `init_db()` ya hecho (ver
+    `_construir_armada`); la usa la fixture `client` para los tests que piden
+    `admin_client`.
+
     El dispose es obligatorio: el engine de db_usuarios tiene un pool de
-    conexiones abiertas sobre el archivo; borrar el .db debajo de una
-    conexion viva deja a SQLite escribiendo en un inode huerfano y los
-    tests "ven" datos que ya no existen en disco.
+    conexiones abiertas sobre la base, y al borrarla debajo de una conexion
+    viva la proxima que saque del pool esta muerta.
     """
     db_usuarios._engine.dispose()
 
@@ -150,32 +192,33 @@ def _reset_data_dir():
             except OSError:
                 pass
 
-    if db_core.ES_POSTGRES:
-        _vaciar_postgres()
-        crear_schema_de_auth(db_usuarios._engine)
-        return
-    for suffix in ("", "-wal", "-shm"):
-        path = db_core.DB_PATH + suffix
-        if os.path.exists(path):
-            os.unlink(path)
-    # `password_reset_tokens` la crea db_usuarios AL IMPORTARSE (un
-    # create_all de una sola vez), no init_db(). Borrar el archivo deja al
-    # modulo ya importado creyendo que la tabla existe, y el flujo de
-    # recuperacion de contrasena falla con "no such table" en vez de
-    # ejercitarse. Se la recrea explicitamente por cada base nueva.
-    crear_schema_de_auth(db_usuarios._engine)
+    # Solo PostgreSQL desde el 2026-08-12 (el guard de arriba y el de `db_core`):
+    # no queda rama de archivo SQLite que limpiar.
+    if armada:
+        _PG.restaurar("armada", _construir_armada)
+    else:
+        _PG.restaurar("vacia", _construir_vacia)
 
 
 @pytest.fixture()
-def client():
+def client(request):
     """TestClient contra una base recien creada.
 
     El `with` importa: dispara el evento startup (init_db +
     ensure_admin_user), que es el mismo camino de arranque del contenedor
-    real -- la suite no inicializa el schema por su cuenta a proposito,
-    para que un schema que no levanta se vea aca y no en el deploy.
+    real.
+
+    Dos puntos de partida (ver `_construir_vacia`/`_construir_armada`): la base
+    **armada** para los tests que piden `admin_client` (directo o por otra
+    fixture: `fixturenames` trae la cadena entera), donde el `startup` es un
+    reinicio sobre una base ya inicializada; y la **vacia** para el resto, que
+    es donde el `startup` crea el schema de cero. Asi los tests de migraciones y
+    de arranque (`test_migracion_schema`, `test_secretos_config_json`...) siguen
+    viendo el estado de partida de siempre, y que el schema levante desde cero
+    sigue visible aca y no en el deploy. Con la plantilla armada se arma una vez
+    por worker con la misma `init_db()`, asi que el camino de cero se ejerce igual.
     """
-    _reset_data_dir()
+    _reset_data_dir(armada="admin_client" in request.fixturenames)
     # base_url https: la cookie de sesion es secure=True y sobre http el
     # cliente no la reenvia -- todos los requests darian 401 (misma trampa
     # ya documentada en el portal de pacientes del PACS).
