@@ -55,6 +55,22 @@ Cada cliente corre en su propio contenedor, aislado en `clientes/<slug>/`, todos
 la imagen `restolibra:latest`. El código nunca se copia por cliente: sólo se crean datos y
 configuración propios.
 
+> **Dónde viven las instancias (medido el 2026-10-03).** En el VPS están en
+> `/srv/libra/restolibra/clientes/<slug>/` (0700, root), **fuera del checkout `/root/restolibra`
+> y de git**. Los scripts (`nuevo_cliente.py`, `panel_admin.py`, `reset_demo.sh`), los crons y el
+> backoffice toman ese directorio de la variable de entorno **`LIBRA_CLIENTES_DIR`**; la
+> precedencia del motor (libracore v1.123.0) es: parámetro `clientes_dir` de `configure()` >
+> `LIBRA_CLIENTES_DIR` > `<repo>/clientes`. En desarrollo local (WSL), sin la variable, sigue
+> siendo `<repo>/clientes`.
+>
+> Cada instancia es un directorio con `docker-compose.yml`, `cliente.json`, `.env` (si la
+> instancia lo tiene) y `data/` (montado `./data:/app/data`). El sidecar PostgreSQL usa un
+> volumen nombrado, que no se mueve de lugar.
+>
+> `scripts/reset_demo.sh` acepta `CLIENTES_DIR` o `LIBRA_CLIENTES_DIR`. Los `*_backup_*.tar.gz` viejos de
+> la raíz de `clientes/` quedaron copiados en `/srv/libra/restolibra/backups-legacy/`, fuera de la carpeta de
+> instancias y de la purga del motor.
+
 ### Setup único del servidor
 
 `nuevo_cliente.py` y `panel_admin.py` son wrappers finos sobre `libracore.provisioning`, y el
@@ -79,6 +95,12 @@ Dos cosas que no son obvias:
   `https://` del `pyproject.toml` falla: la autenticación es por deploy key con alias en
   `~/.ssh/config`. `httpx` y el resto de las dependencias entran solas con LibraCore.
 
+> ⚠️ **En el VPS, antes de lanzar `nuevo_cliente.py` o `panel_admin.py` a mano, exportá
+> `LIBRA_CLIENTES_DIR=/srv/libra/restolibra/clientes`.** Sin la variable toman
+> `/root/restolibra/clientes`, el directorio viejo que se retira más adelante: por ejemplo,
+> `actualizar demo` recrearía la demo desde el compose viejo. Los crons y el backoffice ya la
+> traen definida.
+
 ### Alta de un cliente nuevo
 
 En el servidor, desde `/root/restolibra`:
@@ -88,7 +110,7 @@ En el servidor, desde `/root/restolibra`:
 ```
 
 El wizard pide nombre, slug, puerto, dominio, plan y credenciales de admin; crea
-`clientes/<slug>/` (compose + `data/` con base, config, certificados ARCA y PDFs aislados),
+`<LIBRA_CLIENTES_DIR>/<slug>/` (compose + `data/` con base, config, certificados ARCA y PDFs aislados),
 buildea la imagen si falta, levanta el contenedor y —si hay dominio— crea el proxy y el
 certificado en Nginx Proxy Manager.
 
