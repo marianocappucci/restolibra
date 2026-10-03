@@ -154,3 +154,32 @@ def test_la_instancia_de_dev_declara_el_SMTP_que_el_motor_va_a_buscar():
     # un patrón mal escrito daría la lista vacía y el test pasaría siempre.
     assert re.search(r"^\s+- LIBRAAUTH_SMTP_HOST=", bloque, re.MULTILINE)
     assert not re.search(r"^\s+- LIBRAAUTH_SMTP_INVENTADA=", bloque, re.MULTILINE)
+
+
+@pytest.mark.parametrize("script", ["nuevo_cliente", "panel_admin"])
+def test_clientes_dir_sale_del_motor_y_el_default_no_cambia(script, tmp_path, monkeypatch):
+    """`CLIENTES_DIR` de los scripts es `get_config().clientes_dir`, no `REPO_ROOT / "clientes"`.
+
+    Etapa 1 de `wiki/analyses/sacar-clientes-del-arbol-del-repo.md`: el directorio
+    de las instancias se puede mover con `LIBRA_CLIENTES_DIR` (libracore >= v1.123.0)
+    y el script no puede recomponer la ruta por su cuenta, o el panel y el
+    backoffice (`libracore.admin.services`) verían directorios distintos.
+    Sin la variable, el default **es el de siempre**: `<repo>/clientes`.
+    """
+    from libracore.provisioning import get_config
+
+    repo = pathlib.Path(__file__).resolve().parent.parent
+    modulo = f"scripts.{script}"
+    try:
+        monkeypatch.delenv("LIBRA_CLIENTES_DIR", raising=False)
+        mod = importlib.reload(importlib.import_module(modulo))
+        assert mod.CLIENTES_DIR == repo / "clientes"
+        assert mod.CLIENTES_DIR == get_config().clientes_dir
+
+        monkeypatch.setenv("LIBRA_CLIENTES_DIR", str(tmp_path))
+        mod = importlib.reload(importlib.import_module(modulo))
+        assert mod.CLIENTES_DIR == tmp_path
+        assert mod.CLIENTES_DIR == get_config().clientes_dir
+    finally:
+        monkeypatch.undo()
+        importlib.reload(importlib.import_module(modulo))

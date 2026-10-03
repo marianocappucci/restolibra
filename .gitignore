@@ -58,7 +58,8 @@ logos/
 
 # Datos por cliente (generados por scripts/nuevo_cliente.py)
 # Anclado a la raíz: no debe ignorar admin/templates/clientes/
-/clientes/
+# Sin barra final: así ignora también un symlink (clientes/ puede vivir fuera del árbol).
+/clientes
 
 # Base de datos y config de entorno de desarrollo
 dev-data/

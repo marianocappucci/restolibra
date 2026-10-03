@@ -95,7 +95,9 @@ dependencies = [
     # da una base por worker de xdist restaurada desde plantillas (`tests/conftest.py`, reglas/ci.md del wiki).
     # Subir el pin trae tambien v1.119.0 -> v1.121.0, todo de ARCA, con DOS migraciones del motor (0014: columnas
     # de la FCE MiPyME; 0015: `facturas.cae_error`), que corren al desplegar: ver el CHANGELOG de libracore.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.122.0",
+    # v1.122.0 -> v1.123.0 (2026-10-03): el directorio de las instancias se resuelve en `get_config().clientes_dir`
+    # (`configure(clientes_dir=)` > env `LIBRA_CLIENTES_DIR` > `repo_root/clientes`; el default no cambia). Sin migraciones.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.123.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
