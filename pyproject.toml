@@ -91,7 +91,11 @@ dependencies = [
     # Detectado en producción de Contalibra, ver wiki/entities/contalibra.md;
     # no se encontró ningún cliente de Restolibra expuesto hoy (demo revisada,
     # 0 casos), pero el bug es del motor compartido.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.118.0",
+    # v1.118.0 -> v1.122.0 (2026-10-03): v1.122.0 es `libracore.testing.pg_por_worker`, el helper de TEST que
+    # da una base por worker de xdist restaurada desde plantillas (`tests/conftest.py`, reglas/ci.md del wiki).
+    # Subir el pin trae tambien v1.119.0 -> v1.121.0, todo de ARCA, con DOS migraciones del motor (0014: columnas
+    # de la FCE MiPyME; 0015: `facturas.cae_error`), que corren al desplegar: ver el CHANGELOG de libracore.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.122.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -184,6 +188,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest-cov>=6",
+    "pytest-xdist>=3.8",
     "ruff>=0.13",
     "pytest>=8.0",
     "httpx>=0.27.0",
