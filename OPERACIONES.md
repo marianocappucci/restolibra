@@ -39,7 +39,8 @@ El sistema maneja dos entornos completamente separados que corren en el mismo se
 > 🔴 **`docker-compose.prod.yml` no existe**, y producción no es "un" entorno:
 > son las instancias de cliente bajo `clientes/<slug>/`, cada una con su
 > contenedor, su puerto y su sidecar de PostgreSQL. Ver "Alta de un cliente
-> nuevo".
+> nuevo". En el VPS esas instancias viven en `/srv/libra/restolibra/clientes`
+> (ver "Dónde viven las instancias").
 >
 > 🔴 **Ninguna instancia usa SQLite.** La familia corre sólo PostgreSQL desde el
 > 2026-08-12; los `.db` que aparecen más abajo en algunos nombres de archivo son
@@ -73,7 +74,9 @@ docker compose up -d --build    # usa docker-compose.yml → puerto 8073
 > buscarlo. Producción **son instancias de cliente** bajo `clientes/<slug>/`,
 > gestionadas con `panel_admin.py` igual que cualquier otra.
 
-El deploy a producción es `panel_admin.py actualizar`, **desde el VPS**:
+El deploy a producción es `panel_admin.py actualizar`, **desde el VPS** (a mano,
+exportá antes `LIBRA_CLIENTES_DIR=/srv/libra/restolibra/clientes`: ver "Dónde
+viven las instancias"):
 
 > 🔴 **El intérprete es el del venv, no el `python3` del sistema.** Los scripts
 > de `scripts/` son wrappers finos sobre `libracore.provisioning` y lo importan
@@ -146,20 +149,45 @@ VPS
 ├── /root/restolibra/          ← código fuente del sistema (este repo)
 │   ├── app/                   ← aplicación FastAPI (`app/web/app.py` es el entry point)
 │   ├── frontend/              ← SPA React/Vite (se hornea en la imagen)
-│   ├── scripts/               ← herramientas de administración
-│   └── clientes/              ← un subdirectorio por cliente
-│       ├── mitienda/
-│       │   ├── docker-compose.yml   ← app + su sidecar PostgreSQL
-│       │   ├── cliente.json   ← metadatos del cliente
-│       │   └── data/          ← montado en /app/data dentro del contenedor
-│       │       ├── backups/   ← los ZIP de respaldo
-│       │       ├── config.json
-│       │       ├── logos/
-│       │       └── arca_certs/
-│       └── otrocomercio/
-│           └── ...
+│   └── scripts/               ← herramientas de administración
+├── /srv/libra/restolibra/
+│   ├── clientes/              ← LIBRA_CLIENTES_DIR: un subdirectorio por cliente (0700, root)
+│   │   ├── mitienda/
+│   │   │   ├── docker-compose.yml   ← app + su sidecar PostgreSQL
+│   │   │   ├── cliente.json   ← metadatos del cliente
+│   │   │   ├── .env           ← si la instancia lo tiene
+│   │   │   └── data/          ← montado en /app/data dentro del contenedor
+│   │   │       ├── backups/   ← los ZIP de respaldo
+│   │   │       ├── config.json
+│   │   │       ├── logos/
+│   │   │       └── arca_certs/
+│   │   └── otrocomercio/
+│   │       └── ...
+│   └── backups-legacy/        ← tar.gz sueltos del esquema viejo (copiados, fuera de la purga)
 └── nginx-proxy-manager        ← proxy inverso con SSL automático
 ```
+
+### Dónde viven las instancias (medido el 2026-10-03)
+
+En el VPS las instancias viven en `/srv/libra/restolibra/clientes` (0700, root),
+**fuera del checkout y de git**. Los scripts (`nuevo_cliente.py`,
+`panel_admin.py`, `reset_demo.sh`), los crons y el backoffice toman ese
+directorio de la variable de entorno **`LIBRA_CLIENTES_DIR`**. Precedencia del
+motor (libracore v1.123.0): parámetro `clientes_dir` de `configure()` >
+`LIBRA_CLIENTES_DIR` > `<repo>/clientes`. En desarrollo local (WSL), sin la
+variable, sigue siendo `<repo>/clientes`.
+
+- Cada instancia es un directorio con `docker-compose.yml`, `cliente.json`,
+  `.env` (si la instancia lo tiene) y `data/` (montado `./data:/app/data`). El
+  sidecar PostgreSQL usa un volumen nombrado, que no se mueve de lugar.
+- ⚠️ **Quien lance `panel_admin.py` a mano en el VPS tiene que exportar
+  `LIBRA_CLIENTES_DIR=/srv/libra/restolibra/clientes`.** Sin eso toma
+  `/root/restolibra/clientes`, el directorio viejo hasta que se retire: por
+  ejemplo, `actualizar demo` recrearía la demo desde el compose viejo.
+- `scripts/reset_demo.sh` acepta `CLIENTES_DIR` o `LIBRA_CLIENTES_DIR`.
+- Los `*_backup_*.tar.gz` viejos de la raíz de `clientes/` quedaron copiados en
+  `/srv/libra/restolibra/backups-legacy/`, fuera de la carpeta de instancias y de
+  la purga del motor.
 
 **Principio clave**: cada instancia de cliente es **autónoma** — su propio
 contenedor, su propio puerto, su propio sidecar PostgreSQL y su propio `data/`.
@@ -245,7 +273,7 @@ Luego muestra un resumen y pide confirmación:
 ```
 
 Al confirmar:
-1. Crea `clientes/la-panaderia-del-centro/` con toda la estructura de directorios
+1. Crea `<LIBRA_CLIENTES_DIR>/la-panaderia-del-centro/` con toda la estructura de directorios
 2. Genera `docker-compose.yml` con el puerto asignado y las credenciales
 3. Crea `data/config.json` inicial
 4. Levanta el contenedor (`docker compose up -d`)
@@ -359,7 +387,7 @@ docker build -t restolibra:latest .
 ./.venv-scripts/bin/python3 scripts/panel_admin.py restart mitienda
 
 # O con docker directamente:
-docker compose -f clientes/mitienda/docker-compose.yml restart
+docker compose -f /srv/libra/restolibra/clientes/mitienda/docker-compose.yml restart
 ```
 
 ### Verificar que todo quedó bien
@@ -396,7 +424,7 @@ docker compose -f clientes/mitienda/docker-compose.yml restart
 ```
 
 Genera **un** archivo: el ZIP de respaldo en
-`clientes/mitienda/data/backups/`, con el dump de PostgreSQL (`pg_dump -Fc`)
+`<LIBRA_CLIENTES_DIR>/mitienda/data/backups/`, con el dump de PostgreSQL (`pg_dump -Fc`)
 más el resto de `data/` adentro.
 
 > 🔴 **Ya no son "dos archivos", y el cambio importa.** Este producto configura
@@ -634,11 +662,12 @@ docker logs restolibra-web --tail 50
 │   ├── npm_api.py              ← cliente HTTP para NPM
 │   ├── npm_setup.py            ← configuración de NPM
 │   └── .npm_config.json        ← credenciales NPM (excluido del repo)
-├── clientes/                   ← datos de clientes (excluido del repo)
+├── clientes/                   ← sólo en desarrollo local (excluido del repo); en el VPS: /srv/libra/restolibra/clientes (LIBRA_CLIENTES_DIR)
 │   └── <slug>/
 │       ├── docker-compose.yml  ← app + sidecar PostgreSQL de esa instancia
 │       ├── cliente.json        ← nombre, puerto, credenciales admin
-│       └── data/               ← montado en /app/data
+│       ├── .env                ← si la instancia lo tiene
+│       └── data/               ← montado en /app/data (./data:/app/data)
 │           ├── config.json     ← configuración de la empresa
 │           ├── logos/
 │           ├── arca_certs/
