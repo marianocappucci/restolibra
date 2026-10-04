@@ -679,8 +679,8 @@ migrations = [
 
 [[package]]
 name = "libracommerce"
-version = "0.16.4"
-source = { git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.16.4#4249836d0579aa480f60af1c9346d6390636221d" }
+version = "0.41.1"
+source = { git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.41.1#340873b991d781d491dc5a4a9ce1933e0a9f442b" }
 
 [package.optional-dependencies]
 erp = [
@@ -693,13 +693,14 @@ migrations = [
 ]
 web = [
     { name = "fastapi" },
+    { name = "libracore" },
     { name = "pydantic" },
 ]
 
 [[package]]
 name = "libracore"
-version = "1.127.0"
-source = { git = "https://github.com/marianocappucci/libracore.git?rev=v1.127.0#14311d86ecd7aff4a07e1f458b6a21a91ffec8cf" }
+version = "1.129.0"
+source = { git = "https://github.com/marianocappucci/libracore.git?rev=v1.129.0#29eaec75f46dc4882c74a0d7847a6903d6093f44" }
 dependencies = [
     { name = "cryptography" },
     { name = "fastapi" },
@@ -1248,8 +1249,8 @@ requires-dist = [
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "libraauth", extras = ["migrations"], git = "https://github.com/marianocappucci/libraauth.git?rev=v0.46.0" },
-    { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.16.4" },
-    { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.127.0" },
+    { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.41.1" },
+    { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.129.0" },
     { name = "libraedge", git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.12" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6" },
