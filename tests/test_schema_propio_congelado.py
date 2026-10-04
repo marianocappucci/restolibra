@@ -105,9 +105,11 @@ def _head_de_la_cadena_propia() -> str:
 def _vaciar():
     """Base de cero, con el engine de libraauth cerrado antes.
 
-    🔴 `_reset_data_dir` y no `_vaciar_postgres` a secas: el engine de
-    `db_usuarios` tiene un pool abierto, y sus conexiones bloquean el
-    `DROP SCHEMA`. Es el cuelgue de 20 minutos que ya se midió en VentaLibra.
+    🔴 `_reset_data_dir` y no restaurar la plantilla a mano: además de la base,
+    cierra el engine de `db_usuarios` (un pool abierto sobre una base que se
+    reemplaza deja conexiones muertas) y limpia `config.json` y los certificados.
+    Sin argumentos deja la base **vacía** (sólo la cadena de libraauth), que es
+    desde donde parte el alta de una instancia.
     """
     from tests.conftest import _reset_data_dir
 
