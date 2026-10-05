@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, opcionesCliente, type Cliente, type Factura, type ProductoBusqueda, type TipoFactura, type Venta } from '../api'
 import { SelectBuscable } from 'libra-ui/SelectBuscable'
+import { AvisoFce } from 'libra-ui/AvisoFce'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -142,6 +143,8 @@ export function FacturaNueva() {
 
   const subtotalCalc = items.reduce((acc, r) => acc + (Number(r.qty) || 0) * (Number(r.unit_price) || 0), 0)
   const ivaCalc = tiposInfo?.es_monotributista ? 0 : subtotalCalc * (Number(taxRate) || 0)
+  // El CUIT del cliente elegido, para preguntar si a esta factura le corresponde ser FCE (ARCA no lo frena al emitir).
+  const cuitCliente = clientes.find((c) => String(c.id) === clienteId)?.cuit_dni ?? ''
 
   function payloadBase() {
     return {
@@ -269,6 +272,8 @@ export function FacturaNueva() {
                 <div className="grid gap-2"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" placeholder="Consumidor Final" /></div>
               )}
             </div>
+
+            <AvisoFce cuit={cuitCliente} total={subtotalCalc + ivaCalc} tipo={Number(tipo) || null} fecha={fecha} />
 
             <div className="flex flex-wrap items-end gap-3">
               {!tiposInfo.es_monotributista && (
