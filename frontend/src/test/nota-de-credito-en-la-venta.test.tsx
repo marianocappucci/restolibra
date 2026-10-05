@@ -1,6 +1,6 @@
 // La nota de crédito en el detalle de la venta (libra-ui 0.113.0, libracore v1.129.0): una venta cuya factura tiene CAE
 // pide la nota antes de anularse (libracommerce v0.41.0 contesta 409 si falta). La emite el admin; el resto ve el aviso.
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -53,10 +53,38 @@ describe('Nota de crédito en el detalle de la venta', () => {
 
     expect((await screen.findByRole('note')).textContent).toMatch(/75123456789012/)
     await user.click(screen.getByRole('button', { name: /Emitir nota de crédito/ }))
-    await user.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Emitir nota' }))
+    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Emitir nota' }))
 
     await waitFor(() => expect(pedidos).toContain('POST /api/facturas/55/nota-credito'))
     expect((await screen.findByRole('note')).textContent).toMatch(/ya podés anular la venta/)
+  })
+
+  it('el admin puede acreditar sólo un importe (la nota parcial): manda {importe} y la venta no se puede anular hasta cubrir el total', async () => {
+    sesion.rol = 'admin'
+    montar({ ...CON_CAE, factura_total: 7500, factura_saldo_acreditable: 7500 })
+    const user = userEvent.setup()
+
+    await user.click(await screen.findByRole('button', { name: /Emitir nota de crédito/ }))
+    const dialogo = within(await screen.findByRole('dialog'))
+    expect(dialogo.getByText(/saldo acreditable/).textContent).toMatch(/7\.500,00/)
+    await user.click(dialogo.getByLabelText('Por un importe'))
+    fireEvent.change(dialogo.getByLabelText(/Importe a acreditar/), { target: { value: '2500' } })
+    await user.click(dialogo.getByRole('button', { name: 'Emitir nota' }))
+
+    await waitFor(() => expect(pedidos).toContain('POST /api/facturas/55/nota-credito'))
+    const llamada = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls
+      .find((c) => String(c[0]).includes('/nota-credito'))!
+    expect(JSON.parse(String(llamada[1].body))).toEqual({ importe: 2500 })
+  })
+
+  it('con notas que no alcanzan el aviso dice cuánto falta y NO dice que ya se puede anular', async () => {
+    sesion.rol = 'admin'
+    montar({ ...CON_CAE, factura_total: 7500, factura_saldo_acreditable: 5000, nota_credito_display: 'NOTA DE CREDITO C 0001-00000001' })
+
+    const aviso = await screen.findByRole('note')
+    expect(aviso.textContent).toMatch(/acreditada sólo en parte/)
+    expect(aviso.textContent).toMatch(/5\.000,00/)
+    expect(aviso.textContent).not.toMatch(/ya podés anular/)
   })
 
   it('quien no es admin ve el aviso que le dice a quién pedírsela y no el botón', async () => {
