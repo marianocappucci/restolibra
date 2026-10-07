@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
-  ArrowLeft, Settings, Plus, Check, Trash2, LayoutGrid,
+  Armchair, ArrowLeft, Plus, Check, Trash2, LayoutGrid,
 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
@@ -144,7 +144,7 @@ export function SalonConfig() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={Settings}>Salones y mesas</TituloPantalla>
+        <TituloPantalla icono={Armchair}>Salones y mesas</TituloPantalla>
         <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Ir al salón</Button>
       </div>
 

@@ -1,5 +1,5 @@
 import {
-  CalendarClock, ChefHat, ClipboardList, Flame, LayoutGrid, LineChart, Settings, Tag, TrendingUp,
+  CalendarClock, ChefHat, ClipboardList, Flame, LayoutGrid, LineChart, Armchair, Tag, TrendingUp,
 } from 'lucide-react'
 import { ICONOS } from 'libra-ui/iconos-identidad'
 import { createLayout, type NavSection } from 'libra-ui/Layout'
@@ -27,7 +27,7 @@ const NAV_SECTIONS: NavSection<User>[] = [
       { to: '/salon/reservas', label: 'Reservas', icon: CalendarClock, module: 'restaurant' },
       { to: '/kds', label: 'KDS', icon: Flame, module: 'restaurant', hideFor: esMozo },
       { to: '/salon/reportes', label: 'Reportes', icon: LineChart, module: 'restaurant', hideFor: esMozo },
-      { to: '/salon/config', label: 'Config. salón', icon: Settings, module: 'restaurant', hideFor: esMozo },
+      { to: '/salon/config', label: 'Config. salón', icon: Armchair, module: 'restaurant', hideFor: esMozo },
     ],
   },
   {
