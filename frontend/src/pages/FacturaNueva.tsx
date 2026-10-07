@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Eye, Plus, Receipt, Trash2 } from 'lucide-react'
+import { Eye, Plus, Trash2 } from 'lucide-react'
+import { ICONOS } from 'libra-ui/iconos-identidad'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { hoyISO } from 'libra-ui/fechas'
 
@@ -197,7 +198,7 @@ export function FacturaNueva() {
 
   return (
     <div className="grid gap-4">
-      <TituloPantalla icono={Receipt}>Nueva factura</TituloPantalla>
+      <TituloPantalla icono={ICONOS.comprobantes}>Nueva factura</TituloPantalla>
 
       {ventaId && (
         <p className="rounded-md border border-exito/40 bg-exito/10 p-3 text-sm">

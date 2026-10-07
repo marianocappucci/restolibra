@@ -1,5 +1,15 @@
 # Changelog
 
+## Sin publicar — 2026-10-07
+
+### El menú y los títulos usan el catálogo de íconos de la familia (ADR-035)
+
+- Cada concepto lleva **un solo ícono**, en el menú y en el título de su pantalla, igual en todos los productos. El menú y los títulos de este
+  producto lo toman de `ICONOS` (`libra-ui/iconos-identidad`) y no de un `import` suelto de lucide.
+- Cambian: **Listas de precio** `Tag` → `Tags`, **Log de actividad** `History` → `ScrollText`, **Caja** `SquareStack` → `Wallet` y **Caja por medio** `Wallet` → `Coins`.
+- Un test nuevo (`frontend/src/test/iconos-del-catalogo.test.ts`) falla si una entrada del menú vuelve a usar otro ícono que el de su concepto.
+- Pin: `libra-ui` v0.123.0 → **v0.125.0**.
+
 ## v1.0.10 — 2026-09-01
 
 ### 🔴 Los reportes de salón eran un 500 disfrazado de «Cargando…»
