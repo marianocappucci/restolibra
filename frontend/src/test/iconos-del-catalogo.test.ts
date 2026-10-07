@@ -56,3 +56,14 @@ describe('el menú usa los íconos del catálogo de la familia', () => {
     expect(auditoria.medidas).toBe(23)
   })
 })
+
+// «Config. salón» y «Configuración» compartían el engranaje en el mismo menú. El humano eligió el sillón (2026-10-07):
+// la configuración del salón es de salones y mesas, no de la instancia.
+describe('Config. salón no usa el ícono de Configuración', () => {
+  it('el menú y el título llevan Armchair', () => {
+    const entrada = LAYOUT.split('\n').find((l) => l.includes("to: '/salon/config'")) ?? ''
+    expect(entrada).toContain('icon: Armchair')
+    const titulo = readFileSync(join(process.cwd(), 'src', 'pages', 'SalonConfig.tsx'), 'utf8')
+    expect(titulo).toContain('<TituloPantalla icono={Armchair}>')
+  })
+})
