@@ -5,7 +5,6 @@
 // backend ya habla el contrato único (`name`/`active`/`email`, `id: string`,
 // `DELETE` en 204), así que la pantalla compartida se pinta contra él sin
 // traducir nada.
-import { UserCog } from 'lucide-react'
 import { Usuarios as UsuariosBase } from 'libra-ui/Usuarios'
 import { useAuth } from '../context/AuthContext'
 
@@ -26,7 +25,6 @@ export function Usuarios() {
   const { user: me } = useAuth()
   return (
     <UsuariosBase
-      icono={UserCog}
       basePath="/api/usuarios"
       roles={ROLES}
       // El backend nuevo trae `DELETE /api/usuarios/{id}` con las guardas
