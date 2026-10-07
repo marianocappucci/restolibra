@@ -1,9 +1,7 @@
 import {
-  BarChart3, BookOpen, BookText, Boxes, Calculator, CalendarClock, ChefHat, Clock, CreditCard,
-  FileText, Flame, History, LayoutGrid, Landmark, LineChart, Package, Receipt,
-  Settings, ShoppingBag, ShoppingCart, SquareStack, Tag, TrendingUp, Truck, UserCog, Users,
-  Wallet, Warehouse, ClipboardList,
+  CalendarClock, ChefHat, ClipboardList, Flame, LayoutGrid, LineChart, Settings, Tag, TrendingUp,
 } from 'lucide-react'
+import { ICONOS } from 'libra-ui/iconos-identidad'
 import { createLayout, type NavSection } from 'libra-ui/Layout'
 import { WORDMARK } from '@/branding'
 import { useAuth } from '../context/AuthContext'
@@ -36,13 +34,13 @@ const NAV_SECTIONS: NavSection<User>[] = [
     label: 'Ventas',
     hideFor: esMozo,
     items: [
-      { to: '/facturas', label: 'Comprobantes', icon: Receipt, module: 'facturacion' },
-      { to: '/presupuestos', label: 'Presupuestos', icon: Calculator, module: 'presupuestos' },
-      { to: '/remitos', label: 'Remitos', icon: FileText, module: 'remitos' },
-      { to: '/ventas', label: 'Ventas POS', icon: ShoppingCart, module: 'ventas' },
+      { to: '/facturas', label: 'Comprobantes', icon: ICONOS.comprobantes, module: 'facturacion' },
+      { to: '/presupuestos', label: 'Presupuestos', icon: ICONOS.presupuestos, module: 'presupuestos' },
+      { to: '/remitos', label: 'Remitos', icon: ICONOS.remitos, module: 'remitos' },
+      { to: '/ventas', label: 'Ventas POS', icon: ICONOS.ventas, module: 'ventas' },
       {
-        to: '/clientes', label: 'Clientes', icon: Users, module: 'clientes',
-        children: [{ to: '/cuenta-corriente', label: 'Cuenta Corriente', module: 'cuenta_corriente', icon: BookOpen }],
+        to: '/clientes', label: 'Clientes', icon: ICONOS.clientes, module: 'clientes',
+        children: [{ to: '/cuenta-corriente', label: 'Cuenta Corriente', module: 'cuenta_corriente', icon: ICONOS.cuentaCorriente }],
       },
     ],
   },
@@ -51,10 +49,10 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       {
-        to: '/egresos', label: 'Egresos', icon: ShoppingBag, module: 'egresos',
+        to: '/egresos', label: 'Egresos', icon: ICONOS.egresos, module: 'egresos',
         children: [{ to: '/config/categorias-egreso', label: 'Categorías', icon: Tag }],
       },
-      { to: '/proveedores', label: 'Proveedores', icon: Truck, module: 'proveedores' },
+      { to: '/proveedores', label: 'Proveedores', icon: ICONOS.proveedores, module: 'proveedores' },
     ],
   },
   {
@@ -62,15 +60,15 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       {
-        to: '/productos', label: 'Productos', icon: Package, module: 'productos',
+        to: '/productos', label: 'Productos', icon: ICONOS.productos, module: 'productos',
         children: [
           { to: '/config/categorias-producto', label: 'Categorías', icon: Tag },
-          { to: '/listas-precio', label: 'Listas de precios', module: 'listas_precio', icon: Tag },
+          { to: '/listas-precio', label: 'Listas de precios', module: 'listas_precio', icon: ICONOS.listasDePrecio },
           { to: '/productos/reportes-costos', label: 'Food cost', icon: TrendingUp },
         ],
       },
-      { to: '/stock', label: 'Stock', icon: Boxes, module: 'stock' },
-      { to: '/depositos', label: 'Depósitos', icon: Warehouse, module: 'depositos' },
+      { to: '/stock', label: 'Stock', icon: ICONOS.stock, module: 'stock' },
+      { to: '/depositos', label: 'Depósitos', icon: ICONOS.depositos, module: 'depositos' },
     ],
   },
   {
@@ -78,19 +76,19 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       {
-        to: '/caja', label: 'Caja', icon: SquareStack, module: 'caja',
+        to: '/caja', label: 'Caja', icon: ICONOS.caja, module: 'caja',
         children: [
-          { to: '/turnos', label: 'Turnos', icon: Clock },
-          { to: '/cajas', label: 'Gestionar cajas', module: 'cajas', icon: SquareStack },
+          { to: '/turnos', label: 'Turnos', icon: ICONOS.turnosDeCaja },
+          { to: '/cajas', label: 'Gestionar cajas', module: 'cajas', icon: ICONOS.cajas },
         ],
       },
-      { to: '/tesoreria', label: 'Cuentas bancarias', icon: Landmark, module: 'tesoreria' },
+      { to: '/tesoreria', label: 'Cuentas bancarias', icon: ICONOS.tesoreria, module: 'tesoreria' },
     ],
   },
   {
     hideFor: esMozo,
     items: [{
-      to: '/mp-bandeja', label: 'Pagos MercadoPago', icon: CreditCard,
+      to: '/mp-bandeja', label: 'Pagos MercadoPago', icon: ICONOS.pagosMercadoPago,
       badge: (u) => u.mp_pending_count || undefined,
     }],
   },
@@ -99,22 +97,22 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       {
-        to: '/reportes', label: 'Reportes', icon: BarChart3, module: 'reportes',
-        children: [{ to: '/reportes/caja-medios', label: 'Caja por medio', module: 'reportes', icon: Wallet }],
+        to: '/reportes', label: 'Reportes', icon: ICONOS.reportes, module: 'reportes',
+        children: [{ to: '/reportes/caja-medios', label: 'Caja por medio', module: 'reportes', icon: ICONOS.cajaPorMedio }],
       },
-      { to: '/libros-iva', label: 'Libros IVA', icon: BookText, module: 'libros_iva' },
+      { to: '/libros-iva', label: 'Libros IVA', icon: ICONOS.librosDeIva, module: 'libros_iva' },
     ],
   },
   {
     hideFor: esMozo,
-    items: [{ to: '/config', label: 'Configuración', icon: Settings }],
+    items: [{ to: '/config', label: 'Configuración', icon: ICONOS.configuracion }],
   },
   {
     label: 'Administración',
     hideFor: esMozo,
     items: [
-      { to: '/usuarios', label: 'Usuarios', icon: UserCog, adminOnly: true },
-      { to: '/logs', label: 'Logs', icon: History, adminOnly: true },
+      { to: '/usuarios', label: 'Usuarios', icon: ICONOS.usuarios, adminOnly: true },
+      { to: '/logs', label: 'Logs', icon: ICONOS.logDeActividad, adminOnly: true },
     ],
   },
 ]
