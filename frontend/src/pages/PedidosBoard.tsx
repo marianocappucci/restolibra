@@ -61,13 +61,17 @@ export function PedidosBoard() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={ClipboardList}>Pedidos (mostrador y delivery)</TituloPantalla>
-        <div className="flex gap-2">
-          <Button size="sm" variant="outline" onClick={separarMonitor}><Monitor />Separar monitor</Button>
-          <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><LayoutGrid />Ir al salón</Button>
-        </div>
-      </div>
+      <TituloPantalla
+        icono={ClipboardList}
+        acciones={
+          <div className="flex gap-2">
+            <Button size="sm" variant="outline" onClick={separarMonitor}><Monitor />Separar monitor</Button>
+            <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><LayoutGrid />Ir al salón</Button>
+          </div>
+        }
+      >
+        Pedidos (mostrador y delivery)
+      </TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

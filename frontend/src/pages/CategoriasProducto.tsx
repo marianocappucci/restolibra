@@ -61,10 +61,7 @@ export function CategoriasProducto() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TituloPantalla icono={Tag}>Categorías de producto</TituloPantalla>
-        <Button variant="outline" asChild><Link to="/productos"><ArrowLeft />Volver a Productos</Link></Button>
-      </div>
+      <TituloPantalla icono={Tag} acciones={<Button variant="outline" asChild><Link to="/productos"><ArrowLeft />Volver a Productos</Link></Button>}>Categorías de producto</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

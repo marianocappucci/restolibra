@@ -143,10 +143,7 @@ export function SalonConfig() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={Armchair}>Salones y mesas</TituloPantalla>
-        <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Ir al salón</Button>
-      </div>
+      <TituloPantalla icono={Armchair} acciones={<Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Ir al salón</Button>}>Salones y mesas</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

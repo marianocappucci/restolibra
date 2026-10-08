@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
-import { TrendingUp } from 'lucide-react'
+import { INDICADORES } from 'libra-ui/iconos-indicador'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 
 function formatCurrency(value: number): string {
@@ -58,10 +58,7 @@ export function ReporteCostos() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TituloPantalla icono={TrendingUp}>Food cost y consumo de insumos</TituloPantalla>
-        <Button variant="outline" asChild><Link to="/productos">Volver a Productos</Link></Button>
-      </div>
+      <TituloPantalla icono={INDICADORES.foodCost} acciones={<Button variant="outline" asChild><Link to="/productos">Volver a Productos</Link></Button>}>Food cost y consumo de insumos</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -62,10 +62,7 @@ export function PedidoNuevo() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={ClipboardList}>Nuevo pedido · {CANAL_LABEL[canal]}</TituloPantalla>
-        <Button size="sm" variant="outline" onClick={() => navigate('/pedidos')}><ArrowLeft />Volver</Button>
-      </div>
+      <TituloPantalla icono={ClipboardList} acciones={<Button size="sm" variant="outline" onClick={() => navigate('/pedidos')}><ArrowLeft />Volver</Button>}>Nuevo pedido · {CANAL_LABEL[canal]}</TituloPantalla>
 
       <Tabs value={canal} onValueChange={cambiarCanal}>
         <TabsList>
