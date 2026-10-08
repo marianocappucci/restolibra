@@ -62,10 +62,7 @@ export function CategoriasEgreso() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TituloPantalla icono={Tag}>Categorías de egreso</TituloPantalla>
-        <Button variant="outline" asChild><Link to="/egresos"><ArrowLeft />Volver a Egresos</Link></Button>
-      </div>
+      <TituloPantalla icono={Tag} acciones={<Button variant="outline" asChild><Link to="/egresos"><ArrowLeft />Volver a Egresos</Link></Button>}>Categorías de egreso</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -3,7 +3,9 @@ import { api, ApiError, type ReporteSalonData } from '../api'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { LineChart, Timer } from 'lucide-react'
+import { ICONOS } from 'libra-ui/iconos-identidad'
+import { IconoIndicador } from 'libra-ui/IconoIndicador'
+import { TarjetaIndicador } from 'libra-ui/TarjetaIndicador'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
 
@@ -53,13 +55,17 @@ export function ReportesSalon() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <TituloPantalla icono={LineChart}>Reportes de salón</TituloPantalla>
-        <div className="flex items-end gap-3">
-          <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
-          <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
-        </div>
-      </div>
+      <TituloPantalla
+        icono={ICONOS.reportes}
+        acciones={
+          <div className="flex items-end gap-3">
+            <div className="grid gap-2"><Label>Desde</Label><Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="w-40" /></div>
+            <div className="grid gap-2"><Label>Hasta</Label><Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} className="w-40" /></div>
+          </div>
+        }
+      >
+        Reportes de salón
+      </TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -68,14 +74,8 @@ export function ReportesSalon() {
       ) : !data ? null : (
         <>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Ventas en período</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">{data.total_n}</p><p className="text-xs text-muted-foreground">operaciones</p></CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-muted-foreground">Total vendido</CardTitle></CardHeader>
-              <CardContent><p className="text-2xl font-bold">{formatCurrency(data.total_total)}</p></CardContent>
-            </Card>
+            <TarjetaIndicador concepto="ventas" etiqueta="Ventas en período" valor={data.total_n} ayuda="operaciones" />
+            <TarjetaIndicador concepto="montoVendido" etiqueta="Total vendido" valor={formatCurrency(data.total_total)} />
           </div>
 
           <Card>
@@ -109,7 +109,7 @@ export function ReportesSalon() {
           </Card>
 
           <Card>
-            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Timer className="size-4" />Tiempos de comanda por estación</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><IconoIndicador concepto="tiempo" />Tiempos de comanda por estación</CardTitle></CardHeader>
             <CardContent>
               {data.tiempos.length === 0 ? (
                 <p className="py-4 text-center text-sm text-muted-foreground">Sin comandas completadas en el período.</p>

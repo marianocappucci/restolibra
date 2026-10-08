@@ -112,10 +112,7 @@ export function Reservas() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={CalendarClock}>Reservas</TituloPantalla>
-        <Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Salón</Button>
-      </div>
+      <TituloPantalla icono={CalendarClock} acciones={<Button size="sm" variant="outline" onClick={() => navigate('/salon')}><ArrowLeft />Salón</Button>}>Reservas</TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

@@ -262,13 +262,17 @@ export function PedidoDetalle() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={LayoutGrid}>{pedido.mesa_nombre ? `Mesa ${pedido.mesa_nombre}` : pedido.canal.charAt(0).toUpperCase() + pedido.canal.slice(1)}
-          <span className="text-sm font-normal text-muted-foreground">· Pedido {pedido.numero}</span></TituloPantalla>
-        <Button size="sm" variant="outline" onClick={() => navigate(pedido.mesa_id ? '/salon' : '/pedidos')}>
-          <ArrowLeft />{pedido.mesa_id ? 'Salón' : 'Pedidos'}
-        </Button>
-      </div>
+      <TituloPantalla
+        icono={LayoutGrid}
+        acciones={
+          <Button size="sm" variant="outline" onClick={() => navigate(pedido.mesa_id ? '/salon' : '/pedidos')}>
+            <ArrowLeft />{pedido.mesa_id ? 'Salón' : 'Pedidos'}
+          </Button>
+        }
+      >
+        {pedido.mesa_nombre ? `Mesa ${pedido.mesa_nombre}` : pedido.canal.charAt(0).toUpperCase() + pedido.canal.slice(1)}
+        <span className="text-sm font-normal text-muted-foreground">· Pedido {pedido.numero}</span>
+      </TituloPantalla>
 
       {!pedido.mesa_id && (
         <Card><CardContent className="flex flex-wrap items-center gap-4 py-2.5 text-sm">
