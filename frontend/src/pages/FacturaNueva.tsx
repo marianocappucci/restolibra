@@ -215,6 +215,7 @@ export function FacturaNueva() {
             <div className="flex flex-wrap items-end gap-3">
               <div className="grid gap-2">
                 <Label>Tipo</Label>
+                {/* select-cerrado: los tipos son de uno a dos (Factura A, B o C) según la condición del emisor; los arma el motor (TIPOS_POR_CONDICION) */}
                 <Select value={tipo} onValueChange={setTipo}>
                   <SelectTrigger className="w-36"><SelectValue placeholder="Elegir…" /></SelectTrigger>
                   <SelectContent>
@@ -224,6 +225,7 @@ export function FacturaNueva() {
               </div>
               <div className="grid gap-2">
                 <Label>Concepto</Label>
+                {/* select-cerrado: los conceptos son tres (productos, servicios, productos y servicios), un catálogo cerrado de ARCA */}
                 <Select value={concepto} onValueChange={setConcepto}>
                   <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -235,6 +237,7 @@ export function FacturaNueva() {
               <div className="grid gap-2"><Label>Fecha</Label><Input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className="w-40" /></div>
               <div className="grid gap-2">
                 <Label>Condición de venta</Label>
+                {/* select-cerrado: las condiciones de venta son una constante corta del código (CONDICIONES_VENTA) */}
                 <Select value={condicionVenta} onValueChange={setCondicionVenta}>
                   <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -267,6 +270,7 @@ export function FacturaNueva() {
                   placeholder="Elegir cliente…"
                   ariaLabel="Cliente"
                   className="w-52"
+                  limpiable
                 />
               </div>
               {!clienteId && (
