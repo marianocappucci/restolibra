@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SelectBuscable } from 'libra-ui/SelectBuscable'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import {
   ArrowLeft, CalendarClock, CalendarPlus, PlayCircle, X, Filter,
@@ -124,14 +124,10 @@ export function Reservas() {
 
             <div className="grid gap-1">
               <Label className="text-xs">Mesa</Label>
-              <Select value={mesaId} onValueChange={setMesaId}>
-                <SelectTrigger className="w-full"><SelectValue placeholder="Elegir mesa…" /></SelectTrigger>
-                <SelectContent>
-                  {mesas.map((m) => (
-                    <SelectItem key={m.id} value={String(m.id)}>{m.salon_nombre} · {m.nombre} ({m.capacidad} cub.)</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SelectBuscable
+                value={mesaId} onChange={setMesaId} ariaLabel="Mesa" placeholder="Buscar mesa…" limpiable={false}
+                opciones={mesas.map((m) => ({ value: String(m.id), label: `${m.salon_nombre} · ${m.nombre} (${m.capacidad} cub.)` }))}
+              />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
