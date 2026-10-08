@@ -175,12 +175,16 @@ export function ProductoReceta() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <TituloPantalla icono={Package}>Receta de {detalle.producto.nombre}</TituloPantalla>
-        <Button variant="outline" asChild>
-          <Link to="/productos"><ArrowLeft />Volver a Productos</Link>
-        </Button>
-      </div>
+      <TituloPantalla
+        icono={Package}
+        acciones={
+          <Button variant="outline" asChild>
+            <Link to="/productos"><ArrowLeft />Volver a Productos</Link>
+          </Button>
+        }
+      >
+        Receta de {detalle.producto.nombre}
+      </TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

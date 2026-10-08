@@ -33,6 +33,8 @@ const RUTA_A_CONCEPTO: Record<string, Concepto> = {
   '/tesoreria': 'tesoreria',
   '/mp-bandeja': 'pagosMercadoPago',
   '/reportes': 'reportes',
+  // Reportes de salón (ADR-038, libra-ui v0.128.0): la entrada del salón dice «Reportes» y lleva el mismo ícono que la de Reportes.
+  '/salon/reportes': 'reportes',
   '/reportes/caja-medios': 'cajaPorMedio',
   '/libros-iva': 'librosDeIva',
   '/config': 'configuracion',
@@ -53,7 +55,7 @@ describe('el menú usa los íconos del catálogo de la familia', () => {
 
   it('🔴 el control: el guard midió todas las rutas del mapa', () => {
     expect(auditoria.medidas).toBe(Object.keys(RUTA_A_CONCEPTO).length)
-    expect(auditoria.medidas).toBe(23)
+    expect(auditoria.medidas).toBe(24)
   })
 })
 
@@ -64,6 +66,6 @@ describe('Config. salón no usa el ícono de Configuración', () => {
     const entrada = LAYOUT.split('\n').find((l) => l.includes("to: '/salon/config'")) ?? ''
     expect(entrada).toContain('icon: Armchair')
     const titulo = readFileSync(join(process.cwd(), 'src', 'pages', 'SalonConfig.tsx'), 'utf8')
-    expect(titulo).toContain('<TituloPantalla icono={Armchair}>')
+    expect(titulo).toContain('<TituloPantalla icono={Armchair}')
   })
 })

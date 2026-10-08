@@ -143,15 +143,19 @@ export function MapaMesas() {
 
   return (
     <div className="grid gap-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <TituloPantalla icono={LayoutGrid}>Salón</TituloPantalla>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild size="sm" variant="outline"><a href="/salon/reservas" onClick={(e) => { e.preventDefault(); navigate('/salon/reservas') }}><CalendarClock />Reservas</a></Button>
-          {!isMozo && (
-            <Button asChild size="sm" variant="outline"><a href="/salon/config" onClick={(e) => { e.preventDefault(); navigate('/salon/config') }}><Settings />Configurar salones y mesas</a></Button>
-          )}
-        </div>
-      </div>
+      <TituloPantalla
+        icono={LayoutGrid}
+        acciones={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild size="sm" variant="outline"><a href="/salon/reservas" onClick={(e) => { e.preventDefault(); navigate('/salon/reservas') }}><CalendarClock />Reservas</a></Button>
+            {!isMozo && (
+              <Button asChild size="sm" variant="outline"><a href="/salon/config" onClick={(e) => { e.preventDefault(); navigate('/salon/config') }}><Settings />Configurar salones y mesas</a></Button>
+            )}
+          </div>
+        }
+      >
+        Salón
+      </TituloPantalla>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 

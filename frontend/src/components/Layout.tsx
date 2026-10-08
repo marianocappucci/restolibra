@@ -1,7 +1,8 @@
 import {
-  CalendarClock, ChefHat, ClipboardList, Flame, LayoutGrid, LineChart, Armchair, Tag, TrendingUp,
+  CalendarClock, ChefHat, ClipboardList, Flame, LayoutGrid, Armchair, Tag,
 } from 'lucide-react'
 import { ICONOS } from 'libra-ui/iconos-identidad'
+import { INDICADORES } from 'libra-ui/iconos-indicador'
 import { createLayout, type NavSection } from 'libra-ui/Layout'
 import { WORDMARK } from '@/branding'
 import { useAuth } from '../context/AuthContext'
@@ -26,7 +27,7 @@ const NAV_SECTIONS: NavSection<User>[] = [
       { to: '/pedidos', label: 'Pedidos', icon: ClipboardList, module: 'restaurant' },
       { to: '/salon/reservas', label: 'Reservas', icon: CalendarClock, module: 'restaurant' },
       { to: '/kds', label: 'KDS', icon: Flame, module: 'restaurant', hideFor: esMozo },
-      { to: '/salon/reportes', label: 'Reportes', icon: LineChart, module: 'restaurant', hideFor: esMozo },
+      { to: '/salon/reportes', label: 'Reportes', icon: ICONOS.reportes, module: 'restaurant', hideFor: esMozo },
       { to: '/salon/config', label: 'Config. salón', icon: Armchair, module: 'restaurant', hideFor: esMozo },
     ],
   },
@@ -64,7 +65,7 @@ const NAV_SECTIONS: NavSection<User>[] = [
         children: [
           { to: '/config/categorias-producto', label: 'Categorías', icon: Tag },
           { to: '/listas-precio', label: 'Listas de precios', module: 'listas_precio', icon: ICONOS.listasDePrecio },
-          { to: '/productos/reportes-costos', label: 'Food cost', icon: TrendingUp },
+          { to: '/productos/reportes-costos', label: 'Food cost', icon: INDICADORES.foodCost },
         ],
       },
       { to: '/stock', label: 'Stock', icon: ICONOS.stock, module: 'stock' },
