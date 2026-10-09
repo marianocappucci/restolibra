@@ -191,6 +191,30 @@ def test_el_mostrador_es_un_canal_del_reporte(admin_client, salon_con_mesa):
     assert [c["canal"] for c in rep["canales"]] == ["salon", "mostrador"]
 
 
+def test_las_ventas_con_hora_del_ultimo_dia_entran(admin_client, salon_con_mesa):
+    """🔴 libracore ADR-037: `POST /api/ventas` acepta `fecha` con hora y `sales.occurred_on` es texto. Con
+    `occurred_on <= hasta`, las dos ventas de abajo (con espacio y con `T`) quedaban afuera del reporte del día."""
+    for fecha in (f"{HOY} 13:00:00", f"{HOY}T18:30"):
+        resp = admin_client.post("/api/ventas", json={
+            "fecha": fecha,
+            "items": [{"nombre": "Gaseosa", "qty": 1, "precio": 1000.0}],
+            "pagos": [{"medio": "efectivo", "monto": 1000.0}]})
+        assert resp.status_code == 200, resp.text
+
+    canales = _por_canal(_reporte(admin_client, HOY, HOY))
+    assert canales["mostrador"]["n"] == 2
+    assert canales["mostrador"]["total"] == 2000.0
+
+
+def test_una_comanda_con_T_del_ultimo_dia_entra_en_los_tiempos(admin_client, salon_con_mesa):
+    """El viejo `hasta + ' 23:59:59'` cubría la hora con espacio pero no con `T` (`'T' > ' '`)."""
+    _pedido_de_mesa(admin_client, salon_con_mesa["mesa_id"], 8000.0)
+    cid = _comandas_de(admin_client)[0]["id"]
+    _estampar(cid, f"{DIA_COMANDAS}T21:00:00", f"{DIA_COMANDAS}T21:05:00", f"{DIA_COMANDAS}T21:20:00")
+    tiempos = _reporte(admin_client, DIA_COMANDAS, DIA_COMANDAS)["tiempos"]
+    assert [t["n"] for t in tiempos] == [1]
+
+
 def test_una_venta_de_mesa_no_cuenta_como_mostrador(admin_client, salon_con_mesa):
     """El control negativo: sin ninguna venta del POS, `mostrador` no aparece.
 
