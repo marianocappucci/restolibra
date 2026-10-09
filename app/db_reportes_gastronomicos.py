@@ -20,6 +20,7 @@ sobre el fuente para que no vuelva a entrar por otro módulo -- por eso el
 nombre se menciona acá SIN paréntesis: el guard busca la llamada.
 """
 from app.db_core import get_connection
+from libracore.fechas import rango_por_dia
 
 #: Canal sintético de las ventas que NO nacieron de un pedido: el POS de
 #: mostrador clásico (`/ventas`, módulo `ventas`), que escribe derecho en
@@ -42,7 +43,13 @@ def reporte_gastronomia(desde: str, hasta: str) -> dict:
     y NO toca el pedido, que sigue en 'cobrado' -- sin este filtro una anulación
     seguía sumando al total de su canal.
     """
-    ini, fin = desde + " 00:00:00", hasta + " 23:59:59"
+    # Por día completo (libracore ADR-037): `sales.occurred_on` y `comandas.created_at` son texto y pueden traer hora
+    # (con espacio o con `T`); un `<= hasta` dejaba afuera lo del último día, y el viejo `hasta + " 23:59:59"` no
+    # cubría la `T`.
+    c_ventas, p_ventas = rango_por_dia("v.occurred_on", desde, hasta)
+    c_comandas, p_comandas = rango_por_dia("created_at", desde, hasta)
+    w_ventas = "".join(f" AND {c}" for c in c_ventas)
+    w_comandas = "".join(f" AND {c}" for c in c_comandas)
     with get_connection() as conn:
         canales = [{
             "canal": r["canal"],
@@ -52,10 +59,9 @@ def reporte_gastronomia(desde: str, hasta: str) -> dict:
             """SELECT p.canal AS canal, COUNT(*) AS n,
                       COALESCE(SUM(v.total), 0) AS total
                FROM pedidos p JOIN sales v ON v.id = p.venta_id
-               WHERE p.estado = 'cobrado' AND v.status <> 'cancelled'
-                     AND v.occurred_on >= ? AND v.occurred_on <= ?
+               WHERE p.estado = 'cobrado' AND v.status <> 'cancelled'""" + w_ventas + """
                GROUP BY p.canal""",
-            (desde, hasta),
+            p_ventas,
         ).fetchall()]
 
         # El mostrador sale de la MISMA tabla, mirado desde adentro: una venta
@@ -64,10 +70,9 @@ def reporte_gastronomia(desde: str, hasta: str) -> dict:
         mostrador = conn.execute(
             """SELECT COUNT(*) AS n, COALESCE(SUM(v.total), 0) AS total
                FROM sales v
-               WHERE v.status <> 'cancelled'
-                     AND v.occurred_on >= ? AND v.occurred_on <= ?
+               WHERE v.status <> 'cancelled'""" + w_ventas + """
                      AND NOT EXISTS (SELECT 1 FROM pedidos p WHERE p.venta_id = v.id)""",
-            (desde, hasta),
+            p_ventas,
         ).fetchone()
         if mostrador["n"]:
             canales.append({
@@ -90,10 +95,10 @@ def reporte_gastronomia(desde: str, hasta: str) -> dict:
                       AVG(EXTRACT(EPOCH FROM (listo_at::timestamp - preparacion_at::timestamp)) / 60) AS prep_min,
                       AVG(EXTRACT(EPOCH FROM (listo_at::timestamp - created_at::timestamp)) / 60) AS total_min
                FROM comandas
-               WHERE listo_at IS NOT NULL AND created_at >= ? AND created_at <= ?
+               WHERE listo_at IS NOT NULL""" + w_comandas + """
                GROUP BY estacion
                ORDER BY estacion""",
-            (ini, fin),
+            p_comandas,
         ).fetchall()]
         for t in tiempos:
             for k in ("espera_min", "prep_min", "total_min"):
