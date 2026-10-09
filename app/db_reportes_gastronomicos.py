@@ -19,8 +19,9 @@ llama. Ver `tests/test_reportes_gastronomicos.py`, que además deja un guard
 sobre el fuente para que no vuelva a entrar por otro módulo -- por eso el
 nombre se menciona acá SIN paréntesis: el guard busca la llamada.
 """
-from app.db_core import get_connection
 from libracore.fechas import rango_por_dia
+
+from app.db_core import get_connection
 
 #: Canal sintético de las ventas que NO nacieron de un pedido: el POS de
 #: mostrador clásico (`/ventas`, módulo `ventas`), que escribe derecho en
