@@ -156,9 +156,11 @@ describe('la Configuración de Restolibra', () => {
       .toBeInTheDocument()
 
     montar('/config?seccion=integraciones&integracion=arca')
-    expect(await screen.findByText(/certificado digital y la clave privada/))
+    expect(await screen.findByText(/el certificado que ya configuraste en Restolibra/))
       .toBeInTheDocument()
-    expect(screen.getByText(/el certificado que ya configuraste en Restolibra/))
+    // El tutorial del certificado va en la pestaña de cada ambiente (libra-ui v0.135.0, ADR-047).
+    montar('/config?seccion=integraciones&integracion=arca&arca=homologacion')
+    expect(await screen.findByText(/certificado digital y la clave privada/))
       .toBeInTheDocument()
   })
 
@@ -222,7 +224,7 @@ describe('la Configuración de Restolibra', () => {
   })
 
   it('ARCA sube el certificado: ya no hay dónde tipear una ruta del servidor', async () => {
-    montar('/config?seccion=integraciones&integracion=arca')
+    montar('/config?seccion=integraciones&integracion=arca&arca=homologacion')
 
     // 🔑 Se nombra el ambiente: desde libra-ui v0.57.0 la tarjeta muestra los
     // DOS pares de credenciales, así que hay dos campos "Certificado (.crt)" y
@@ -233,7 +235,9 @@ describe('la Configuración de Restolibra', () => {
     expect(screen.getByLabelText(/Clave privada.*Homologaci/))
       .toHaveAttribute('type', 'file')
     // Y el par de producción también está, que es lo que este cambio agrega.
-    expect(screen.getByLabelText(/Certificado.*Producci/)).toHaveAttribute('type', 'file')
+    // Desde libra-ui v0.135.0 (ADR-047) cada ambiente va en su pestaña: el de producción se abre por la URL.
+    montar('/config?seccion=integraciones&integracion=arca&arca=produccion')
+    expect(await screen.findByLabelText(/Certificado.*Producci/)).toHaveAttribute('type', 'file')
   })
 
   it('la sección propia del ticket sigue estando, con su texto', async () => {
