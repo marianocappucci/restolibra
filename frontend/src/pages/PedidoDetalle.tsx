@@ -20,10 +20,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Ban, Bike, Check, CheckCircle2, DollarSign, Flame, LayoutGrid, MapPin, Martini, MessageSquare, Phone, Plus, Printer, Receipt, Search, Send, Sliders, Truck, User, Users, X } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
+import { formatoMoneda } from 'libra-ui/formatos'
 
 
 // Pantalla canónica de "pedido abierto" -- compartida por mesas
@@ -284,7 +281,7 @@ export function PedidoDetalle() {
             <>
               {pedido.direccion && <span className="flex items-center gap-1"><MapPin className="size-3.5 text-muted-foreground" />{pedido.direccion}</span>}
               {pedido.repartidor && <span className="flex items-center gap-1"><Bike className="size-3.5 text-muted-foreground" />{pedido.repartidor}</span>}
-              {pedido.costo_envio > 0 && <span className="flex items-center gap-1"><Truck className="size-3.5 text-muted-foreground" />Envío {formatCurrency(pedido.costo_envio)}</span>}
+              {pedido.costo_envio > 0 && <span className="flex items-center gap-1"><Truck className="size-3.5 text-muted-foreground" />Envío {formatoMoneda(pedido.costo_envio)}</span>}
             </>
           )}
         </CardContent></Card>
@@ -311,9 +308,9 @@ export function PedidoDetalle() {
                 {pedido.items.length > 0 && (
                   <tfoot>
                     {pedido.costo_envio > 0 && (
-                      <tr className="border-t"><td className="p-2.5 flex items-center gap-1"><Truck className="size-3.5" />Envío</td><td className="p-2.5 text-right" colSpan={2}>{formatCurrency(pedido.costo_envio)}</td></tr>
+                      <tr className="border-t"><td className="p-2.5 flex items-center gap-1"><Truck className="size-3.5" />Envío</td><td className="p-2.5 text-right" colSpan={2}>{formatoMoneda(pedido.costo_envio)}</td></tr>
                     )}
-                    <tr className="border-t font-bold"><td className="p-2.5">TOTAL</td><td className="p-2.5 text-right" colSpan={2}>{formatCurrency(pedido.total)}</td></tr>
+                    <tr className="border-t font-bold"><td className="p-2.5">TOTAL</td><td className="p-2.5 text-right" colSpan={2}>{formatoMoneda(pedido.total)}</td></tr>
                   </tfoot>
                 )}
               </table>
@@ -364,7 +361,7 @@ export function PedidoDetalle() {
                     <Button variant="outline" className="h-auto flex-col items-start gap-0.5 whitespace-normal py-2 text-left" onClick={() => agregarProducto(p.id)}>
                       <span className="text-sm font-semibold">{p.nombre}</span>
                       <span className="flex w-full items-center justify-between text-xs text-muted-foreground">
-                        {formatCurrency(p.precio_venta)}
+                        {formatoMoneda(p.precio_venta)}
                         {p.estacion === 'cocina' && <Flame className="size-3.5 text-destructive" />}
                         {p.estacion === 'barra' && <Martini className="size-3.5 text-sky-500" />}
                       </span>
@@ -457,16 +454,16 @@ export function PedidoDetalle() {
           <div className="grid items-start gap-4 sm:grid-cols-[minmax(0,4fr)_minmax(0,6fr)]">
             <div className="grid gap-1 rounded-md border p-3 text-sm">
               {pedido.items.map((it) => (
-                <div key={it.id} className="flex justify-between gap-2"><span className="min-w-0">{it.qty} × {it.nombre}</span><span className="shrink-0 tabular-nums">{formatCurrency(it.subtotal)}</span></div>
+                <div key={it.id} className="flex justify-between gap-2"><span className="min-w-0">{it.qty} × {it.nombre}</span><span className="shrink-0 tabular-nums">{formatoMoneda(it.subtotal)}</span></div>
               ))}
-              {pedido.costo_envio > 0 && <div className="flex justify-between gap-2 border-t pt-1"><span>Envío</span><span className="shrink-0 tabular-nums">{formatCurrency(pedido.costo_envio)}</span></div>}
-              <div className="flex justify-between gap-2 border-t pt-1"><span className="text-muted-foreground">Subtotal</span><span className="shrink-0 tabular-nums text-muted-foreground">{formatCurrency(pedido.total)}</span></div>
+              {pedido.costo_envio > 0 && <div className="flex justify-between gap-2 border-t pt-1"><span>Envío</span><span className="shrink-0 tabular-nums">{formatoMoneda(pedido.costo_envio)}</span></div>}
+              <div className="flex justify-between gap-2 border-t pt-1"><span className="text-muted-foreground">Subtotal</span><span className="shrink-0 tabular-nums text-muted-foreground">{formatoMoneda(pedido.total)}</span></div>
               {Number(descuento) > 0 && (
-                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Descuento</span><span className="shrink-0 tabular-nums text-muted-foreground">− {formatCurrency(Number(descuento))}</span></div>
+                <div className="flex justify-between gap-2"><span className="text-muted-foreground">Descuento</span><span className="shrink-0 tabular-nums text-muted-foreground">− {formatoMoneda(Number(descuento))}</span></div>
               )}
-              <div className="flex justify-between gap-2 border-t pt-1 text-lg font-bold"><span>A PAGAR</span><span className="shrink-0 tabular-nums">{formatCurrency(aPagar)}</span></div>
+              <div className="flex justify-between gap-2 border-t pt-1 text-lg font-bold"><span>A PAGAR</span><span className="shrink-0 tabular-nums">{formatoMoneda(aPagar)}</span></div>
               {vueltoTotal > 0 && (
-                <div className="flex justify-between gap-2 border-t pt-1 text-base font-semibold text-primary"><span>Vuelto</span><span className="shrink-0 tabular-nums">{formatCurrency(vueltoTotal)}</span></div>
+                <div className="flex justify-between gap-2 border-t pt-1 text-base font-semibold text-primary"><span>Vuelto</span><span className="shrink-0 tabular-nums">{formatoMoneda(vueltoTotal)}</span></div>
               )}
             </div>
 
@@ -490,7 +487,7 @@ export function PedidoDetalle() {
                 onChange={setLineas}
                 medios={medios}
                 aPagar={aPagar}
-                formatCurrency={formatCurrency}
+                formatCurrency={formatoMoneda}
                 deshabilitado={cobrando}
               />
             </div>
@@ -541,7 +538,7 @@ function ItemRow({ item, onEliminar, onGuardarNota }: { item: PedidoItem; onElim
           />
         </div>
       </td>
-      <td className="p-2.5 text-right">{formatCurrency(item.subtotal)}</td>
+      <td className="p-2.5 text-right">{formatoMoneda(item.subtotal)}</td>
       <td className="w-8 p-2.5 text-right">
         {item.estado === 'nuevo' && (
           <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive hover:text-destructive" title="Quitar" onClick={onEliminar}><X className="size-3.5" /></Button>

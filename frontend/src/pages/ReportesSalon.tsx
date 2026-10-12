@@ -8,10 +8,7 @@ import { IconoIndicador } from 'libra-ui/IconoIndicador'
 import { TarjetaIndicador } from 'libra-ui/TarjetaIndicador'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { hoyISO, primerDiaDelMesISO } from 'libra-ui/fechas'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
+import { formatoMoneda } from 'libra-ui/formatos'
 
 const CANAL_LABEL: Record<string, string> = {
   salon: 'Salón', barra: 'Barra', takeaway: 'Takeaway', delivery: 'Delivery',
@@ -75,7 +72,7 @@ export function ReportesSalon() {
         <>
           <div className="grid gap-4 sm:grid-cols-2">
             <TarjetaIndicador concepto="ventas" etiqueta="Ventas en período" valor={data.total_n} ayuda="operaciones" />
-            <TarjetaIndicador concepto="montoVendido" etiqueta="Total vendido" valor={formatCurrency(data.total_total)} />
+            <TarjetaIndicador concepto="montoVendido" etiqueta="Total vendido" valor={formatoMoneda(data.total_total)} />
           </div>
 
           <Card>
@@ -98,8 +95,8 @@ export function ReportesSalon() {
                       <tr key={c.canal} className="border-b last:border-0">
                         <td className="py-2">{CANAL_LABEL[c.canal] ?? c.canal}</td>
                         <td className="py-2 text-right">{c.n}</td>
-                        <td className="py-2 text-right">{formatCurrency(c.total)}</td>
-                        <td className="py-2 text-right">{formatCurrency(c.ticket)}</td>
+                        <td className="py-2 text-right">{formatoMoneda(c.total)}</td>
+                        <td className="py-2 text-right">{formatoMoneda(c.ticket)}</td>
                       </tr>
                     ))}
                   </tbody>

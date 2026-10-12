@@ -9,6 +9,7 @@ import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LayoutGrid, Settings, CalendarClock, Clock, Users, PlayCircle, CheckCircle2, QrCode } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { formatoMoneda } from 'libra-ui/formatos'
 
 function formatoTiempo(mins: number): string {
   if (mins < 60) return `${mins} min`
@@ -25,10 +26,6 @@ const ESTADO_TONO: Record<Mesa['estado'], TonoEstado> = {
   libre: 'neutro',
   ocupada: 'negativo',
   cuenta: 'atencion',
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
 }
 
 // Pantalla de entrada al módulo Salón (sin precedente en Contalibra, ver
@@ -206,7 +203,7 @@ export function MapaMesas() {
                         <div className="text-xs text-muted-foreground">{m.capacidad} cub.</div>
                         {m.pedido_id ? (
                           <>
-                            <BadgeEstado tono={ESTADO_TONO[m.estado]} className="mx-auto">{formatCurrency(m.pedido_total)}</BadgeEstado>
+                            <BadgeEstado tono={ESTADO_TONO[m.estado]} className="mx-auto">{formatoMoneda(m.pedido_total)}</BadgeEstado>
                             <div className="flex items-center justify-center gap-1 text-xs text-muted-foreground">
                               <Clock className="size-3" />{formatoTiempo(m.mins_ocupada)}
                             </div>
