@@ -127,7 +127,8 @@ dependencies = [
     # v0.52.0 -> v0.53.0 (2026-10-11): «Recibir mercaderia» idempotente con `POST /api/purchase-receipts/recibir` (ADR-046, **migracion 0006**: `purchase_receipts.clave_operacion`, aditiva); las variantes cuentan como su producto en las promociones (ADR-045, sin cambio de logica).
     # v0.53.0 -> v0.54.0 (2026-10-12): el ajuste de stock con lote exige `OpcionesStock.autorizar_lotes` (ADR-047); este producto no prende `con_lotes`, no cambia nada. Sin migracion.
     # v0.54.0 -> v0.55.0 (2026-10-12): `POST /api/listas-precio/{id}/precios`, el quiebre por cantidad cuenta por producto (ADR-048); este producto no lo usa. Sin migracion.
-    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.55.0",
+    # v0.55.0 -> v0.56.0 (2026-10-12): `OpcionesVentas.validar_precios` (ADR-049), opt-in y apagada por defecto. Sin migracion.
+    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.56.0",
     # v0.43.0 trae la sesion por inactividad de 8h con renovacion deslizante
     # (ADR-017) y el router de usuarios unico (`libraauth.usuarios.
     # build_users_router`, ADR-018) que reemplaza a `app/web/api/usuarios.py`
