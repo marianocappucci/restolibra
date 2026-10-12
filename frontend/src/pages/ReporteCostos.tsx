@@ -8,10 +8,8 @@ import { Label } from '@/components/ui/label'
 import { BadgeEstado, type TonoEstado } from 'libra-ui/badge-estado'
 import { INDICADORES } from 'libra-ui/iconos-indicador'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { formatoMoneda } from 'libra-ui/formatos'
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
 function formatQty(value: number): string {
   return value.toLocaleString('es-AR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
@@ -89,9 +87,9 @@ export function ReporteCostos() {
                         <Link to={`/productos/${r.id}/receta`} className="hover:underline">{r.nombre}</Link>
                       </td>
                       <td className="p-2 text-muted-foreground">{r.categoria || '—'}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.precio_venta)}</td>
-                      <td className="p-2 text-right text-muted-foreground">{formatCurrency(r.costo)}</td>
-                      <td className="p-2 text-right">{formatCurrency(r.margen)}</td>
+                      <td className="p-2 text-right">{formatoMoneda(r.precio_venta)}</td>
+                      <td className="p-2 text-right text-muted-foreground">{formatoMoneda(r.costo)}</td>
+                      <td className="p-2 text-right">{formatoMoneda(r.margen)}</td>
                       <td className="p-2 text-right">
                         {r.food_cost_pct !== null ? (
                           <BadgeEstado tono={foodCostTono(r.food_cost_pct)}>{r.food_cost_pct.toFixed(1)}%</BadgeEstado>

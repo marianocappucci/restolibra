@@ -8,12 +8,9 @@ import {
   type CanalSinMesa, type PedidoResumen, type PedidosBoardData,
 } from '../api'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
+import { formatoMoneda } from 'libra-ui/formatos'
 
 const CANAL_ICON: Record<CanalSinMesa, typeof Martini> = { barra: Martini, takeaway: ShoppingBag, delivery: Bike }
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
 
 // Puerto de web/templates/pedidos/monitor.html -- visor standalone (sin
 // sidebar/topbar, no envuelto en <Layout>, ver StandaloneRoute en App.tsx)
@@ -101,7 +98,7 @@ function ColumnaCanal({ canal, pedidos }: { canal: CanalSinMesa; pedidos: Pedido
           <div key={p.id} className="rounded-md border p-2.5 text-sm">
             <div className="flex items-center justify-between">
               <span className="font-semibold">{p.numero}</span>
-              <Badge variant="outline">{formatCurrency(p.total)}</Badge>
+              <Badge variant="outline">{formatoMoneda(p.total)}</Badge>
             </div>
             {p.cliente_nombre && <div className="text-muted-foreground">{p.cliente_nombre}</div>}
             <div className="flex items-center justify-between text-xs text-muted-foreground">

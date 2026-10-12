@@ -14,10 +14,7 @@ import { Eye, Plus, Trash2 } from 'lucide-react'
 import { ICONOS } from 'libra-ui/iconos-identidad'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { hoyISO } from 'libra-ui/fechas'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
+import { formatoMoneda } from 'libra-ui/formatos'
 
 type ItemRow = { description: string; qty: string; unit_price: string }
 const EMPTY_ITEM: ItemRow = { description: '', qty: '1', unit_price: '0' }
@@ -325,7 +322,7 @@ export function FacturaNueva() {
                                 className="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
                                 onClick={() => elegirProducto(i, p)}
                               >
-                                {p.nombre} — {formatCurrency(p.precio_venta)}
+                                {p.nombre} — {formatoMoneda(p.precio_venta)}
                               </button>
                             ))}
                           </div>
@@ -333,7 +330,7 @@ export function FacturaNueva() {
                       </td>
                       <td className="p-2"><Input type="number" step="0.01" value={row.qty} onChange={(e) => updateItem(i, 'qty', e.target.value)} /></td>
                       <td className="p-2"><Input type="number" step="0.01" value={row.unit_price} onChange={(e) => updateItem(i, 'unit_price', e.target.value)} /></td>
-                      <td className="p-2 text-right font-medium">{formatCurrency((Number(row.qty) || 0) * (Number(row.unit_price) || 0))}</td>
+                      <td className="p-2 text-right font-medium">{formatoMoneda((Number(row.qty) || 0) * (Number(row.unit_price) || 0))}</td>
                       <td className="p-2 text-right">
                         <Button size="icon" variant="ghost" onClick={() => removeItemRow(i)}><Trash2 /></Button>
                       </td>
@@ -343,19 +340,19 @@ export function FacturaNueva() {
                 <tfoot>
                   <tr>
                     <td colSpan={3} className="p-2 text-right font-medium text-muted-foreground">Subtotal</td>
-                    <td className="p-2 text-right font-medium">{formatCurrency(subtotalCalc)}</td>
+                    <td className="p-2 text-right font-medium">{formatoMoneda(subtotalCalc)}</td>
                     <td></td>
                   </tr>
                   {!tiposInfo.es_monotributista && (
                     <tr>
                       <td colSpan={3} className="p-2 text-right font-medium text-muted-foreground">IVA ({Math.round((Number(taxRate) || 0) * 100)}%)</td>
-                      <td className="p-2 text-right font-medium">{formatCurrency(ivaCalc)}</td>
+                      <td className="p-2 text-right font-medium">{formatoMoneda(ivaCalc)}</td>
                       <td></td>
                     </tr>
                   )}
                   <tr>
                     <td colSpan={3} className="p-2 text-right text-base font-bold">TOTAL</td>
-                    <td className="p-2 text-right text-base font-bold text-primary">{formatCurrency(subtotalCalc + ivaCalc)}</td>
+                    <td className="p-2 text-right text-base font-bold text-primary">{formatoMoneda(subtotalCalc + ivaCalc)}</td>
                     <td></td>
                   </tr>
                 </tfoot>

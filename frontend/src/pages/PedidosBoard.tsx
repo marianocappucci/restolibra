@@ -9,10 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { ClipboardList, Plus, LayoutGrid, Martini, ShoppingBag, Bike, Clock, Monitor } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
+import { formatoMoneda } from 'libra-ui/formatos'
 
 const CANAL_ICON: Record<CanalSinMesa, typeof Martini> = { barra: Martini, takeaway: ShoppingBag, delivery: Bike }
 
@@ -104,7 +101,7 @@ function ColumnaCanal({ canal, pedidos, onAbrir, onNuevo }: { canal: CanalSinMes
             <div className="rounded-md border p-2.5 text-sm transition hover:bg-accent">
               <div className="flex items-center justify-between">
                 <span className="font-semibold">{p.numero}</span>
-                <Badge variant="outline">{formatCurrency(p.total)}</Badge>
+                <Badge variant="outline">{formatoMoneda(p.total)}</Badge>
               </div>
               {p.cliente_nombre && <div className="text-muted-foreground">{p.cliente_nombre}</div>}
               <div className="flex items-center justify-between text-xs text-muted-foreground">
