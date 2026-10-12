@@ -638,8 +638,8 @@ migrations = [
 
 [[package]]
 name = "libracommerce"
-version = "0.53.0"
-source = { git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.53.0#a3dd16fd282b3836760d94a7a42ddce5bf71ee28" }
+version = "0.54.0"
+source = { git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.54.0#9aeba9404df4dad66d35d747f5fa610a53ed323f" }
 
 [package.optional-dependencies]
 erp = [
@@ -1220,7 +1220,7 @@ requires-dist = [
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "libraauth", extras = ["migrations"], git = "https://github.com/marianocappucci/libraauth.git?rev=v0.48.0" },
-    { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.53.0" },
+    { name = "libracommerce", extras = ["migrations", "erp", "web"], git = "https://github.com/marianocappucci/libracommerce.git?rev=v0.54.0" },
     { name = "libracore", extras = ["migrations"], git = "https://github.com/marianocappucci/libracore.git?rev=v1.153.0" },
     { name = "libraedge", git = "https://github.com/marianocappucci/libraedge.git?rev=v0.6.12" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
