@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from libraauth.auditoria import agregar_middleware_de_usuario, registrador_dbapi
 from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.migrar import exigir_schema_al_dia
@@ -25,6 +26,7 @@ from libracommerce.web.listas_router import (
     build_listas_precio_router,
 )
 from libracore import arca_credenciales
+from libracore import auditoria as auditoria_del_motor
 from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
 from libracore.clientes_router import build_clientes_router
@@ -112,6 +114,21 @@ app.state.terminos = TerminosRepository(db_usuarios.sessions())
 # configured`. En la instancia de un cliente no hay demo que abrir.
 if demo_username():
     app.state.demo_codigos = DemoCodigoRepository(db_usuarios.sessions())
+
+# ── Auditoria de clientes (libracore v1.157.0, ADR-043) ──────────────────────
+#
+# Las escrituras de `clients` (`/api/clientes`, el fiado, la ficha) son del motor de core y le avisan a este registrador
+# dentro de la misma transaccion: si el INSERT del log falla, se cae la escritura entera. El registrador es el
+# `registrador_dbapi` de libraauth, que arma la fila con el formato de siempre y escribe en `actividad_log` (la tabla la
+# crea `init_schema` de libracommerce, en la misma base que el motor). La pantalla de Logs la muestra como tipo
+# `actividad` ("Cambios"), sin pantalla nueva.
+#
+# El usuario sale del `ContextVar` `usuario_actual` de libraauth, que llena `agregar_middleware_de_usuario` leyendo la
+# cookie firmada de `app.state.session_auth` (puesto arriba). Sin el middleware la fila diria «Sistema» y no se
+# notaria: por eso hay un test (`tests/test_clientes_auditados.py`) que mira el usuario. Se configura al importar el
+# modulo, como `app.state`: el registrador es un callable y la conexion se resuelve en cada escritura.
+auditoria_del_motor.configurar_auditoria(registrador_dbapi({"clients": "cliente"}))
+agregar_middleware_de_usuario(app)
 
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
