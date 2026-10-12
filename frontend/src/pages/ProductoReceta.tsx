@@ -10,10 +10,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ArrowLeft, Layers, Package, Plus, Trash2 } from 'lucide-react'
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { SelectBuscable } from 'libra-ui/SelectBuscable'
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('es-AR', { style: 'currency', currency: 'ARS' }).format(value)
-}
+import { formatoMoneda } from 'libra-ui/formatos'
 
 type ItemRow = { ingrediente_id: string; cantidad: string }
 const EMPTY_ITEM: ItemRow = { ingrediente_id: '', cantidad: '1' }
@@ -228,7 +225,7 @@ export function ProductoReceta() {
                               onChange={(e) => updateItem(i, 'cantidad', e.target.value)} />
                           </td>
                           <td className="p-2 text-muted-foreground">{ing?.unidad ?? '—'}</td>
-                          <td className="p-2 text-right font-medium">{formatCurrency(subtotal)}</td>
+                          <td className="p-2 text-right font-medium">{formatoMoneda(subtotal)}</td>
                           <td className="p-2 text-right">
                             <Button size="icon" variant="ghost" onClick={() => removeItem(i)}><Trash2 /></Button>
                           </td>
@@ -239,7 +236,7 @@ export function ProductoReceta() {
                   <tfoot>
                     <tr>
                       <td colSpan={3} className="p-2 text-right font-bold text-muted-foreground">Costo total de la receta</td>
-                      <td className="p-2 text-right font-bold text-primary">{formatCurrency(totalItems)}</td>
+                      <td className="p-2 text-right font-bold text-primary">{formatoMoneda(totalItems)}</td>
                       <td></td>
                     </tr>
                   </tfoot>
@@ -288,8 +285,8 @@ export function ProductoReceta() {
           <Card>
             <CardHeader><CardTitle className="text-base">Costeo</CardTitle></CardHeader>
             <CardContent className="grid gap-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Precio de venta</span><span className="font-medium">{formatCurrency(precioVenta)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Costo de receta</span><span className="font-medium">{formatCurrency(costoAjustado)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Precio de venta</span><span className="font-medium">{formatoMoneda(precioVenta)}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Costo de receta</span><span className="font-medium">{formatoMoneda(costoAjustado)}</span></div>
               <div className="mt-1 flex items-center justify-between border-t pt-2">
                 <span className="text-muted-foreground">Food cost</span>
                 <span className="text-lg font-bold">{foodCostPct !== null ? `${foodCostPct.toFixed(1)}%` : '—'}</span>
