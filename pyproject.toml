@@ -113,7 +113,8 @@ dependencies = [
     # v1.153.0 -> v1.154.0 (2026-10-12): `libracore.cuit.solo_digitos` y se retira `cc_resumen` (codigo muerto, nadie lo usaba). Sin migracion.
     # v1.154.0 -> v1.155.0 (2026-10-12): migracion 0024 retira cc_resumenes_enviados y clients.cc_resumen_* (ADR-042). Desplegar el producto ANTES de migrar.
     # v1.155.0 -> v1.157.0 (2026-10-12): `libracore.auditoria` y `crear_cliente`/`actualizar_cliente` (ADR-043): las escrituras de `clients` le avisan a un registrador dentro de la misma transaccion, y este producto le enchufa el de libraauth (`app/web/app.py`). `actividad_log` entra a la pantalla de Logs como tipo `actividad` (la tabla ya la crea `init_schema` de libracommerce). Sin migracion. (La v1.156.0 es un tag erroneo: no usar.)
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.157.0",
+    # v1.157.0 -> v1.159.0 (2026-10-13): `libracore.candados` y `config.json` atomico (varios procesos, ADR-044) y `libracore.errores` (registro de errores, ADR-045; `POST /api/errores-cliente`). Sin migracion; todo opt-in. (La v1.158.0 trae los varios procesos y la v1.159.0 el registro de errores.)
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.159.0",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
@@ -142,7 +143,8 @@ dependencies = [
     # turno de caja abierto) daba 500 -- ahora es 409, con rollback de la
     # sesion. Ver tests/test_usuarios.py.
     # v0.48.0 -> v0.49.0 (2026-10-12, ADR-022): `registrador_dbapi`, el formato del log de actividad para quien escribe en SQL crudo; con el middleware de usuario de este paquete, la fila dice quien fue. Sin migracion.
-    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.49.0",
+    # v0.49.0 -> v0.50.0 (2026-10-13, ADR-023): `UsadosEnBase`, el anti-replay del captcha en la base (varios procesos). **Migracion `0003_captcha_usados`** en la cadena de `libraauth-migrar`: `exigir_schema_al_dia` la exige al arrancar.
+    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.50.0",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera
@@ -204,7 +206,7 @@ dependencies = [
     "fpdf2>=2.7.9",
     "rich>=13.0.0",
     "fastapi>=0.111.0",
-    "uvicorn[standard]>=0.29.0",
+    "uvicorn[standard]>=0.30.0",
     "jinja2>=3.1.4",
     "itsdangerous>=2.2.0",
     "python-multipart>=0.0.9",
@@ -236,6 +238,7 @@ packages = ["app"]
 markers = [
     "con_red: el test SI puede salir a un servicio externo",
     "sin_aceptar_terminos: deja al test afuera de la excepcion autouse del conftest, para medir el gate de Terminos con el corte puesto de verdad",
+    "varios_procesos: levanta uvicorn con --workers 2 de verdad (unos 15 s); se corre solo con `pytest -m varios_procesos`",
 ]
 testpaths = ["tests"]
 
