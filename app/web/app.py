@@ -29,6 +29,7 @@ from libracore import arca_credenciales
 from libracore import auditoria as auditoria_del_motor
 from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
+from libracore.candados import una_vez_al_arrancar
 from libracore.clientes_router import build_clientes_router
 from libracore.config_router import (
     build_backup_router,
@@ -39,6 +40,7 @@ from libracore.cuenta_corriente_router import build_cuenta_corriente_router
 from libracore.dashboard_router import build_dashboard_router
 from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
 from libracore.egresos_router import build_egresos_router, build_proveedores_router
+from libracore.errores import instalar_registro_de_errores
 from libracore.facturas_router import smtp_efectivo
 from libracore.libros_iva_router import build_libros_iva_export_router, build_libros_iva_router
 from libracore.logs_router import build_logs_export_router, build_logs_router
@@ -266,6 +268,9 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CurrentUserMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+# El registro de errores de la familia (ADR-045 de libracore): un 500 deja una linea en `DATA_DIR/errores/` con un `ref`
+# que el usuario puede dictar, y monta `POST /api/errores-cliente` para los errores del navegador (publico a proposito).
+instalar_registro_de_errores(app, "restolibra")
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -643,21 +648,26 @@ app.include_router(
 
 @app.on_event("startup")
 def startup():
-    db.init_db()
-    # 🔴 La cadena de LibraAuth tiene que haber corrido (libraauth v0.45.0). Si no,
-    # la app no arranca y el error dice el comando. Reemplaza al `create_all()` que
-    # `app/db_usuarios.py` corría al importarse. Va después de `init_db()` y antes
-    # de sembrar usuarios, que es lo primero que toca esas tablas.
-    exigir_schema_al_dia(db_usuarios._engine, prefijo="restolibra", base="dominio")
-    db.ensure_admin_user()
-    # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
-    db.ensure_demo_user()
-    # Saca de `config.json` los secretos que quedaron en claro (2026-09-17). Va
-    # DESPUES de `exigir_schema_al_dia`: la tabla `secretos_instancia` es de la
-    # revision `0002` de libraauth, y escribir en ella antes de saber que existe
-    # convertiria un schema viejo en un 500 en vez del error que dice el comando.
-    # Idempotente: la segunda vez no hace nada.
-    db_usuarios.migrar_secretos()
+    # 🔴 De a un proceso por vez (ADR-044 de libracore). Con `uvicorn --workers N` cada worker corre este hook, y
+    # «si no existe, crear» (el admin, el usuario de la demo, el depósito por defecto) se contestaba «no existe» en
+    # todos antes de que ninguno creara. El candado hace que el segundo espere al primero y vea lo que dejó; cada
+    # paso sigue preguntando adentro (`repo.list()`, `SELECT 1 FROM locations`...), así que sigue siendo idempotente.
+    with una_vez_al_arrancar("restolibra-arranque"):
+        db.init_db()
+        # 🔴 La cadena de LibraAuth tiene que haber corrido (libraauth v0.45.0). Si no,
+        # la app no arranca y el error dice el comando. Reemplaza al `create_all()` que
+        # `app/db_usuarios.py` corría al importarse. Va después de `init_db()` y antes
+        # de sembrar usuarios, que es lo primero que toca esas tablas.
+        exigir_schema_al_dia(db_usuarios._engine, prefijo="restolibra", base="dominio")
+        db.ensure_admin_user()
+        # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
+        db.ensure_demo_user()
+        # Saca de `config.json` los secretos que quedaron en claro (2026-09-17). Va
+        # DESPUES de `exigir_schema_al_dia`: la tabla `secretos_instancia` es de la
+        # revision `0002` de libraauth, y escribir en ella antes de saber que existe
+        # convertiria un schema viejo en un 500 en vez del error que dice el comando.
+        # Idempotente: la segunda vez no hace nada.
+        db_usuarios.migrar_secretos()
 
 
 @app.get("/", include_in_schema=False)

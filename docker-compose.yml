@@ -102,7 +102,10 @@ services:
     # hay un test que ata las dos puntas.
     #
     # `exec` para que uvicorn quede como PID 1 y `docker stop` le llegue.
-    command: sh -c "libracore-migrar upgrade --prefijo restolibra && libraauth-migrar upgrade --prefijo restolibra --base dominio && libracommerce-migrar upgrade --prefijo restolibra && alembic upgrade head && exec uvicorn app.asgi:app --host 0.0.0.0 --port 8000"
+    #
+    # `--workers ${WEB_CONCURRENCY:-1}`: el codigo esta listo para varios procesos (libracore ADR-044, libraauth ADR-023)
+    # pero **todo sigue en 1**; subirlo es una decision aparte (`docs/varios-procesos.md` de libracore).
+    command: sh -c "libracore-migrar upgrade --prefijo restolibra && libraauth-migrar upgrade --prefijo restolibra --base dominio && libracommerce-migrar upgrade --prefijo restolibra && alembic upgrade head && exec uvicorn app.asgi:app --host 0.0.0.0 --port 8000 --workers ${WEB_CONCURRENCY:-1}"
     environment:
       - SECRET_KEY=${SECRET_KEY:?SECRET_KEY es obligatorio tambien en dev (sin default en un repo publico)}
       - TZ=America/Argentina/Buenos_Aires
@@ -129,6 +132,11 @@ services:
       - LIBRAAUTH_SMTP_PASSWORD=${LIBRAAUTH_SMTP_PASSWORD:-}
       - LIBRAAUTH_SMTP_FROM_EMAIL=${LIBRAAUTH_SMTP_FROM_EMAIL:-}
       - LIBRAAUTH_SMTP_FROM_NAME=${LIBRAAUTH_SMTP_FROM_NAME:-Restolibra}
+      # Que cada linea del registro de errores (`DATA_DIR/errores/errores.jsonl`, ADR-045 de libracore) diga de que
+      # instancia viene. Las de cliente y demo las reciben del panel en cada `actualizar`; esta no pasa por el panel.
+      - LIBRA_ENTORNO=dev
+      - LIBRA_INSTANCIA=restolibra-dev
+      - LIBRA_VERSION=${LIBRA_VERSION:-dev}
     networks:
       - stack-net
       - datos
