@@ -1,5 +1,50 @@
 # Changelog
 
+## Sin publicar — 2026-10-13
+
+### `registrar --sucursal` se elige de la lista de sucursales de la instancia (sin migración, sin cambio de pines)
+
+La sucursal de un nodo offline era texto libre con default mudo `principal`: un error de tipeo (`Cnetro`) o una diferencia de mayúsculas creaba una «sucursal» fantasma que se llevaba su nodo y una unidad del adicional `offline`. Ahora, en `scripts/nodo_offline.py`:
+
+- **`registrar` valida `--sucursal`** contra `branches` (la tabla de sucursales de libracommerce, por `catalogo.get_all_sucursales`; la columna es `active`). Acepta el **id** o el **nombre** (sin distinguir mayúsculas); si no existe, está inactiva o el nombre es ambiguo, sale con código 1 y lista las sucursales válidas (id y nombre). Lo que se guarda en `node_identity.branch_id` es el **id** de la sucursal.
+- **Sin `--sucursal` ya no hay default**: con una sola sucursal activa se usa esa y se informa; con varias y terminal interactiva, menú numerado (sólo las activas, avisando cuál ya tiene nodo); con varias y sin terminal (cron, CI, pipe), error con la lista; sin ninguna activa, error.
+- **Subcomando nuevo `sucursales`**: id, nombre, si está activa y si ya tiene nodo activo. También señala los nodos activos registrados antes de este cambio con texto libre (`principal`, `centro`…), cuya sucursal no coincide con ninguna de la lista.
+- Las guardas siguen igual y en el mismo orden: sucursal válida → un nodo por sucursal → adicional `offline` (ADR-048) → alta.
+- **Datos existentes**: los nodos ya registrados no se tocan ni se migran. Su `branch_id` sigue siendo el texto con que se registraron (`principal`), que ya no coincide con el id de ninguna sucursal: la guarda de «un nodo por sucursal» y el conteo del adicional `offline` no los reconocen como la misma sucursal que el id real, así que conviene darlos de baja y volver a registrarlos con `--sucursal`. `sucursales` los señala.
+- Tests: `tests/test_sincronizacion_offline.py` (sucursal inexistente, inactiva, por id y por nombre, nombre repetido, única activa, varias sin terminal, menú con terminal, `sucursales`) y `definir_sucursales` en `tests/offline_helpers.py`; los tests existentes de `registrar` crean sus sucursales.
+
+### El offline es un adicional por sucursal, fuera de la escalera de planes (ADR-048 de libracore; **requiere libracore `v1.162.0`**, el pin sigue donde estaba hasta que se corte el tag)
+
+Decisión del humano (2026-10-13): el módulo offline (LibraEdge) se cobra **por sucursal con offline**, se puede contratar **desde cualquier plan**, figura como una línea del Anexo I y **sin precio fijado** (a cotizar). Los Términos no cambian (cláusula 23, módulos por Anexo). Qué hay ahora:
+
+- **`plans.ADICIONALES["offline"]`**: unidad `sucursal`, módulo `offline`, límite `sucursales_offline`, `precio=None`. Vive en la instancia: el módulo en `modulos` (`plan="addon"`, apagado de fábrica en el seed) y la cantidad en `config.json` → `adicionales.offline`. Un cambio de plan no lo toca (`apply_plan` y `apply_plan_modules` saltean los módulos de los adicionales).
+- **`GET/PUT /api/adicionales[/{clave}]`** (`app/web/app.py`): el backoffice lo contrata con el token de servicio; leer es de admin o servicio, **escribir sólo del token** (el admin del cliente no se da un adicional). `usadas` del offline son **sucursales distintas con un nodo activo**, no nodos.
+- **El alta de un nodo lo hace cumplir** (`scripts/nodo_offline.py registrar` → `app/libraedge_integration.verificar_alta_de_nodo`): sin el adicional prendido no se registra ningún nodo, y una sucursal más de las contratadas se rechaza con «Tenés contratado «Modo offline (LibraEdge)» para N sucursales. Para sumar otra, comunicate con nosotros.». Una sucursal que ya tiene un nodo activo no pide cupo (reemplazar una PC no suma). Sin cantidad cargada no hay tope (criterio del ADR-041). La guarda de «un nodo por sucursal» sigue yendo primero.
+- **Nadie se corta.** La sincronización no mira el adicional: un nodo registrado sigue autenticando por su `node_identity` y subiendo ventas aunque el adicional se dé de baja o el contrato quede por debajo de lo instalado. Dar de baja el adicional frena altas nuevas, nada más.
+- **Migración de datos `0006_offline_contratado`**: las instancias que ya tienen nodos activos quedan con el módulo prendido y `offline = sucursales distintas con nodo` (nunca baja una cantidad ya cargada; sin nodos no toca nada; idempotente; sin `downgrade`). **No hizo falta agregar la sucursal al registro del nodo**: `node_identity.branch_id` (`NOT NULL`, de la `0003`) ya la guarda, y `registrar --sucursal` la pide (default `principal`); es texto libre, así que `Centro` y `centro` cuentan como dos.
+- `libraedge_integration.py`: el docstring que decía que «la presencia del nodo es el opt-in» y que el mecanismo de planes no sabía expresar este adicional estaba desactualizado; ahora distingue el opt-in comercial (el adicional) de la identidad del nodo (`RESTOLIBRA_EDGE_NODE_ID`, que sólo escribe el instalador).
+- Tests: `tests/test_adicional_offline.py` (alta bloqueada sin el adicional y sobre el límite, segundo nodo en la misma sucursal, el nodo existente sigue sincronizando, cambio de plan, router y token, migración) y `tests/offline_helpers.py`; `test_sincronizacion_offline.py` deja el adicional contratado.
+
+### El producto queda listo para varios procesos y registra sus errores (ADR-044 y ADR-045 de libracore, ADR-023 de libraauth, ADR-053 de libra-ui)
+
+- **Varios procesos por instancia (`uvicorn --workers N`), sin prenderlos: todo sigue en 1.** `WEB_CONCURRENCY` por defecto es 1 y el `docker-compose.yml` de dev pasa `--workers ${WEB_CONCURRENCY:-1}`; las instancias de cliente y demo corren el `CMD` del `Dockerfile`, que uvicorn ya hace respetar por `WEB_CONCURRENCY` sin tocarlo. Lo que se rompía con N procesos:
+  - El hook de `startup` (`init_db`, el admin, el usuario de la demo, el depósito por defecto y la migración de secretos) corría en cada worker y un «si no existe, crear» se contestaba «no existe» en todos: ahora va dentro de `una_vez_al_arrancar("restolibra-arranque")`, de a un proceso por vez, y cada paso sigue preguntando adentro.
+  - El anti-replay del captcha del login era un `dict` del proceso (un desafío resuelto servía una vez **por worker**): `captcha_usados=UsadosEnBase(...)` lo anota en la base de `usuarios` (`libraauth_captcha_usados`, migración `0003`).
+  - El engine de `usuarios` lleva `pool_pre_ping=True`: tras un restore en caliente, el worker que no atendió el restore se recupera solo. **Después de un restore en caliente con más de un worker, reiniciar el contenedor.**
+  - La nota de crédito sale por el router de facturas del motor, que ya le pasa su candado de base: este producto no emite notas por su cuenta y no cambia.
+- **Registro de errores de la familia.** `instalar_registro_de_errores(app, "restolibra")` junto a `SecurityHeadersMiddleware`: un 500 responde `{"detail": "Error interno", "ref": "<8 hex>"}` y deja una línea en `DATA_DIR/errores/errores.jsonl`; `POST /api/errores-cliente` (público a propósito) recibe los errores del navegador. En el frontend, `instalarReporteDeErrores()` antes de montar y `<ErrorBoundary>` («Algo falló. Recargá la página.», con el `ref` si lo hay) alrededor de toda la app en `main.tsx`. El compose de `-dev` suma `LIBRA_ENTORNO=dev`, `LIBRA_INSTANCIA=restolibra-dev` y `LIBRA_VERSION`; las instancias de cliente y demo las reciben del panel en su próximo `actualizar`.
+- Tests nuevos: `tests/test_registro_de_errores.py`, el replay del captcha contra la base (`tests/test_captcha_login.py`) y `tests/test_varios_procesos.py` (`uvicorn --workers 2` de verdad; marca `varios_procesos`). El doble del captcha de `tests/conftest.py` acepta ahora `(request, usados)`, como llama el router desde libraauth v0.50.0.
+- Pines: libracore v1.157.0 → **v1.159.0** (sin migración), libraauth v0.49.0 → **v0.50.0** (**migración `0003_captcha_usados`**: el compose de dev, `scripts/panel_admin.py` y `scripts/nuevo_cliente.py` ya corren `libraauth-migrar upgrade` antes de arrancar, y `exigir_schema_al_dia` la exige), libra-ui v0.141.0 → **v0.142.1**, piso `uvicorn>=0.30.0`.
+
+## Sin publicar — 2026-10-12
+
+### Los clientes quedan en el log de actividad (ADR-043 de libracore, ADR-022 de libraauth)
+
+- Antes el alta, la edición, la baja, el fiado y la ficha de un cliente (`/api/clientes`) **no dejaban rastro de quién los tocó**. Ahora el motor de core (`libracore` v1.157.0) le avisa cada escritura de `clients` a un registrador, dentro de la misma transacción, y este producto le enchufa el de `libraauth` (v0.49.0, `registrador_dbapi`) en `app/web/app.py`. Un log roto bloquea la escritura en vez de perderse en silencio.
+- La fila dice **quién** fue: `agregar_middleware_de_usuario` sella el usuario de la cookie de sesión en cada request (sin él quedaría «Sistema»).
+- La pantalla de Logs los muestra como tipo **Cambios** (`actividad`), sin pantalla nueva: «Cliente — Ana Pérez (edición)». El detalle del diff queda en `actividad_log.cambios`, que la pantalla todavía no muestra.
+- Guardar sin cambios no deja fila. Sin migración (la tabla `actividad_log` ya la crea `init_schema` de libracommerce). Pines: libracore v1.157.0, libraauth v0.49.0 y libracommerce v0.57.0 (este producto no usa su `RepositorioAuditado`).
+
 ## Sin publicar — 2026-10-07
 
 ### El menú y los títulos usan el catálogo de íconos de la familia (ADR-035)

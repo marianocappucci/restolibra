@@ -11,6 +11,19 @@ import pytest
 
 from scripts.nodo_offline import TABLAS_DE_REFERENCIA
 from scripts.nodo_offline import main as provisionar
+from tests.offline_helpers import contratar_offline, definir_sucursales
+
+
+@pytest.fixture(autouse=True)
+def _offline_contratado(request):
+    """Estos tests prueban el aprovisionamiento y la sincronizacion, no el contrato: registrar un nodo exige el adicional `offline` (ADR-048 de
+    libracore), asi que lo dejan contratado. El contrato en si (alta bloqueada sin el adicional o sobre el limite) esta en `test_adicional_offline.py`."""
+    if "client" not in request.fixturenames and "admin_client" not in request.fixturenames:
+        return
+    request.getfixturevalue("client")
+    contratar_offline(5)
+    # `registrar --sucursal` exige una sucursal que exista y este activa: las de estos tests, por nombre.
+    definir_sucursales("centro", "norte", "sur")
 
 
 def _payload(node_id="node-1", sequence=1, numero="V-90001"):
@@ -187,7 +200,7 @@ def test_las_tablas_que_publica_el_central_son_las_que_espeja_el_nodo(admin_clie
     from app.db_core import get_connection
     from scripts.nodo_offline import espejo_del_nodo
 
-    provisionar(["registrar", "node-1"])
+    provisionar(["registrar", "node-1", "--sucursal", "centro"])
     salida = capsys.readouterr().out
     linea = next(l for l in salida.splitlines() if "LIBRAEDGE_TABLAS_ESPEJO=" in l)
     del_nodo = tablas_espejo(linea.split("=", 1)[1])
@@ -560,3 +573,201 @@ def test_un_nodo_dado_de_baja_no_puede_sincronizar(admin_client):
     despues = admin_client.get("/sync/v1/pull", params={"node_id": "nodo-1"},
                                headers={"Authorization": f"Bearer {secreto}"})
     assert despues.status_code == 401
+
+
+# ── La sucursal se elige de una lista ────────────────────────────────────
+
+def _nodos_registrados():
+    from app.db_core import get_connection
+
+    with get_connection() as conn:
+        return [tuple(f) for f in conn.execute(
+            "SELECT node_id, branch_id FROM node_identity ORDER BY node_id").fetchall()]
+
+
+def _como_terminal(monkeypatch, respuestas):
+    """La entrada es una terminal y `input()` contesta con `respuestas`, en orden. Devuelve la lista de prompts vistos."""
+    import sys
+
+    prompts: list[str] = []
+    pendientes = iter(respuestas)
+
+    def _input(prompt=""):
+        prompts.append(prompt)
+        try:
+            return next(pendientes)
+        except StopIteration:
+            raise EOFError from None
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
+    monkeypatch.setattr("builtins.input", _input)
+    return prompts
+
+
+def _sin_terminal(monkeypatch):
+    import sys
+
+    monkeypatch.setattr(sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr("builtins.input", lambda *_: pytest.fail("sin terminal no se puede preguntar"))
+
+
+def test_una_sucursal_que_no_existe_se_rechaza_y_lista_las_validas(admin_client, capsys):
+    """🔴 Antes `--sucursal` era texto libre: un error de tipeo creaba otra sucursal fantasma, con su nodo y su unidad del adicional."""
+    ids = definir_sucursales("Centro", "Norte")
+
+    codigo = provisionar(["registrar", "nodo-1", "--sucursal", "Cnetro"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1
+    assert "'Cnetro' no existe" in salida
+    assert f"{ids[0]}  Centro" in salida and f"{ids[1]}  Norte" in salida, "tiene que listar id y nombre de las validas"
+    assert "LIBRAEDGE_NODE_SECRET=" not in salida
+    assert _nodos_registrados() == []
+
+
+def test_una_sucursal_inactiva_se_rechaza(admin_client, capsys):
+    ids = definir_sucursales("Centro", ("Cerrada", False))
+
+    codigo = provisionar(["registrar", "nodo-1", "--sucursal", str(ids[1])])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1
+    assert "inactiva" in salida and "'Cerrada'" in salida
+    assert f"{ids[0]}  Centro" in salida, "lista las validas"
+    assert f"{ids[1]}  Cerrada" not in salida, "la inactiva no es una opcion valida"
+    assert _nodos_registrados() == []
+
+
+def test_la_sucursal_se_pide_por_id_o_por_nombre_sin_importar_mayusculas(admin_client, capsys):
+    ids = definir_sucursales("Centro", "Norte")
+
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "cEnTrO"]) == 0
+    assert provisionar(["registrar", "nodo-2", "--sucursal", str(ids[1])]) == 0
+    capsys.readouterr()
+
+    assert _nodos_registrados() == [("nodo-1", str(ids[0])), ("nodo-2", str(ids[1]))], "se guarda el id, no el texto tipeado"
+
+
+def test_un_nombre_repetido_pide_el_id(admin_client, capsys):
+    ids = definir_sucursales("Centro", "centro")
+
+    codigo = provisionar(["registrar", "nodo-1", "--sucursal", "CENTRO"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1 and "usar el id" in salida
+    assert provisionar(["registrar", "nodo-1", "--sucursal", str(ids[1])]) == 0
+
+
+def test_sin_sucursal_y_una_sola_activa_se_usa_sola_y_lo_informa(admin_client, capsys, monkeypatch):
+    ids = definir_sucursales("Centro", ("Cerrada", False))
+    _sin_terminal(monkeypatch)
+
+    codigo = provisionar(["registrar", "nodo-1"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 0
+    assert "única sucursal activa" in salida and "'Centro'" in salida
+    assert _nodos_registrados() == [("nodo-1", str(ids[0]))]
+
+
+def test_sin_sucursal_y_varias_activas_sin_terminal_es_un_error_con_la_lista(admin_client, capsys, monkeypatch):
+    ids = definir_sucursales("Centro", "Norte")
+    _sin_terminal(monkeypatch)
+
+    codigo = provisionar(["registrar", "nodo-1"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1
+    assert "Falta --sucursal" in salida
+    assert f"{ids[0]}  Centro" in salida and f"{ids[1]}  Norte" in salida
+    assert _nodos_registrados() == [], "no adivina ninguna: el default mudo `principal` ya no existe"
+
+
+def test_sin_sucursal_y_sin_ninguna_activa_es_un_error(admin_client, capsys, monkeypatch):
+    definir_sucursales(("Cerrada", False))
+    _sin_terminal(monkeypatch)
+
+    assert provisionar(["registrar", "nodo-1"]) == 1
+    assert "ninguna sucursal activa" in capsys.readouterr().out
+    assert _nodos_registrados() == []
+
+
+def test_sin_sucursal_y_con_terminal_ofrece_un_menu_numerado(admin_client, capsys, monkeypatch):
+    ids = definir_sucursales("Centro", ("Cerrada", False), "Norte")
+    prompts = _como_terminal(monkeypatch, ["9", "abc", "2"])  # dos opciones invalidas y despues la 2
+
+    codigo = provisionar(["registrar", "nodo-1"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 0
+    assert "1) Centro" in salida and "2) Norte" in salida
+    assert "Cerrada" not in salida, "el menu ofrece solo las activas"
+    assert len(prompts) == 3, "re-pregunta ante una opcion invalida"
+    assert _nodos_registrados() == [("nodo-1", str(ids[2]))]
+
+
+def test_el_menu_cerrado_sin_elegir_es_un_error(admin_client, capsys, monkeypatch):
+    definir_sucursales("Centro", "Norte")
+    _como_terminal(monkeypatch, [])  # EOF en el primer input()
+
+    assert provisionar(["registrar", "nodo-1"]) == 1
+    assert "No se eligió ninguna sucursal" in capsys.readouterr().out
+    assert _nodos_registrados() == []
+
+
+def test_la_sucursal_validada_sigue_pasando_por_la_guarda_de_un_nodo_por_sucursal(admin_client, capsys):
+    """Las guardas de siempre siguen, con el nombre de la sucursal en el mensaje."""
+    definir_sucursales("Centro")
+    provisionar(["registrar", "nodo-1", "--sucursal", "Centro"])
+    capsys.readouterr()
+
+    codigo = provisionar(["registrar", "nodo-2", "--sucursal", "Centro"])
+    salida = capsys.readouterr().out
+
+    assert codigo == 1 and "ya tiene un nodo activo" in salida and "nodo-1" in salida and "'Centro'" in salida
+
+
+def test_la_sucursal_se_valida_antes_que_el_adicional(admin_client, capsys):
+    """Sin el adicional y con una sucursal inexistente, el error es el de la sucursal: es lo que hay que corregir primero."""
+    from tests.offline_helpers import dar_de_baja_offline
+
+    definir_sucursales("Centro")
+    dar_de_baja_offline()
+
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "Inexistente"]) == 1
+    salida = capsys.readouterr().out
+    assert "no existe" in salida and "Modo offline" not in salida
+
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "Centro"]) == 1
+    assert "Modo offline" in capsys.readouterr().out
+
+
+def test_el_subcomando_sucursales_lista_id_nombre_estado_y_nodo(admin_client, capsys):
+    ids = definir_sucursales("Centro", "Norte", ("Cerrada", False))
+    provisionar(["registrar", "nodo-1", "--sucursal", "Centro"])
+    capsys.readouterr()
+
+    assert provisionar(["sucursales"]) == 0
+    lineas = {l.split()[0]: l for l in capsys.readouterr().out.splitlines() if l.strip()[:1].isdigit()}
+
+    assert "Centro" in lineas[str(ids[0])] and "activa" in lineas[str(ids[0])] and "nodo nodo-1" in lineas[str(ids[0])]
+    assert "Norte" in lineas[str(ids[1])] and "sin nodo" in lineas[str(ids[1])]
+    assert "INACTIVA" in lineas[str(ids[2])]
+
+
+def test_el_subcomando_sucursales_sin_ninguna_lo_dice(admin_client, capsys):
+    definir_sucursales()
+
+    assert provisionar(["sucursales"]) == 0
+    assert "ninguna" in capsys.readouterr().out
+
+
+def test_el_subcomando_sucursales_senala_los_nodos_de_antes_con_texto_libre(admin_client, capsys):
+    """Un nodo registrado cuando `--sucursal` era texto libre (`principal`) no es de ninguna sucursal de la lista: se avisa, no se rompe."""
+    definir_sucursales("Centro")
+    _registrar_nodo("nodo-viejo")  # branch_id="centro", a mano, como antes de la validacion
+
+    assert provisionar(["sucursales"]) == 0
+    salida = capsys.readouterr().out
+
+    assert "nodo-viejo" in salida and "texto libre" in salida

@@ -1,11 +1,23 @@
 """Aprovisionamiento del nodo offline, del lado del CENTRAL.
 
 Los tres pasos que hay que dar una vez por sucursal, antes de instalar nada en
-la PC del cliente:
+la PC del cliente (`registrar` exige el adicional `offline` contratado: ver
+`app/libraedge_integration.py`):
 
     python -m scripts.nodo_offline publicar          # instala los triggers y siembra
-    python -m scripts.nodo_offline registrar node-1  # da de alta el nodo y emite su secreto
+    python -m scripts.nodo_offline sucursales        # las sucursales de la instancia y cuál ya tiene nodo
+    python -m scripts.nodo_offline registrar node-1 --sucursal Centro   # da de alta el nodo y emite su secreto
     python -m scripts.nodo_offline estado            # que hay publicado y que nodos existen
+
+## La sucursal se elige de una lista, no se tipea
+
+`--sucursal` es el **id** o el **nombre** de una sucursal que existe y está activa en la instancia (`sucursales`
+las lista). Un texto libre se equivocaba en silencio: `Centro` y `centro` quedaban como dos sucursales distintas y
+cada una se llevaba su nodo y su unidad del adicional `offline`. Lo que se guarda en `node_identity.branch_id` es el
+id de la sucursal (como texto: la columna es de LibraEdge y no conoce nuestras tablas).
+
+Sin `--sucursal`: si hay una sola activa se usa esa y se avisa; si hay varias y la terminal es interactiva se muestra
+un menú numerado; si no es interactiva (cron, CI, un pipe) es un error que lista las válidas. Nunca se adivina.
 
 Se corre **en el contenedor del cliente**, con su `RESTOLIBRA_DATABASE_URL`, del
 mismo modo que el resto de los scripts de este repo.
@@ -32,6 +44,9 @@ pago, así que espejarlas daría la impresión de que funcionan offline.
 import argparse
 import sys
 from datetime import UTC
+
+from libracommerce.erp.catalogo import get_all_sucursales
+from libracore.adicionales import AdicionalError
 
 #: El reparto de autoridad de la Fase 0: qué tablas manda el central y el nodo
 #: sólo espeja. **Sólo los nombres** — la clave primaria NO se declara acá.
@@ -258,7 +273,7 @@ class SegundoNodoEnLaSucursal(RuntimeError):
     """Se intentó registrar un segundo nodo activo en una sucursal que ya tiene."""
 
 
-def _rechazar_segundo_nodo(conn, node_id: str, branch_id: str) -> None:
+def _rechazar_segundo_nodo(conn, node_id: str, branch_id: str, nombre: str | None = None) -> None:
     """🔴 Una sucursal tiene UN nodo. Los demás POS son terminales suyas.
 
     La topología es un nodo por local y N terminales apuntándole por la red —los
@@ -289,7 +304,7 @@ def _rechazar_segundo_nodo(conn, node_id: str, branch_id: str) -> None:
     if fila is None:
         return
     raise SegundoNodoEnLaSucursal(
-        f"La sucursal {branch_id!r} ya tiene un nodo activo: {fila[0]!r}.\n"
+        f"La sucursal {_rotulo(branch_id, nombre)} ya tiene un nodo activo: {fila[0]!r}.\n"
         f"\n"
         f"Una sucursal tiene UN nodo; los demás POS son terminales que le apuntan\n"
         f"por la red interna, sin instalar nada. Dos nodos numeran ventas en\n"
@@ -302,22 +317,156 @@ def _rechazar_segundo_nodo(conn, node_id: str, branch_id: str) -> None:
     )
 
 
-def registrar(node_id: str, branch_id: str) -> int:
+class SucursalInvalida(RuntimeError):
+    """La sucursal pedida no existe, está inactiva, es ambigua o no se pudo elegir."""
+
+
+def _rotulo(branch_id: str, nombre: str | None) -> str:
+    """`'Centro' (id 3)` si se conoce el nombre; si no, el id solo."""
+    return f"{nombre!r} (id {branch_id})" if nombre else repr(branch_id)
+
+
+def _listar_sucursales(conn) -> list[dict]:
+    """Las sucursales de la instancia, con el nodo activo de cada una (`None` si no tiene).
+
+    Reusa `libracommerce.erp.catalogo.get_all_sucursales`: la tabla `branches` y su columna `active` son del
+    motor, y la pantalla de sucursales de la app lee por la misma función. `node_identity.branch_id` es TEXT,
+    así que se compara contra el id pasado a texto.
+    """
+    nodos = {
+        fila[0]: fila[1]
+        for fila in conn.execute(
+            "SELECT branch_id, MIN(node_id) FROM node_identity WHERE active = 1 GROUP BY branch_id"
+        ).fetchall()
+    }
+    lista = get_all_sucursales(conn)
+    for sucursal in lista:
+        sucursal["nodo"] = nodos.get(str(sucursal["id"]))
+    return lista
+
+
+def _lista_para_error(activas: list[dict]) -> str:
+    if not activas:
+        return ("  (esta instancia no tiene ninguna sucursal activa: crearla primero desde la pantalla\n"
+                "   de sucursales de la app)")
+    return "\n".join(f"  {s['id']:>4}  {s['nombre']}" for s in activas)
+
+
+def _es_interactivo() -> bool:
+    """¿Hay una persona del otro lado? Con un pipe, un cron o el CI no se puede preguntar."""
+    return sys.stdin.isatty()
+
+
+def _menu(activas: list[dict]) -> dict:
+    """Menú numerado para elegir entre varias sucursales activas. Sale con `SucursalInvalida` si se cierra la entrada."""
+    print("Sucursales activas:")
+    for numero, sucursal in enumerate(activas, start=1):
+        nodo = f"  (ya tiene el nodo {sucursal['nodo']!r})" if sucursal["nodo"] else ""
+        print(f"  {numero}) {sucursal['nombre']} (id {sucursal['id']}){nodo}")
+    while True:
+        try:
+            respuesta = input(f"Elegí la sucursal del nodo [1-{len(activas)}]: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            raise SucursalInvalida("No se eligió ninguna sucursal.") from None
+        if respuesta.isdigit() and 1 <= int(respuesta) <= len(activas):
+            return activas[int(respuesta) - 1]
+        print(f"  Opción inválida: {respuesta!r}. Escribí un número entre 1 y {len(activas)}.")
+
+
+def elegir_sucursal(conn, pedida: str | None) -> dict:
+    """Resuelve `--sucursal` a una sucursal **existente y activa** de la instancia.
+
+    `pedida` es el id o el nombre (sin distinguir mayúsculas). Si no se pasó: una sola activa se usa sola (y se
+    avisa), varias se eligen en un menú si hay terminal, y sin terminal es un error. Nada se adivina ni se crea.
+    """
+    todas = _listar_sucursales(conn)
+    activas = [s for s in todas if s["activa"]]
+
+    if pedida is None:
+        if not activas:
+            raise SucursalInvalida(
+                "Esta instancia no tiene ninguna sucursal activa.\n\n" + _lista_para_error(activas))
+        if len(activas) == 1:
+            unica = activas[0]
+            print(f"Sin --sucursal: se usa la única sucursal activa, {_rotulo(str(unica['id']), unica['nombre'])}.")
+            return unica
+        if _es_interactivo():
+            return _menu(activas)
+        raise SucursalInvalida(
+            "Falta --sucursal y hay más de una sucursal activa; sin terminal interactiva no se puede "
+            "preguntar.\nSucursales válidas (id y nombre):\n" + _lista_para_error(activas))
+
+    texto = pedida.strip()
+    if texto.isdigit():
+        coinciden = [s for s in todas if s["id"] == int(texto)]
+    else:
+        coinciden = [s for s in todas if s["nombre"].strip().casefold() == texto.casefold()]
+    if len(coinciden) > 1:
+        raise SucursalInvalida(
+            f"El nombre {pedida!r} es de más de una sucursal; usar el id.\n"
+            "Sucursales válidas (id y nombre):\n" + _lista_para_error(activas))
+    if not coinciden:
+        raise SucursalInvalida(
+            f"La sucursal {pedida!r} no existe en esta instancia.\n"
+            "Sucursales válidas (id y nombre):\n" + _lista_para_error(activas))
+    if not coinciden[0]["activa"]:
+        raise SucursalInvalida(
+            f"La sucursal {_rotulo(str(coinciden[0]['id']), coinciden[0]['nombre'])} está inactiva.\n"
+            "Sucursales válidas (id y nombre):\n" + _lista_para_error(activas))
+    return coinciden[0]
+
+
+def sucursales() -> int:
+    """Lista las sucursales de la instancia: id, nombre, si está activa y si ya tiene nodo activo."""
+    with _conexion() as conn:
+        lista = _listar_sucursales(conn)
+        huerfanos = [
+            fila for fila in conn.execute(
+                "SELECT node_id, branch_id FROM node_identity WHERE active = 1 ORDER BY node_id").fetchall()
+            if fila[1] not in {str(s["id"]) for s in lista}
+        ]
+
+    print("Sucursales de la instancia:")
+    if not lista:
+        print("  (ninguna — crearla primero desde la pantalla de sucursales de la app)")
+    for s in lista:
+        marca = "activa" if s["activa"] else "INACTIVA"
+        nodo = f"nodo {s['nodo']}" if s["nodo"] else "sin nodo"
+        print(f"  {s['id']:>4}  {s['nombre']} — {marca}, {nodo}")
+    if huerfanos:
+        print()
+        print("Nodos activos cuya sucursal no es una sucursal de la instancia (registrados antes de que")
+        print("`--sucursal` se validara, con texto libre):")
+        for node_id, branch_id in huerfanos:
+            print(f"  {node_id} (sucursal {branch_id!r})")
+    return 0
+
+
+def registrar(node_id: str, sucursal: str | None = None) -> int:
     """Da de alta el nodo y **muestra su secreto una sola vez**.
 
+    `sucursal` es el id o el nombre de una sucursal activa (ver `elegir_sucursal`); sin ella se elige o se falla.
     Sólo se persiste el hash: no hay forma de recuperarlo después. Re-registrar
     el mismo `node_id` emite uno nuevo e invalida el anterior — que es cómo se
     reemplaza una PC robada o dada de baja.
     """
     from libraedge.db.repository import NodeRepository
 
+    from app.libraedge_integration import verificar_alta_de_nodo
+
     with _conexion() as conn:
-        _rechazar_segundo_nodo(conn, node_id, branch_id)
+        elegida = elegir_sucursal(conn, sucursal)
+        branch_id = str(elegida["id"])
+        _rechazar_segundo_nodo(conn, node_id, branch_id, elegida["nombre"])
+        # 🔴 El adicional `offline` (libracore ADR-048): sin el modulo prendido, o con una sucursal mas de las contratadas, no se registra. Va despues
+        # de la guarda de arriba (esa es mas especifica) y antes de escribir nada. Solo frena ALTAS: un nodo ya registrado sigue sincronizando.
+        verificar_alta_de_nodo(conn, node_id, branch_id)
         secreto = NodeRepository(conn).register_node(node_id, branch_id=branch_id)
         conn.commit()
         espejo = espejo_del_nodo(conn)
 
-    print(f"Nodo {node_id!r} registrado en la sucursal {branch_id!r}.")
+    print(f"Nodo {node_id!r} registrado en la sucursal {_rotulo(branch_id, elegida['nombre'])}.")
     print()
     print("  LIBRAEDGE_NODE_ID=" + node_id)
     print("  LIBRAEDGE_NODE_SECRET=" + secreto)
@@ -493,10 +642,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("publicar", help="instala los triggers y siembra la referencia")
     reg = sub.add_parser("registrar", help="da de alta un nodo y emite su secreto")
     reg.add_argument("node_id")
-    reg.add_argument("--sucursal", default="principal")
+    reg.add_argument("--sucursal", default=None,
+                     help="id o nombre de una sucursal activa (ver `sucursales`); sin ella: la unica activa, "
+                          "o un menu si hay varias y hay terminal")
     baja = sub.add_parser("dar-de-baja", help="revoca un nodo (PC robada o reemplazada)")
     baja.add_argument("node_id")
     sub.add_parser("estado", help="que hay publicado y que nodos existen")
+    sub.add_parser("sucursales", help="las sucursales de la instancia y si ya tienen nodo")
     vig = sub.add_parser(
         "vigilar", help="sale con 1 si algun nodo dejo de dar senales")
     vig.add_argument("--umbral", type=int, default=15,
@@ -510,7 +662,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.comando == "registrar":
         try:
             return registrar(args.node_id, args.sucursal)
-        except SegundoNodoEnLaSucursal as choque:
+        except (SucursalInvalida, SegundoNodoEnLaSucursal, AdicionalError) as choque:
             # Se imprime y se sale con 1 en vez de dejar el traceback: quien
             # corre esto está instalando en un local, y un stack trace no le
             # dice qué hacer. El mensaje sí.
@@ -518,6 +670,8 @@ def main(argv: list[str] | None = None) -> int:
             return 1
     if args.comando == "dar-de-baja":
         return dar_de_baja(args.node_id)
+    if args.comando == "sucursales":
+        return sucursales()
     return estado()
 
 

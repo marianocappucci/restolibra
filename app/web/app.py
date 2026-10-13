@@ -7,6 +7,7 @@ from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from libraauth.auditoria import agregar_middleware_de_usuario, registrador_dbapi
 from libraauth.auth_events import AuthEventRepository
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.migrar import exigir_schema_al_dia
@@ -25,8 +26,11 @@ from libracommerce.web.listas_router import (
     build_listas_precio_router,
 )
 from libracore import arca_credenciales
+from libracore import auditoria as auditoria_del_motor
+from libracore.adicionales_router import build_adicionales_router
 from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
+from libracore.candados import una_vez_al_arrancar
 from libracore.clientes_router import build_clientes_router
 from libracore.config_router import (
     build_backup_router,
@@ -37,6 +41,7 @@ from libracore.cuenta_corriente_router import build_cuenta_corriente_router
 from libracore.dashboard_router import build_dashboard_router
 from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
 from libracore.egresos_router import build_egresos_router, build_proveedores_router
+from libracore.errores import instalar_registro_de_errores
 from libracore.facturas_router import smtp_efectivo
 from libracore.libros_iva_router import build_libros_iva_export_router, build_libros_iva_router
 from libracore.logs_router import build_logs_export_router, build_logs_router
@@ -50,10 +55,12 @@ from libracore.tesoreria_router import build_tesoreria_router
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
+import plans
 from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
+from app.libraedge_integration import sucursales_con_nodo
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -74,6 +81,7 @@ from app.web.api_auth import (  # noqa: F401
     require_admin_json,
     require_admin_o_servicio_json,
     require_role_json,
+    require_solo_servicio_json,
 )
 from app.web.auth import get_current_user, require_admin, require_auth, require_role
 from app.web.modules_gate import require_module  # noqa: F401
@@ -112,6 +120,21 @@ app.state.terminos = TerminosRepository(db_usuarios.sessions())
 # configured`. En la instancia de un cliente no hay demo que abrir.
 if demo_username():
     app.state.demo_codigos = DemoCodigoRepository(db_usuarios.sessions())
+
+# ── Auditoria de clientes (libracore v1.157.0, ADR-043) ──────────────────────
+#
+# Las escrituras de `clients` (`/api/clientes`, el fiado, la ficha) son del motor de core y le avisan a este registrador
+# dentro de la misma transaccion: si el INSERT del log falla, se cae la escritura entera. El registrador es el
+# `registrador_dbapi` de libraauth, que arma la fila con el formato de siempre y escribe en `actividad_log` (la tabla la
+# crea `init_schema` de libracommerce, en la misma base que el motor). La pantalla de Logs la muestra como tipo
+# `actividad` ("Cambios"), sin pantalla nueva.
+#
+# El usuario sale del `ContextVar` `usuario_actual` de libraauth, que llena `agregar_middleware_de_usuario` leyendo la
+# cookie firmada de `app.state.session_auth` (puesto arriba). Sin el middleware la fila diria «Sistema» y no se
+# notaria: por eso hay un test (`tests/test_clientes_auditados.py`) que mira el usuario. Se configura al importar el
+# modulo, como `app.state`: el registrador es un callable y la conexion se resuelve en cada escritura.
+auditoria_del_motor.configurar_auditoria(registrador_dbapi({"clients": "cliente"}))
+agregar_middleware_de_usuario(app)
 
 
 _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
@@ -249,6 +272,9 @@ class CurrentUserMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(CurrentUserMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
+# El registro de errores de la familia (ADR-045 de libracore): un 500 deja una linea en `DATA_DIR/errores/` con un `ref`
+# que el usuario puede dictar, y monta `POST /api/errores-cliente` para los errores del navegador (publico a proposito).
+instalar_registro_de_errores(app, "restolibra")
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
@@ -423,6 +449,13 @@ app.include_router(build_empresa_admin_router(), dependencies=[Depends(require_a
 # del token de servicio del backoffice: 🔴 con `require_admin_json` a secas el backoffice NO entraría (esa guarda no conoce el token).
 app.include_router(build_tema_router())
 app.include_router(build_tema_admin_router(), dependencies=[Depends(require_admin_o_servicio_json)])
+# Los adicionales contratados (libracore ADR-048): `GET /api/adicionales` lo ve el admin o el backoffice; `PUT /api/adicionales/{clave}` SOLO el token
+# de servicio (🔴 un adicional es un limite comercial: si lo cargara el admin del cliente, contratar no costaria nada). `offline` se mide en sucursales
+# DISTINTAS con un nodo activo, que es lo que cobra y lo que hace cumplir `scripts/nodo_offline.py registrar`.
+app.include_router(build_adicionales_router(
+    require_admin_o_servicio_json, require_solo_servicio_json, medir={"offline": sucursales_con_nodo}, plans=plans,
+    leer_modulos=db.get_modulos, escribir_modulo=db.set_addon,
+))
 # MercadoPago, del motor. Reemplaza al `PUT /api/config/mp` propio.
 #
 # 🔴 Lo que cambia y no es cosmetico: el token vuelve ENMASCARADO. El
@@ -626,21 +659,26 @@ app.include_router(
 
 @app.on_event("startup")
 def startup():
-    db.init_db()
-    # 🔴 La cadena de LibraAuth tiene que haber corrido (libraauth v0.45.0). Si no,
-    # la app no arranca y el error dice el comando. Reemplaza al `create_all()` que
-    # `app/db_usuarios.py` corría al importarse. Va después de `init_db()` y antes
-    # de sembrar usuarios, que es lo primero que toca esas tablas.
-    exigir_schema_al_dia(db_usuarios._engine, prefijo="restolibra", base="dominio")
-    db.ensure_admin_user()
-    # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
-    db.ensure_demo_user()
-    # Saca de `config.json` los secretos que quedaron en claro (2026-09-17). Va
-    # DESPUES de `exigir_schema_al_dia`: la tabla `secretos_instancia` es de la
-    # revision `0002` de libraauth, y escribir en ella antes de saber que existe
-    # convertiria un schema viejo en un 500 en vez del error que dice el comando.
-    # Idempotente: la segunda vez no hace nada.
-    db_usuarios.migrar_secretos()
+    # 🔴 De a un proceso por vez (ADR-044 de libracore). Con `uvicorn --workers N` cada worker corre este hook, y
+    # «si no existe, crear» (el admin, el usuario de la demo, el depósito por defecto) se contestaba «no existe» en
+    # todos antes de que ninguno creara. El candado hace que el segundo espere al primero y vea lo que dejó; cada
+    # paso sigue preguntando adentro (`repo.list()`, `SELECT 1 FROM locations`...), así que sigue siendo idempotente.
+    with una_vez_al_arrancar("restolibra-arranque"):
+        db.init_db()
+        # 🔴 La cadena de LibraAuth tiene que haber corrido (libraauth v0.45.0). Si no,
+        # la app no arranca y el error dice el comando. Reemplaza al `create_all()` que
+        # `app/db_usuarios.py` corría al importarse. Va después de `init_db()` y antes
+        # de sembrar usuarios, que es lo primero que toca esas tablas.
+        exigir_schema_al_dia(db_usuarios._engine, prefijo="restolibra", base="dominio")
+        db.ensure_admin_user()
+        # No-op salvo que la instancia sea una demo (DEMO_MODE + DEMO_USERNAME).
+        db.ensure_demo_user()
+        # Saca de `config.json` los secretos que quedaron en claro (2026-09-17). Va
+        # DESPUES de `exigir_schema_al_dia`: la tabla `secretos_instancia` es de la
+        # revision `0002` de libraauth, y escribir en ella antes de saber que existe
+        # convertiria un schema viejo en un 500 en vez del error que dice el comando.
+        # Idempotente: la segunda vez no hace nada.
+        db_usuarios.migrar_secretos()
 
 
 @app.get("/", include_in_schema=False)

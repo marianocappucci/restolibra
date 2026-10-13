@@ -64,3 +64,38 @@ def test_con_el_captcha_resuelto_entra(client, monkeypatch):
 
     assert r.status_code == 200, r.text
     assert client.get("/api/me").status_code == 200
+
+
+# ── Varios procesos (libraauth v0.50.0, ADR-023) ────────────────────────────
+#
+# El anti-replay del captcha era un `dict` del proceso: con `uvicorn --workers N`
+# un desafio resuelto servia una vez POR WORKER. Ahora se anota en la base de
+# `usuarios` (`libraauth_captcha_usados`, migracion `0003`), y lo que es de ESTE
+# producto es el cableado: que el router reciba `UsadosEnBase`.
+
+
+def test_el_captcha_del_login_anota_los_desafios_usados_en_la_base(client, monkeypatch):
+    from libraauth.captcha import UsadosEnBase
+    from sqlalchemy import text
+
+    from app import db_usuarios
+
+    # Sin `Captcha` en el state, el router arma el suyo con el `captcha_usados=` que le pasa `app/web/api/auth.py`.
+    monkeypatch.setattr(client.app.state, "captcha", None, raising=False)
+    assert client.get("/api/captcha").status_code == 200
+    usados = client.app.state.captcha._usados
+    assert isinstance(usados, UsadosEnBase), "sin esto cada worker lleva su propia memoria de desafios usados"
+
+    # Mismo `usados` que el del router, pero barato de resolver (el real cuesta ~1 s de CPU).
+    client.app.state.captcha = Captcha("clave-de-prueba", costo=1, contador_min=1, contador_rango=5, usados=usados)
+    desafio = Challenge.from_dict(client.get("/api/captcha").json())
+    solucion = Payload(desafio, solve_challenge(desafio)).to_base64()
+    datos = {**CLAVE_BUENA, "captcha": solucion}
+
+    assert client.post("/api/login", json=datos).status_code == 200
+    # El mismo desafio otra vez (lo que haria otro worker): replay, rebota.
+    repetido = client.post("/api/login", json=datos)
+    assert repetido.status_code == 400, repetido.text
+    assert repetido.json()["detail"] == CAPTCHA_INVALIDO
+    with db_usuarios.sessions()() as s:
+        assert s.execute(text("SELECT count(*) FROM libraauth_captcha_usados")).scalar() == 1

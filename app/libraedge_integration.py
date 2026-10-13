@@ -6,26 +6,26 @@ venta**; este modulo traduce el dominio de Restolibra al `OutboxOperation`
 generico, y provee el `operation_handler` que el central usa para materializarlo
 de vuelta.
 
-## Por que el opt-in es una variable de entorno y no un modulo
+## El opt-in comercial es un adicional por sucursal; el id de nodo es solo la identidad
 
-El plan decia "flag de modulo, mismo mecanismo que GestioLibra/MedLibra", y al
-mirar el codigo no sirve: `libracore.db.modulos.apply_plan()` recorre **todas**
-las filas de `modulos` y apaga las que no esten en el plan elegido. Un modulo
-`offline` que no pertenezca a ningun plan queda apagado en cada cambio de plan;
-para que sobreviva habria que meterlo en los tres, y ahi deja de gatear nada.
+Son dos cosas distintas y durante un tiempo estuvieron mezcladas aca.
 
-Y meterlo en `premium` seria peor: el modulo offline se vende como **adicional
-por sucursal, con cargo de implementacion**, fuera de la escalera de planes (ver
-el analisis del modulo autonomo en el wiki). Regalarselo a todo cliente Premium
-no es lo que se acordo vender.
+- **Contratar el modulo offline** es el adicional `offline` (`plans.ADICIONALES`, libracore ADR-048): un modulo de la tabla `modulos`
+  (`plan="addon"`, lo que ya lee `require_module`) mas una cantidad de **sucursales con offline** en el `config.json`
+  (`adicionales.offline`). Se cobra por sucursal, fuera de la escalera de planes y desde cualquiera de ellos. Lo carga el backoffice con el token
+  de servicio (`PUT /api/adicionales/offline`); un cambio de plan no lo toca (`apply_plan` saltea los modulos de los adicionales).
+- **`RESTOLIBRA_EDGE_NODE_ID`** es la **identidad del nodo** en la PC del cliente: la escribe el instalador y dice "esta instancia es el nodo X". No
+  es el opt-in. Antes lo era (se pensaba que "la presencia del nodo es el opt-in") porque el mecanismo de planes no sabia expresar un adicional
+  fuera de la escalera; ya lo sabe.
 
-La presencia del nodo **es** el opt-in: `RESTOLIBRA_EDGE_NODE_ID` la escribe el
-instalador al aprovisionar la PC del cliente. No hay escenario donde una
-instancia tenga id de nodo y no deba sincronizar.
+Donde se hace cumplir: **al registrar un nodo** (`scripts/nodo_offline.py registrar`, via `verificar_alta_de_nodo`). Sin el adicional prendido, o
+con una sucursal mas de las contratadas, el alta se rechaza. La unidad es la **sucursal**, no el nodo: lo que se cuenta son las sucursales
+**distintas** (`node_identity.branch_id`) con al menos un nodo activo, asi que un segundo nodo en una sucursal que ya tiene no consume otra unidad
+(el reemplazo de una PC, o un nodo que quedo de antes).
 
-> ⚠️ Queda anotado que el mecanismo de planes no sabe expresar "adicional fuera
-> de la escalera". Si aparece un segundo adicional asi, conviene resolverlo en
-> LibraCore y no repetir esta variable por producto.
+**Lo que no se corta nunca:** la sincronizacion. Un nodo ya registrado sigue autenticando por su `node_identity` y sincronizando aunque el
+adicional se de de baja o la cantidad quede por debajo de lo instalado: el nodo tiene ventas sin subir y bloquearlo seria perder plata del cliente.
+Dar de baja el adicional frena **altas nuevas**, nada mas.
 
 ## Los ids no hay que traducirlos, y no es casualidad
 
@@ -49,8 +49,45 @@ SCHEMA_VERSION = 1
 
 
 def nodo_offline() -> str | None:
-    """El id de este nodo, o `None` si esta instancia no es un nodo offline."""
+    """El id de este nodo, o `None` si esta instancia no es un nodo offline.
+
+    Es la **identidad** del nodo en la PC del cliente, no el opt-in comercial (ver el docstring del modulo)."""
     return os.environ.get("RESTOLIBRA_EDGE_NODE_ID") or None
+
+
+def sucursales_con_nodo(conn=None) -> int:
+    """Cuantas sucursales DISTINTAS tienen al menos un nodo activo: lo que el adicional `offline` cobra y limita.
+
+    Se cuentan sucursales y no nodos a proposito: varios nodos en una misma sucursal no suman (decision del humano, 2026-10-13). Un nodo dado de
+    baja (`active = 0`) no cuenta. Sin `conn` abre su propia conexion."""
+    if conn is None:
+        from app.db_core import get_connection
+
+        with get_connection() as propia:
+            return sucursales_con_nodo(propia)
+    fila = conn.execute("SELECT COUNT(DISTINCT branch_id) FROM node_identity WHERE active = 1").fetchone()
+    return int(fila[0])
+
+
+def verificar_alta_de_nodo(conn, node_id: str, branch_id: str) -> None:
+    """La guarda de alta de un nodo: levanta `libracore.adicionales.AdicionalNoContratado` o `AdicionalExcedido` (con el mensaje para el cliente).
+
+    - Sin el adicional `offline` prendido en `modulos`: no se registra ningun nodo.
+    - Si `branch_id` ya tiene un nodo activo (otro, o este mismo al re-registrarlo) no se suma ninguna unidad: solo cuenta el modulo prendido.
+    - Si es una sucursal nueva, `sucursales_con_nodo + 1` no puede superar la cantidad contratada. Sin cantidad cargada no hay tope.
+
+    Leer el modulo y la cantidad es de la instancia (`modulos` y `config.json`); `conn` es la conexion del alta, para que la cuenta y el alta vean lo mismo."""
+    from libracore.adicionales import verificar_alta
+
+    import plans
+
+    modulos = {fila[0]: bool(fila[1]) for fila in conn.execute("SELECT modulo, habilitado FROM modulos").fetchall()}
+    ya_tiene_nodo = conn.execute(
+        "SELECT 1 FROM node_identity WHERE branch_id = ? AND active = 1 LIMIT 1", (branch_id,)).fetchone() is not None
+    # Una sucursal que ya cuenta no suma NI se compara con el tope: si el contrato se achico por debajo de lo instalado, reemplazar la PC de una de
+    # las sucursales que ya estan no puede quedar bloqueado (solo cuenta que el modulo siga prendido).
+    usadas = 0 if ya_tiene_nodo else sucursales_con_nodo(conn)
+    verificar_alta(plans, "offline", usadas, sumar=0 if ya_tiene_nodo else 1, modulos=modulos)
 
 
 def _outbox_operation():

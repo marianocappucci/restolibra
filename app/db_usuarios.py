@@ -77,7 +77,11 @@ ROLES = ("admin", "operador", "cajero", "mozo")
 # PostgreSQL. `postgresql://` va tal cual, con el driver psycopg de la familia,
 # y `connect_args` es de SQLite.
 if ES_POSTGRES:
-    _engine = create_engine(DB_PATH.replace("postgresql://", "postgresql+psycopg://", 1))
+    # `pool_pre_ping`: tras un restore en caliente con varios workers, el que no atendio el restore se recupera
+    # solo en vez de dar 500 hasta el reinicio (docs/varios-procesos.md de libracore).
+    _engine = create_engine(
+        DB_PATH.replace("postgresql://", "postgresql+psycopg://", 1), pool_pre_ping=True
+    )
 else:
     _engine = create_engine(
         f"sqlite:///{DB_PATH}", connect_args={"check_same_thread": False}
