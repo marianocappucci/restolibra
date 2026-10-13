@@ -2,6 +2,17 @@
 
 ## Sin publicar — 2026-10-13
 
+### `registrar --sucursal` se elige de la lista de sucursales de la instancia (sin migración, sin cambio de pines)
+
+La sucursal de un nodo offline era texto libre con default mudo `principal`: un error de tipeo (`Cnetro`) o una diferencia de mayúsculas creaba una «sucursal» fantasma que se llevaba su nodo y una unidad del adicional `offline`. Ahora, en `scripts/nodo_offline.py`:
+
+- **`registrar` valida `--sucursal`** contra `branches` (la tabla de sucursales de libracommerce, por `catalogo.get_all_sucursales`; la columna es `active`). Acepta el **id** o el **nombre** (sin distinguir mayúsculas); si no existe, está inactiva o el nombre es ambiguo, sale con código 1 y lista las sucursales válidas (id y nombre). Lo que se guarda en `node_identity.branch_id` es el **id** de la sucursal.
+- **Sin `--sucursal` ya no hay default**: con una sola sucursal activa se usa esa y se informa; con varias y terminal interactiva, menú numerado (sólo las activas, avisando cuál ya tiene nodo); con varias y sin terminal (cron, CI, pipe), error con la lista; sin ninguna activa, error.
+- **Subcomando nuevo `sucursales`**: id, nombre, si está activa y si ya tiene nodo activo. También señala los nodos activos registrados antes de este cambio con texto libre (`principal`, `centro`…), cuya sucursal no coincide con ninguna de la lista.
+- Las guardas siguen igual y en el mismo orden: sucursal válida → un nodo por sucursal → adicional `offline` (ADR-048) → alta.
+- **Datos existentes**: los nodos ya registrados no se tocan ni se migran. Su `branch_id` sigue siendo el texto con que se registraron (`principal`), que ya no coincide con el id de ninguna sucursal: la guarda de «un nodo por sucursal» y el conteo del adicional `offline` no los reconocen como la misma sucursal que el id real, así que conviene darlos de baja y volver a registrarlos con `--sucursal`. `sucursales` los señala.
+- Tests: `tests/test_sincronizacion_offline.py` (sucursal inexistente, inactiva, por id y por nombre, nombre repetido, única activa, varias sin terminal, menú con terminal, `sucursales`) y `definir_sucursales` en `tests/offline_helpers.py`; los tests existentes de `registrar` crean sus sucursales.
+
 ### El offline es un adicional por sucursal, fuera de la escalera de planes (ADR-048 de libracore; **requiere libracore `v1.162.0`**, el pin sigue donde estaba hasta que se corte el tag)
 
 Decisión del humano (2026-10-13): el módulo offline (LibraEdge) se cobra **por sucursal con offline**, se puede contratar **desde cualquier plan**, figura como una línea del Anexo I y **sin precio fijado** (a cotizar). Los Términos no cambian (cláusula 23, módulos por Anexo). Qué hay ahora:
