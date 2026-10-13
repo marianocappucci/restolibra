@@ -2,6 +2,18 @@
 
 ## Sin publicar — 2026-10-13
 
+### El offline es un adicional por sucursal, fuera de la escalera de planes (ADR-048 de libracore; **requiere libracore `v1.162.0`**, el pin sigue donde estaba hasta que se corte el tag)
+
+Decisión del humano (2026-10-13): el módulo offline (LibraEdge) se cobra **por sucursal con offline**, se puede contratar **desde cualquier plan**, figura como una línea del Anexo I y **sin precio fijado** (a cotizar). Los Términos no cambian (cláusula 23, módulos por Anexo). Qué hay ahora:
+
+- **`plans.ADICIONALES["offline"]`**: unidad `sucursal`, módulo `offline`, límite `sucursales_offline`, `precio=None`. Vive en la instancia: el módulo en `modulos` (`plan="addon"`, apagado de fábrica en el seed) y la cantidad en `config.json` → `adicionales.offline`. Un cambio de plan no lo toca (`apply_plan` y `apply_plan_modules` saltean los módulos de los adicionales).
+- **`GET/PUT /api/adicionales[/{clave}]`** (`app/web/app.py`): el backoffice lo contrata con el token de servicio; leer es de admin o servicio, **escribir sólo del token** (el admin del cliente no se da un adicional). `usadas` del offline son **sucursales distintas con un nodo activo**, no nodos.
+- **El alta de un nodo lo hace cumplir** (`scripts/nodo_offline.py registrar` → `app/libraedge_integration.verificar_alta_de_nodo`): sin el adicional prendido no se registra ningún nodo, y una sucursal más de las contratadas se rechaza con «Tenés contratado «Modo offline (LibraEdge)» para N sucursales. Para sumar otra, comunicate con nosotros.». Una sucursal que ya tiene un nodo activo no pide cupo (reemplazar una PC no suma). Sin cantidad cargada no hay tope (criterio del ADR-041). La guarda de «un nodo por sucursal» sigue yendo primero.
+- **Nadie se corta.** La sincronización no mira el adicional: un nodo registrado sigue autenticando por su `node_identity` y subiendo ventas aunque el adicional se dé de baja o el contrato quede por debajo de lo instalado. Dar de baja el adicional frena altas nuevas, nada más.
+- **Migración de datos `0006_offline_contratado`**: las instancias que ya tienen nodos activos quedan con el módulo prendido y `offline = sucursales distintas con nodo` (nunca baja una cantidad ya cargada; sin nodos no toca nada; idempotente; sin `downgrade`). **No hizo falta agregar la sucursal al registro del nodo**: `node_identity.branch_id` (`NOT NULL`, de la `0003`) ya la guarda, y `registrar --sucursal` la pide (default `principal`); es texto libre, así que `Centro` y `centro` cuentan como dos.
+- `libraedge_integration.py`: el docstring que decía que «la presencia del nodo es el opt-in» y que el mecanismo de planes no sabía expresar este adicional estaba desactualizado; ahora distingue el opt-in comercial (el adicional) de la identidad del nodo (`RESTOLIBRA_EDGE_NODE_ID`, que sólo escribe el instalador).
+- Tests: `tests/test_adicional_offline.py` (alta bloqueada sin el adicional y sobre el límite, segundo nodo en la misma sucursal, el nodo existente sigue sincronizando, cambio de plan, router y token, migración) y `tests/offline_helpers.py`; `test_sincronizacion_offline.py` deja el adicional contratado.
+
 ### El producto queda listo para varios procesos y registra sus errores (ADR-044 y ADR-045 de libracore, ADR-023 de libraauth, ADR-053 de libra-ui)
 
 - **Varios procesos por instancia (`uvicorn --workers N`), sin prenderlos: todo sigue en 1.** `WEB_CONCURRENCY` por defecto es 1 y el `docker-compose.yml` de dev pasa `--workers ${WEB_CONCURRENCY:-1}`; las instancias de cliente y demo corren el `CMD` del `Dockerfile`, que uvicorn ya hace respetar por `WEB_CONCURRENCY` sin tocarlo. Lo que se rompía con N procesos:

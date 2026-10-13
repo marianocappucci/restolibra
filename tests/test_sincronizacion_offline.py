@@ -11,6 +11,17 @@ import pytest
 
 from scripts.nodo_offline import TABLAS_DE_REFERENCIA
 from scripts.nodo_offline import main as provisionar
+from tests.offline_helpers import contratar_offline
+
+
+@pytest.fixture(autouse=True)
+def _offline_contratado(request):
+    """Estos tests prueban el aprovisionamiento y la sincronizacion, no el contrato: registrar un nodo exige el adicional `offline` (ADR-048 de
+    libracore), asi que lo dejan contratado. El contrato en si (alta bloqueada sin el adicional o sobre el limite) esta en `test_adicional_offline.py`."""
+    if "client" not in request.fixturenames and "admin_client" not in request.fixturenames:
+        return
+    request.getfixturevalue("client")
+    contratar_offline(5)
 
 
 def _payload(node_id="node-1", sequence=1, numero="V-90001"):

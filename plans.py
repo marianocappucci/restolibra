@@ -76,6 +76,20 @@ TODOS_LOS_MODULOS = set(PLAN_MODULOS["premium"])
 #     Datos / Backup (`libracore.resguardo_enlace`, LibraCore v1.93.0).
 ADDONS = {"resguardo_externo"}
 
+# Los adicionales fuera de la escalera (libracore ADR-048): el catalogo de `libracore.adicionales`, que el backoffice lista y carga por
+# `GET/PUT /api/adicionales` y que arma las lineas del Anexo I. Los sí/no de `ADDONS` (`resguardo_externo`) se sintetizan solos; lo declarado aca es
+# lo que `ADDONS` no sabe decir.
+#
+#   - offline: el modulo offline (LibraEdge) se cobra POR SUCURSAL CON OFFLINE y se puede contratar desde cualquier plan. La unidad es la sucursal;
+#     el limite que se hace cumplir es la cantidad de sucursales DISTINTAS con al menos un nodo activo (`node_identity.branch_id`): varios nodos en
+#     la misma sucursal no suman. Sin precio fijado: «a cotizar» (`precio=None`), el cargo de implementacion va por Anexo (Terminos v1.1, clausula 23).
+#     El modulo `offline` vive en `modulos` (`plan="addon"`) y la cantidad contratada en `config.json` -> `adicionales.offline`.
+ADICIONALES = {
+    "offline": {
+        "label": "Modo offline (LibraEdge)", "precio": None, "modulos": {"offline"}, "unidad": "sucursal", "limite": "sucursales_offline",
+    },
+}
+
 
 def aplicar_plan_en_db(db_path: str, plan: str) -> None:
     """Aplica un plan escribiendo el estado de módulos en la base de un cliente.
