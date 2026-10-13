@@ -112,3 +112,16 @@ def require_admin_o_servicio_json(request: Request, response: Response = None) -
     if permite_lectura_de_demo(request, usuario):
         return usuario
     raise HTTPException(403, "No autorizado")
+
+
+def require_solo_servicio_json(request: Request, response: Response = None) -> dict:
+    """SÓLO el token de servicio del backoffice: ningún usuario de la instancia, ni siquiera el admin.
+
+    Es para lo que el cliente no puede decidir por su cuenta: hoy, qué adicionales tiene contratados (`PUT /api/adicionales/{clave}`, libracore
+    ADR-048). Si lo pudiera cargar el admin de la instancia, contratar no costaría nada. Sin sesión da 401 (como todo lo privado) y con sesión de
+    cualquier rol, 403. Sin `LIBRA_SERVICE_TOKEN` en el entorno nadie entra por acá.
+    """
+    if token_de_servicio_valido(request):
+        return dict(SERVICE_USER)
+    get_current_user_json(request, response)  # 401 si no hay sesión
+    raise HTTPException(403, "No autorizado")

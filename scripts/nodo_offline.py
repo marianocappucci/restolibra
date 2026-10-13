@@ -1,7 +1,8 @@
 """Aprovisionamiento del nodo offline, del lado del CENTRAL.
 
 Los tres pasos que hay que dar una vez por sucursal, antes de instalar nada en
-la PC del cliente:
+la PC del cliente (`registrar` exige el adicional `offline` contratado: ver
+`app/libraedge_integration.py`):
 
     python -m scripts.nodo_offline publicar          # instala los triggers y siembra
     python -m scripts.nodo_offline registrar node-1  # da de alta el nodo y emite su secreto
@@ -32,6 +33,8 @@ pago, así que espejarlas daría la impresión de que funcionan offline.
 import argparse
 import sys
 from datetime import UTC
+
+from libracore.adicionales import AdicionalError
 
 #: El reparto de autoridad de la Fase 0: qué tablas manda el central y el nodo
 #: sólo espeja. **Sólo los nombres** — la clave primaria NO se declara acá.
@@ -311,8 +314,13 @@ def registrar(node_id: str, branch_id: str) -> int:
     """
     from libraedge.db.repository import NodeRepository
 
+    from app.libraedge_integration import verificar_alta_de_nodo
+
     with _conexion() as conn:
         _rechazar_segundo_nodo(conn, node_id, branch_id)
+        # 🔴 El adicional `offline` (libracore ADR-048): sin el modulo prendido, o con una sucursal mas de las contratadas, no se registra. Va despues
+        # de la guarda de arriba (esa es mas especifica) y antes de escribir nada. Solo frena ALTAS: un nodo ya registrado sigue sincronizando.
+        verificar_alta_de_nodo(conn, node_id, branch_id)
         secreto = NodeRepository(conn).register_node(node_id, branch_id=branch_id)
         conn.commit()
         espejo = espejo_del_nodo(conn)
@@ -510,7 +518,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.comando == "registrar":
         try:
             return registrar(args.node_id, args.sucursal)
-        except SegundoNodoEnLaSucursal as choque:
+        except (SegundoNodoEnLaSucursal, AdicionalError) as choque:
             # Se imprime y se sale con 1 en vez de dejar el traceback: quien
             # corre esto está instalando en un local, y un stack trace no le
             # dice qué hacer. El mensaje sí.

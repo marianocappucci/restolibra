@@ -27,6 +27,7 @@ from libracommerce.web.listas_router import (
 )
 from libracore import arca_credenciales
 from libracore import auditoria as auditoria_del_motor
+from libracore.adicionales_router import build_adicionales_router
 from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
 from libracore.candados import una_vez_al_arrancar
@@ -54,10 +55,12 @@ from libracore.tesoreria_router import build_tesoreria_router
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
+import plans
 from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
+from app.libraedge_integration import sucursales_con_nodo
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -78,6 +81,7 @@ from app.web.api_auth import (  # noqa: F401
     require_admin_json,
     require_admin_o_servicio_json,
     require_role_json,
+    require_solo_servicio_json,
 )
 from app.web.auth import get_current_user, require_admin, require_auth, require_role
 from app.web.modules_gate import require_module  # noqa: F401
@@ -445,6 +449,13 @@ app.include_router(build_empresa_admin_router(), dependencies=[Depends(require_a
 # del token de servicio del backoffice: 🔴 con `require_admin_json` a secas el backoffice NO entraría (esa guarda no conoce el token).
 app.include_router(build_tema_router())
 app.include_router(build_tema_admin_router(), dependencies=[Depends(require_admin_o_servicio_json)])
+# Los adicionales contratados (libracore ADR-048): `GET /api/adicionales` lo ve el admin o el backoffice; `PUT /api/adicionales/{clave}` SOLO el token
+# de servicio (🔴 un adicional es un limite comercial: si lo cargara el admin del cliente, contratar no costaria nada). `offline` se mide en sucursales
+# DISTINTAS con un nodo activo, que es lo que cobra y lo que hace cumplir `scripts/nodo_offline.py registrar`.
+app.include_router(build_adicionales_router(
+    require_admin_o_servicio_json, require_solo_servicio_json, medir={"offline": sucursales_con_nodo}, plans=plans,
+    leer_modulos=db.get_modulos, escribir_modulo=db.set_addon,
+))
 # MercadoPago, del motor. Reemplaza al `PUT /api/config/mp` propio.
 #
 # 🔴 Lo que cambia y no es cosmetico: el token vuelve ENMASCARADO. El

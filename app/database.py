@@ -416,6 +416,9 @@ def init_db():
             # Add-on (`plans.ADDONS`): APAGADO de fábrica. Lo prende el
             # backoffice por instancia con `set_addon`; ningún plan lo toca.
             ("resguardo_externo", 0, "addon"),
+            # Adicional por sucursal (`plans.ADICIONALES["offline"]`, libracore ADR-048): APAGADO de fábrica. Lo prende el backoffice al cargar la
+            # cantidad de sucursales con offline; sin él no se registran nodos nuevos (`scripts/nodo_offline.py registrar`).
+            ("offline", 0, "addon"),
         ]
         for modulo, habilitado, plan in _MODULOS_DEFAULT:
             conn.execute(
