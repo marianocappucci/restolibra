@@ -18,10 +18,19 @@ import plans
 from app import database as db
 from app.libraedge_integration import sucursales_con_nodo, verificar_alta_de_nodo
 from scripts.nodo_offline import main as provisionar
-from tests.offline_helpers import contratar_offline, dar_de_baja_offline
+from tests.offline_helpers import contratar_offline, dar_de_baja_offline, definir_sucursales
 
 TOKEN = "un-token-de-servicio-de-prueba"
 SERVICIO = {SERVICE_TOKEN_HEADER: TOKEN}
+
+
+@pytest.fixture(autouse=True)
+def _sucursales_de_la_instancia(request):
+    """`registrar --sucursal` exige una sucursal que exista y este activa: las de estos tests, por nombre."""
+    if "client" not in request.fixturenames and "admin_client" not in request.fixturenames:
+        return
+    request.getfixturevalue("client")
+    definir_sucursales("centro", "norte", "sur")
 
 
 def _registrar(nodo, sucursal, capsys):
