@@ -116,3 +116,28 @@ def test_sync_mp_auto_puede_importar_el_paquete():
         "sync_mp_auto.py ya no importa nada del paquete `app`: si es asi, el "
         "sys.path.insert de arriba dejo de ser necesario y este test no cuida nada"
     )
+
+
+def test_el_cron_enchufa_el_almacen_de_secretos(tmp_path):
+    """🔴 El token de MP vive en el almacen cifrado y lo enchufa el arranque de
+    la app; el cron corre por `docker exec` sin ese arranque. Asi Contalibra no
+    facturo ningun abono del 2026-09-18 al 2026-10-14.
+
+    Va en un proceso aparte: dentro de la suite el almacen ya quedo enchufado,
+    y medirlo aca daria verde aunque el script no lo hiciera."""
+    codigo = (
+        "import importlib.util\n"
+        f"spec = importlib.util.spec_from_file_location('cron', {str(RAIZ / 'scripts' / 'sync_mp_auto.py')!r})\n"
+        "spec.loader.exec_module(importlib.util.module_from_spec(spec))\n"
+        "from libracore import config_manager\n"
+        "print(config_manager.almacen_de_secretos() is not None)\n"
+    )
+    salida = subprocess.run(
+        [sys.executable, "-c", codigo], cwd=tmp_path,
+        capture_output=True, text=True, timeout=120,
+    )
+    assert salida.returncode == 0, salida.stderr
+    assert salida.stdout.strip().splitlines()[-1] == "True", (
+        "sync_mp_auto.py no enchufa el almacen de secretos: el cron va a leer el "
+        "token de MercadoPago vacio y no va a facturar nada"
+    )
