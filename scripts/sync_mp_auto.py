@@ -27,6 +27,12 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from libracore.mp_sync import sincronizar_y_facturar  # noqa: E402
 
+# 🔴 Enchufa el almacen cifrado de secretos, igual que el arranque de la app. El
+# token de MercadoPago vive ahi desde el 2026-09-17 y este script corre por
+# `docker exec` sin pasar por ese arranque: asi el cron de Contalibra leyo el
+# token vacio del 2026-09-18 al 2026-10-14 y no facturo ningun abono. Lo vigila
+# tests/test_layout_paquete.py.
+import app.db_usuarios  # noqa: E402,F401
 from app.web.routers.webhooks import _es_hosting_mensual  # noqa: E402
 
 logging.basicConfig(
