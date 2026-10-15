@@ -40,6 +40,7 @@ from libracore.config_router import (
 from libracore.cuenta_corriente_router import build_cuenta_corriente_router
 from libracore.dashboard_router import build_dashboard_router
 from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
+from libracore.docs_api import cerrar_docs_de_la_api
 from libracore.egresos_router import build_egresos_router, build_proveedores_router
 from libracore.errores import instalar_registro_de_errores
 from libracore.facturas_router import smtp_efectivo
@@ -91,6 +92,7 @@ from app.web.routers import kds as kds_router
 from app.web.routers import ventas as ventas_router
 
 app = FastAPI(title="Restolibra")
+cerrar_docs_de_la_api(app)
 
 # ── Lo que el router de auth de libraauth espera en `app.state` ─────────────
 #
