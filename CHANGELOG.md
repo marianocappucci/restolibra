@@ -2,6 +2,12 @@
 
 ## Sin publicar — 2026-10-16
 
+### Pin libra-ui v0.158.0: el cliente de la factura se puede dar de alta ahí mismo (ADR-071 del kit, sin migración)
+
+- Pin: **libra-ui `v0.158.0`** (antes `v0.157.0`). **Sin migración y sin cambio en el backend.** `package-lock.json` sube también `@playwright/test`/`playwright` a 1.64.1, que es el rango que pide el kit (`peerDependencies`).
+- **`/facturas/nueva`: el campo «Cliente» es ahora `SelectCliente`** (`frontend/src/pages/FacturaNueva.tsx`): el buscador de siempre (con la × para volver a «o nombre libre») y, al lado, el botón «Agregar nuevo cliente». El panel pide nombre, CUIT/DNI, condición frente al IVA, teléfono y email y da el alta en `POST /api/clientes` del motor (`crearYSumar` + `CAMPOS_CLIENTE_DEL_MOTOR` de `libra-ui/comercio/alta-de-cliente`). El recién creado se suma a la lista de la pantalla y queda elegido: la factura usa su CUIT para el aviso de FCE como el de cualquier otro cliente. Es el único campo de cliente propio del producto; el resto (Ventas, Presupuestos, Remitos) son pantallas del kit y ya lo traen. Los campos de texto libre «Cliente» del pedido, la reserva y el cobro de una mesa guardan un nombre (`cliente_nombre`), no eligen una ficha: no cambian.
+- **Guard `frontend/src/test/campos-de-cliente.test.ts`** (`libra-ui/auditoria-de-clientes`, al lado de `selects-buscables.test.ts`): lee los fuentes y falla si un desplegable que elige un cliente no es `SelectCliente`. Un filtro que no crea nada se marca con `cliente-sin-alta: <motivo>`. Control positivo: mide al menos un campo. Comportamiento en `frontend/src/test/factura-cliente-alta.test.tsx`: crear el cliente hace `POST /api/clientes` con el nombre y queda elegido, su CUIT llega al aviso de FCE y un error del alta se ve en el panel sin elegir a nadie.
+
 ### Pines: libracore v1.173.0, libracommerce v0.62.0 y libra-ui v0.156.0 (sin migración); el cobro de una mesa no fía sin cliente, la consulta de CUIT sale del producto y la semilla no trae un CUIT de forma real
 
 - Pines: **libracore `v1.173.0`** (antes `v1.170.0`), **libracommerce `v0.62.0`** (antes `v0.60.0`) y **libra-ui `v0.156.0`** (antes `v0.153.0`); libraauth sigue en `v0.51.0`. **Sin migración.**

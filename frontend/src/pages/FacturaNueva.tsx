@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, ApiError, opcionesCliente, type Cliente, type Factura, type ProductoBusqueda, type TipoFactura, type Venta } from '../api'
-import { SelectBuscable } from 'libra-ui/SelectBuscable'
+import { SelectCliente } from 'libra-ui/SelectCliente'
+import { CAMPOS_CLIENTE_DEL_MOTOR, crearYSumar } from 'libra-ui/comercio/alta-de-cliente'
 import { AvisoFce } from 'libra-ui/AvisoFce'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -258,18 +259,18 @@ export function FacturaNueva() {
             )}
 
             <div className="flex flex-wrap items-end gap-3">
-              <div className="grid gap-2">
-                <Label>Cliente</Label>
-                <SelectBuscable
-                  value={clienteId}
-                  onChange={(v) => { setClienteId(v); setClienteNombreLibre('') }}
-                  opciones={opcionesCliente(clientes)}
-                  placeholder="Elegir cliente…"
-                  ariaLabel="Cliente"
-                  className="w-52"
-                  limpiable
-                />
-              </div>
+              <SelectCliente
+                etiqueta="Cliente"
+                value={clienteId}
+                onChange={(v) => { setClienteId(v); setClienteNombreLibre('') }}
+                opciones={opcionesCliente(clientes)}
+                placeholder="Elegir cliente…"
+                ariaLabel="Cliente"
+                classNameSelect="w-52"
+                limpiable
+                crear={crearYSumar<Cliente>((c) => setClientes((prev) => [...prev, c]))}
+                campos={CAMPOS_CLIENTE_DEL_MOTOR}
+              />
               {!clienteId && (
                 <div className="grid gap-2"><Label>o nombre libre</Label><Input value={clienteNombreLibre} onChange={(e) => setClienteNombreLibre(e.target.value)} className="w-48" placeholder="Consumidor Final" /></div>
               )}
