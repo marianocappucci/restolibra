@@ -250,6 +250,71 @@ def test_cobrar_sin_pagos_422(admin_client, salon_con_mesa):
     assert resp.status_code == 422
 
 
+# ── Fiar sin cliente (ADR-061 de libracommerce) ──────────────────────────
+#
+# 🔴 El cobro de una mesa NO pasa por `registrar_venta` del motor: `cobrar_pedido`
+# arma su propia venta, así que la regla «un pago en cuenta corriente necesita
+# cliente» no lo alcanzaba y la deuda quedaba a nombre de nadie (200 y
+# `cliente_id: null`, medido). Se rechaza con 422 antes de reclamar el pedido.
+
+def _pedido_con_items(client, mid):
+    p = _producto(client)
+    pid = _abrir_pedido(client, mid)
+    client.post(f"/api/pedidos/{pid}/items", json={
+        "producto_id": p["id"], "nombre": p["nombre"], "precio": 8000.0,
+        "qty": 1, "estacion": "cocina"})
+    return pid
+
+
+def _sin_efectos(client, pid):
+    """Nada se escribió: el pedido sigue abierto, sin venta y sin movimientos de caja."""
+    from app import database as db
+
+    pedido = client.get(f"/api/pedidos/{pid}").json()
+    assert pedido["estado"] == "abierto"
+    assert not pedido.get("venta_id")
+    assert db.get_all_ventas() == []
+    assert db.get_caja_movimientos() == []
+
+
+def test_cobrar_en_cuenta_corriente_sin_cliente_da_422_y_no_escribe_nada(admin_client, salon_con_mesa):
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 422, resp.text
+    assert "fiar sin cliente" in resp.json()["detail"]
+    _sin_efectos(admin_client, pid)
+    # Y como no se reclamó el pedido, se puede cobrar con otro medio.
+    ok = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "pagos": [{"medio": "efectivo", "monto": 8000.0}]})
+    assert ok.status_code == 200, ok.text
+
+
+def test_un_fiado_parcial_sin_cliente_tambien_da_422(admin_client, salon_con_mesa):
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={"pagos": [
+        {"medio": "efectivo", "monto": 3000.0},
+        {"medio": "cuenta_corriente", "monto": 5000.0}]})
+    assert resp.status_code == 422, resp.text
+    _sin_efectos(admin_client, pid)
+
+
+def test_cobrar_en_cuenta_corriente_con_el_cliente_del_pedido_deja_la_deuda(admin_client):
+    """El control del anterior: con cliente (el del pedido), fiar sigue andando."""
+    from app import database as db
+
+    cliente = admin_client.post("/api/clientes", json={"name": "Deudor de mesa"}).json()
+    p = _producto(admin_client)
+    pid = db.crear_pedido(canal="barra", cliente_id=cliente["id"])
+    admin_client.post(f"/api/pedidos/{pid}/items", json={
+        "producto_id": p["id"], "nombre": p["nombre"], "precio": 8000.0,
+        "qty": 1, "estacion": "cocina"})
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 200, resp.text
+    assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 8000.0
+
+
 def test_cobrar_pedido_inexistente_404(admin_client):
     resp = admin_client.post("/api/pedidos/99999/cobrar", json={
         "pagos": [{"medio": "efectivo", "monto": 100.0}]})

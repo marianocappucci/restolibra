@@ -30,6 +30,7 @@ import json
 import sqlite3
 
 from fastapi import APIRouter, Depends, HTTPException
+from libracommerce.erp.ventas import FiadoSinCliente
 from libracore import medios_pago
 from libracore import pagos as acreditacion
 from pydantic import BaseModel, field_validator, model_validator
@@ -266,6 +267,15 @@ def cobrar(pid: int, payload: CobroPayload, user: dict = Depends(get_current_use
         venta_id = db.cobrar_pedido(
             pid, pagos=pagos, descuento=max(0.0, payload.descuento),
             cliente_nombre=payload.cliente_nombre.strip(), usuario_id=user["id"],
+        )
+    except FiadoSinCliente:
+        # 🔴 Antes que el `ValueError` de abajo: `FiadoSinCliente` es un `ValueError`, y como «perdió la
+        # carrera» daría un 409 que manda al mozo a reintentar algo que nunca va a andar. Es un dato del
+        # cobro, se rechazó antes de escribir nada y el pedido sigue abierto: 422 (ADR-061 de libracommerce).
+        raise HTTPException(
+            422,
+            "No se puede fiar sin cliente: el pedido no tiene un cliente asociado. "
+            "Asociale uno o cobralo con otro medio.",
         )
     except ValueError:
         # Perdió la carrera contra otro cobro simultáneo del mismo pedido

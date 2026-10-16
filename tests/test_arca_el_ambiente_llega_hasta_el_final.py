@@ -65,7 +65,7 @@ def instancia_en_homologacion(tmp_path, monkeypatch):
 
 
 def _patchear_arca(monkeypatch, usados):
-    from app import arca_wsaa, arca_wspadron
+    from libracore import arca_wsaa, arca_wspadron
 
     async def _capturar(cert, clave, ambiente, servicio=""):
         usados.update(cert=cert, clave=clave, ambiente=ambiente)
