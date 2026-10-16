@@ -274,7 +274,7 @@ def test_el_comprobante_sale_por_el_SMTP_de_la_pantalla_y_no_por_config_json(
         config_manager.save(cfg)
 
 
-def test_el_presupuesto_resuelve_el_SMTP_por_el_mismo_camino(monkeypatch):
+def test_el_presupuesto_resuelve_el_SMTP_por_el_mismo_camino(client, monkeypatch):
     """El otro envío del producto. Son dos endpoints distintos y una sola
     configuración: si divergen, vuelve el problema que este cambio cierra."""
     from app import db_usuarios as db
