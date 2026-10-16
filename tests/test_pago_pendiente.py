@@ -86,7 +86,7 @@ def test_toda_llamada_a_add_venta_pago_declara_el_estado():
     assert not faltan, "Llamadas sin declarar el estado del pago:\n  " + "\n  ".join(faltan)
 
 
-def test_add_venta_pago_no_acepta_que_le_omitan_el_estado():
+def test_add_venta_pago_no_acepta_que_le_omitan_el_estado(admin_client):
     """🔑 Sobre `add_venta_pago` **directamente**.
 
     El test de abajo pasa por `crear_venta_directa`, que levanta en
@@ -99,7 +99,7 @@ def test_add_venta_pago_no_acepta_que_le_omitan_el_estado():
         db.add_venta_pago(vid, "efectivo", 1.0)
 
 
-def test_un_pago_sin_estado_levanta():
+def test_un_pago_sin_estado_levanta(admin_client):
     """Los dos defaults posibles mueven plata en silencio y en direcciones
     opuestas: asumir `aprobado` infla la caja, asumir `pendiente` deja ventas
     impagas. Por eso no hay default."""
@@ -183,7 +183,7 @@ def test_acreditar_una_venta_ya_cobrada_no_hace_nada(admin_client, conn_db):
     assert _caja(conn_db) == antes
 
 
-def test_una_venta_inexistente_no_revienta():
+def test_una_venta_inexistente_no_revienta(admin_client):
     assert db.acreditar_pago_qr(999999, "123") is False
 
 

@@ -143,6 +143,9 @@ def test_sin_configuracion_no_se_entra(app_con):
 def test_con_DEMO_MODE_pero_sin_usuario_no_se_entra(app_con, monkeypatch):
     """Dos cerrojos, no uno: un flag booleano se prende solo al copiar un
     `.env` de una instancia a otra."""
+    # Base de cero, como `armar`: este test no pasa por `app_con` y sin esto
+    # arranca sobre la base que dejo el test anterior del worker (o sobre una vacia).
+    _reset_data_dir()
     monkeypatch.setenv("DEMO_MODE", "1")
     monkeypatch.delenv("DEMO_USERNAME", raising=False)
     import app.web.api.auth as api_auth
