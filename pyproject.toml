@@ -140,7 +140,8 @@ dependencies = [
     # v0.57.0 -> v0.58.0 (2026-10-13): deposito por defecto siempre activo, relojes con zona y se retira `return_sale_items`. Sin migracion.
     # v0.58.0 -> v0.59.0 (2026-10-13): devolver un servicio no escribe stock (ADR-054, **migracion 0007**: `sale_service_returns`, aditiva; sin ella sólo esa devolucion da 503), enviar/cancelar ordenes de compra (ADR-055), `contar_borradores` en la reposicion (ADR-056, default = como antes), ajuste absoluto sin deposito con varios depositos da 422 y `plan-salida` apagado da 404 (ADR-057), validacion de precios por sucursal opt-in (ADR-058).
     # v0.60.0 -> v0.62.0 (2026-10-16): v0.61.0 fiar sin cliente se rechaza por default (422, `FiadoSinCliente`; `OpcionesVentas.exigir_cliente_para_fiar` pasa a True, ADR-061) y v0.62.0 serializa la creacion del esquema entre procesos (ADR-062). Sin migracion.
-    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.62.0",
+    # v0.62.0 -> v0.63.0 (2026-10-16): la venta anota su sucursal (`sales.branch_id` del deposito); `adoptar_sucursal_unica` y `completar_sucursal_de_ventas` (ADR-063). Sin migracion del motor.
+    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.63.0",
     # v0.43.0 trae la sesion por inactividad de 8h con renovacion deslizante
     # (ADR-017) y el router de usuarios unico (`libraauth.usuarios.
     # build_users_router`, ADR-018) que reemplaza a `app/web/api/usuarios.py`
