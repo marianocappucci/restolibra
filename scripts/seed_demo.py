@@ -646,7 +646,7 @@ def _sembrar_bandeja_mp(api: Api, contar) -> None:
          "clase": "pago"},
         {"mp_payment_id": "demo-204411003", "monto": 96200,
          "payer_name": "Eventos del Sur SRL", "payer_email": "pagos@eventosdelsur.com.ar",
-         "payer_id_number": "30712233449", "payment_type": "bank_transfer",
+         "payer_id_number": "30999990114", "payment_type": "bank_transfer",
          "payment_method": "cvu", "descripcion": "Seña de reserva para 12 personas",
          "clase": "transferencia"},
     ]
