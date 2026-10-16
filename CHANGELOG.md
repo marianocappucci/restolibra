@@ -1,5 +1,17 @@
 # Changelog
 
+## Sin publicar — 2026-10-16
+
+### Pines: libracore v1.173.0, libracommerce v0.62.0 y libra-ui v0.156.0 (sin migración); el cobro de una mesa no fía sin cliente, la consulta de CUIT sale del producto y la semilla no trae un CUIT de forma real
+
+- Pines: **libracore `v1.173.0`** (antes `v1.170.0`), **libracommerce `v0.62.0`** (antes `v0.60.0`) y **libra-ui `v0.156.0`** (antes `v0.153.0`); libraauth sigue en `v0.51.0`. **Sin migración.**
+  - libracore `v1.171.0`: un cobro de factura no puede superar lo que falta (**409**, ADR-058). `v1.172.0`: las notas de crédito restan de lo pendiente (ADR-059) y el cobro puede entrar por el turno (ADR-060; este producto no lo prende). `v1.173.0`: una demo no habla con ARCA ni muestra datos fiscales reales, y suma `libracore.demo.auditar_datos_fiscales` / `auditar_literales` (ADR-061).
+  - libracommerce `v0.61.0`: fiar sin cliente se rechaza por default (**422**, `FiadoSinCliente`, ADR-061). `v0.62.0`: la creación del esquema se serializa entre procesos (ADR-062).
+  - libra-ui `v0.154.0`: sin desborde a 390 px y contraste AA (ADR-067). `v0.155.0`: «Pendiente» y «Acreditada» (ADR-068). `v0.156.0`: enlace al tutorial de Padrón A13 (ADR-069).
+- **`POST /api/pedidos/{id}/cobrar` rechaza un pago en cuenta corriente sin cliente con 422**, antes de reclamar el pedido ni escribir nada. El cobro de una mesa arma su propia venta (`app/db_cobro_pedido.py`, no pasa por `registrar_venta`), así que la regla del motor no lo alcanzaba: con `v0.61.0` seguía dando 200 y una deuda con `cliente_id: null` (medido). `cobrar_pedido` levanta `FiadoSinCliente` con el criterio del motor (`MEDIOS_CUENTA_CORRIENTE`, en cualquier grafía; también el fiado parcial) y la ruta lo traduce a 422 **antes** del `except ValueError` (es un `ValueError`: sin eso daba un 409 de «ya fue cobrado»). El cliente es el del pedido (`pedidos.cliente_id`): un pedido con cliente fía como siempre. Tests: `tests/test_restaurant.py`.
+- **`GET /api/consultar-cuit/{cuit}` es el router del motor** (`libracore.consultar_cuit_router`), no un handler propio: sale de `app/web/app.py` y con él los shims `app/arca_wsaa.py` y `app/arca_wspadron.py` (nada los importaba). Mismo contrato. **Cambia sin sesión:** se monta con `get_current_user_json` y no con `require_auth`: **401** JSON en vez de un 307 a `/login` que rompía el `fetch` del kit. Test de contrato: `tests/test_consultar_cuit_contrato.py`.
+- **Semilla de la demo sin CUIT de forma real:** el pagador de la transferencia de la bandeja de MercadoPago (`scripts/seed_demo.py`) pasa de `30712233449` (verificador válido, fuera del rango reservado) a `30999990114` (cuerpo `99999011`, ficticio). `tests/test_seed_demo.py` corre `auditar_literales` sobre el texto de la semilla y `auditar_datos_fiscales` sobre la base sembrada con `DEMO_MODE=1`.
+
 ## Sin publicar — 2026-10-15
 
 ### Pines: libracore v1.170.0, libraauth v0.51.0 y libra-ui v0.153.0 (sin migración)

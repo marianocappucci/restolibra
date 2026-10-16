@@ -1,6 +1,4 @@
-import asyncio
 import os
-import re
 
 import httpx
 from fastapi import Depends, FastAPI, Request
@@ -25,7 +23,6 @@ from libracommerce.web.listas_router import (
     build_buscar_productos_router,
     build_listas_precio_router,
 )
-from libracore import arca_credenciales
 from libracore import auditoria as auditoria_del_motor
 from libracore.adicionales_router import build_adicionales_router
 from libracore.arca_router import build_arca_router
@@ -37,6 +34,7 @@ from libracore.config_router import (
     build_empresa_admin_router,
     build_empresa_router,
 )
+from libracore.consultar_cuit_router import build_consultar_cuit_router
 from libracore.cuenta_corriente_router import build_cuenta_corriente_router
 from libracore.dashboard_router import build_dashboard_router
 from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
@@ -57,7 +55,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 import plans
-from app import arca_wsaa, arca_wspadron, config_manager, db_usuarios
+from app import config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
@@ -759,78 +757,12 @@ async def mp_probar(user: str = Depends(require_auth)):
         return JSONResponse({"ok": False, "error": f"Sin conexión con MercadoPago: {e}"}, status_code=502)
 
 
-@app.get("/api/consultar-cuit/{cuit}", include_in_schema=False)
-def consultar_cuit(cuit: str, user: str = Depends(require_auth)):
-    # 🔴 `def` y no `async def`: lee la base (la config de ARCA) y resuelve el
-    # par en disco, y autenticar contra el WSAA firma con `openssl` por
-    # subproceso. Todo sincrónico, y con un solo proceso de uvicorn frenaba a
-    # la instancia entera mientras duraba. Como `def` corre en el threadpool;
-    # lo que sí es asincrónico de verdad —las dos llamadas SOAP— va abajo en un
-    # loop propio de este hilo.
-    cuit_limpio = re.sub(r"[^0-9]", "", cuit)
-    if len(cuit_limpio) != 11:
-        return JSONResponse({"error": "CUIT inválido. Debe tener 11 dígitos."}, status_code=400)
-
-    arca_cfg = db.obtener_todas_arca_configs()
-    arca     = arca_cfg[0] if arca_cfg else None
-
-    # 🔴 **Acá se leía `arca["certificado_path"]` directo, y eran DOS defectos.**
-    #
-    # Desde que una instancia guarda dos pares de credenciales, esas columnas
-    # —las que no llevan sufijo— son las de **producción**. Leerlas directo
-    # significaba autenticar con el certificado real contra el WSAA de
-    # `arca["ambiente"]`, que es la línea de abajo: si el ambiente es
-    # homologación, se firma con la credencial del cliente creyendo que se
-    # prueba.
-    #
-    # Y peor de cerca: en una instancia de homologación —las demos— la
-    # migración `0007` mueve el par a las columnas con sufijo, así que esas
-    # quedan vacías y este endpoint contestaría 503 *"Configurá los
-    # certificados"* sobre una instancia que los tiene perfectamente cargados.
-    #
-    # `paths_en_disco` resuelve las dos decisiones juntas —de qué ambiente es el
-    # par y dónde está el archivo— porque separadas la segunda deshace a la
-    # primera. Ver `libracore/arca_credenciales.py`.
-    cert_path, clave_path = arca_credenciales.paths_en_disco(arca)
-    if not arca or not cert_path or not clave_path:
-        return JSONResponse(
-            {"error": "Configurá los certificados ARCA en Configuración para habilitar la consulta de CUIT."},
-            status_code=503,
-        )
-    async def _padron():
-        ta = await arca_wsaa.autenticar(
-            cert_path, clave_path, arca["ambiente"],
-            servicio="ws_sr_padron_a13",
-        )
-        return await arca_wspadron.consultar_persona(
-            arca["cuit"], cuit_limpio, ta["token"], ta["sign"], arca["ambiente"]
-        )
-
-    try:
-        # En un loop propio de este hilo: `autenticar` es `async` pero firma el
-        # TRA con `openssl` por subproceso, que es sincrónico — con `await`
-        # desde el loop de uvicorn eso frenaba a toda la instancia. Las
-        # excepciones salen de `asyncio.run` tal cual, así que los `except` de
-        # abajo ven lo mismo que antes.
-        datos = asyncio.run(_padron())
-        return JSONResponse(datos)
-
-    except RuntimeError as e:
-        msg = str(e)
-        if "no encontrado" in msg.lower() or "inexistente" in msg.lower():
-            return JSONResponse({"error": msg}, status_code=404)
-        # Error de autorización del servicio en WSAA
-        if "coe" in msg.lower() or "no autorizado" in msg.lower() or "constraints" in msg.lower() or "sin acceso" in msg.lower():
-            return JSONResponse({
-                "error": (
-                    "El certificado no tiene acceso al servicio de Padrón (ws_sr_padron_a13). "
-                    "Ingresá a ARCA → Administración de Relaciones → delegá el servicio "
-                    "'Consulta a Padrón Alcance 13' para tu CUIT y volvé a intentarlo."
-                )
-            }, status_code=403)
-        return JSONResponse({"error": msg}, status_code=502)
-    except Exception as e:
-        return JSONResponse({"error": f"Error al consultar ARCA: {e}"}, status_code=500)
+# Consulta de CUIT en el padrón de ARCA: el router del motor (`libracore.consultar_cuit_router`,
+# extraído de este mismo handler). `GET /api/consultar-cuit/{cuit}`, con la misma sesión por cookie.
+# 🔴 Con `get_current_user_json` y no con `require_auth`: es un fetch del kit, y sin sesión
+# `require_auth` contesta 307 a /login (el fetch lo sigue y recibe el HTML del login); la dependencia
+# JSON contesta 401, como el resto de `/api`.
+app.include_router(build_consultar_cuit_router(usuario_actual=get_current_user_json))
 
 
 # Serving de la SPA (React) -- mismo patron que contalibra/web/app.py.

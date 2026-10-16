@@ -8,6 +8,7 @@ LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
 Restolibra, sin equivalente en Contalibra.
 """
+from libracommerce.erp.ventas import FiadoSinCliente, _fia
 from libracore import pagos as acreditacion
 
 from app.db_caja import create_caja_movimiento
@@ -77,6 +78,14 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
         cliente_id = pedido["cliente_id"]
     if not cliente_nombre:
         cliente_nombre = pedido.get("cliente_nombre") or ""
+
+    # 🔴 **Fiar sin cliente se rechaza ANTES de reclamar el pedido ni escribir nada (ADR-061 de
+    # libracommerce).** Este cobro no pasa por `registrar_venta` —arma su propia venta—, así que la
+    # regla del motor no lo alcanza: un pago en `cuenta_corriente` sin cliente (ni el que llega ni el
+    # del pedido) dejaba una deuda a nombre de nadie, fuera de toda cuenta y sin forma de cobrarla.
+    # `_fia` es el criterio del motor (`MEDIOS_CUENTA_CORRIENTE`, en cualquier grafía), no uno propio.
+    if not cliente_id and _fia(pagos):
+        raise FiadoSinCliente()
 
     fecha = _ar_now().split(" ")[0]
     obs = observaciones or f"Pedido {pedido['numero']}"
