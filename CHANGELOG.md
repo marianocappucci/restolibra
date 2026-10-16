@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar — 2026-10-15
+
+### Pines: libracore v1.170.0, libraauth v0.51.0 y libra-ui v0.153.0 (sin migración)
+
+- Pines: **libracore `v1.170.0`** (antes `v1.168.0`), **libraauth `v0.51.0`** (antes `v0.50.0`) y **libra-ui `v0.153.0`** (antes `v0.152.1`). **Sin migración.** libracore `v1.169.0` suma `soltar_fk` (ADR-056; sin efecto en este producto, la usa LibraDesk). libracore `v1.170.0`: `delete_client` bloquea la baja de un cliente con cuenta corriente (`cc_pagos`, `cc_debitos`, `recibos` y `cc_asientos` con rol cliente; ADR-057) con un `ValueError` que dice que se puede desactivar. libraauth `v0.51.0`: el responsable puede aceptar por adelantado la próxima versión de los Términos (ADR-024). libra-ui `v0.153.0`: tras el gate de Términos, un aviso no bloqueante «Aceptar / Más tarde» (tarjeta abajo a la derecha, ADR-066). Efecto en este producto: la baja de un cliente sólo existe en la consola (`app/main.py`, opción «Eliminar»), que ya atiende el `ValueError`; la API no borra clientes.
+
 ## Sin publicar — 2026-10-13
 
 ### `registrar --sucursal` se elige de la lista de sucursales de la instancia (sin migración, sin cambio de pines)
