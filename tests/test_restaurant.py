@@ -315,6 +315,105 @@ def test_cobrar_en_cuenta_corriente_con_el_cliente_del_pedido_deja_la_deuda(admi
     assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 8000.0
 
 
+# ── Elegir el cliente al cobrar (decisión del humano, 2026-10-16) ─────────
+#
+# El diálogo de cobro manda `cliente_id` cuando algún medio es cuenta corriente: el pedido
+# nace sin cliente (el mozo no lo pide) y fiar necesita a quién. El cliente del cobro gana
+# sobre el del pedido y el nombre de la venta sale del registro, no de lo que mande el front.
+
+def _cliente(client, nombre="Cliente de prueba"):
+    resp = client.post("/api/clientes", json={"name": nombre})
+    assert resp.status_code == 200, resp.text
+    return resp.json()
+
+
+def test_cobrar_en_cuenta_corriente_con_cliente_en_el_cobro_deja_la_deuda(admin_client, salon_con_mesa):
+    cliente = _cliente(admin_client, "Deudor de la mesa 1")
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "cliente_id": cliente["id"],
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 200, resp.text
+    venta = admin_client.get(f"/api/ventas/{resp.json()['venta_id']}").json()
+    assert venta["cliente_id"] == cliente["id"]
+    assert venta["cliente_nombre"] == "Deudor de la mesa 1"
+    assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 8000.0
+
+
+def test_un_fiado_parcial_con_cliente_deja_en_la_cuenta_sólo_lo_fiado(admin_client, salon_con_mesa):
+    cliente = _cliente(admin_client)
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "cliente_id": cliente["id"],
+        "pagos": [{"medio": "efectivo", "monto": 3000.0},
+                  {"medio": "cuenta_corriente", "monto": 5000.0}]})
+    assert resp.status_code == 200, resp.text
+    assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 5000.0
+
+
+def test_el_cliente_del_cobro_gana_sobre_el_del_pedido_y_el_nombre_sale_del_registro(admin_client):
+    from app import database as db
+
+    del_pedido = _cliente(admin_client, "Cliente del pedido")
+    elegido = _cliente(admin_client, "Cliente elegido al cobrar")
+    p = _producto(admin_client)
+    pid = db.crear_pedido(canal="barra", cliente_id=del_pedido["id"], cliente_nombre="Cliente del pedido")
+    admin_client.post(f"/api/pedidos/{pid}/items", json={
+        "producto_id": p["id"], "nombre": p["nombre"], "precio": 8000.0,
+        "qty": 1, "estacion": "cocina"})
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "cliente_id": elegido["id"], "cliente_nombre": "Otro nombre cualquiera",
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 200, resp.text
+    venta = admin_client.get(f"/api/ventas/{resp.json()['venta_id']}").json()
+    assert venta["cliente_id"] == elegido["id"]
+    assert venta["cliente_nombre"] == "Cliente elegido al cobrar"
+    assert admin_client.get(f"/api/cuenta-corriente/{elegido['id']}").json()["saldo"] == 8000.0
+    assert admin_client.get(f"/api/cuenta-corriente/{del_pedido['id']}").json()["saldo"] == 0
+
+
+def test_cobrar_con_un_cliente_inexistente_da_422_claro_y_no_escribe_nada(admin_client, salon_con_mesa):
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "cliente_id": 99999,
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 422, resp.text
+    assert "El cliente elegido no existe" in resp.json()["detail"]
+    _sin_efectos(admin_client, pid)
+
+
+def test_cobrar_con_un_cliente_dado_de_baja_da_422_claro_y_no_escribe_nada(admin_client, salon_con_mesa):
+    cliente = _cliente(admin_client, "Cliente dado de baja")
+    assert admin_client.post(f"/api/clientes/{cliente['id']}/desactivar").status_code == 200
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "cliente_id": cliente["id"],
+        "pagos": [{"medio": "cuenta_corriente", "monto": 8000.0}]})
+    assert resp.status_code == 422, resp.text
+    assert "Cliente dado de baja" in resp.json()["detail"]
+    assert "dado de baja" in resp.json()["detail"]
+    _sin_efectos(admin_client, pid)
+
+
+def test_sin_cuenta_corriente_el_cliente_es_opcional_y_no_cambia_nada(admin_client, salon_con_mesa):
+    """El control: cobrar en efectivo sin cliente anda como siempre (consumidor final), y con
+    cliente lo anota en la venta sin mover su cuenta."""
+    pid = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "pagos": [{"medio": "efectivo", "monto": 8000.0}]})
+    assert resp.status_code == 200, resp.text
+    assert admin_client.get(f"/api/ventas/{resp.json()['venta_id']}").json()["cliente_id"] is None
+
+    cliente = _cliente(admin_client)
+    pid2 = _pedido_con_items(admin_client, salon_con_mesa["mesa_id"])
+    resp2 = admin_client.post(f"/api/pedidos/{pid2}/cobrar", json={
+        "cliente_id": cliente["id"],
+        "pagos": [{"medio": "efectivo", "monto": 8000.0}]})
+    assert resp2.status_code == 200, resp2.text
+    assert admin_client.get(f"/api/ventas/{resp2.json()['venta_id']}").json()["cliente_id"] == cliente["id"]
+    assert admin_client.get(f"/api/cuenta-corriente/{cliente['id']}").json()["saldo"] == 0
+
+
 def test_cobrar_pedido_inexistente_404(admin_client):
     resp = admin_client.post("/api/pedidos/99999/cobrar", json={
         "pagos": [{"medio": "efectivo", "monto": 100.0}]})
