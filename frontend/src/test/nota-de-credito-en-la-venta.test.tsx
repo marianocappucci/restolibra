@@ -33,6 +33,8 @@ function montar(venta: unknown = CON_CAE) {
     const u = String(url)
     pedidos.push(`${init?.method ?? 'GET'} ${u}`)
     if (/\/api\/ventas\/42$/.test(u)) return Promise.resolve(json(venta))
+    // La consulta del destino de la plata (libracore v1.176.0, ADR-065): esta venta no tiene nada cobrado de más.
+    if (u.includes('/nota-credito/destino')) return Promise.resolve(json({ aplica: false }))
     if (u.includes('/nota-credito')) return Promise.resolve(json({ id: 90, tipo: 13 }))
     return Promise.resolve(json([]))
   }))
@@ -69,11 +71,13 @@ describe('Nota de crédito en el detalle de la venta', () => {
     expect(dialogo.getByText(/saldo acreditable/).textContent).toMatch(/7\.500,00/)
     await user.click(dialogo.getByLabelText('Por un importe'))
     fireEvent.change(dialogo.getByLabelText(/Importe a acreditar/), { target: { value: '2500' } })
+    // Con un importe nuevo el botón espera la respuesta del motor sobre el destino de la plata (kit ADR-073).
+    await waitFor(() => expect(dialogo.getByRole('button', { name: 'Emitir nota' })).toBeEnabled())
     await user.click(dialogo.getByRole('button', { name: 'Emitir nota' }))
 
     await waitFor(() => expect(pedidos).toContain('POST /api/facturas/55/nota-credito'))
     const llamada = (fetch as unknown as { mock: { calls: [string, RequestInit][] } }).mock.calls
-      .find((c) => String(c[0]).includes('/nota-credito'))!
+      .find((c) => String(c[0]).includes('/nota-credito') && c[1]?.method === 'POST')!
     expect(JSON.parse(String(llamada[1].body))).toEqual({ importe: 2500 })
   })
 
