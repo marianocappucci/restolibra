@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
-  api, ApiError,
-  type MenuData, type Pedido, type PedidoItem, type PedidoModificador, type RecetaIngrediente,
+  api, ApiError, opcionesCliente,
+  type Cliente, type MenuData, type Pedido, type PedidoItem, type PedidoModificador, type RecetaIngrediente,
 } from '../api'
 import { useMediosPago } from '../lib/medios-pago'
 import { LineasDePago } from 'libra-ui/comercio/LineasDePago'
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { BadgeEstado } from 'libra-ui/badge-estado'
+import { SelectCliente, type ClienteNuevo } from 'libra-ui/SelectCliente'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -22,6 +23,9 @@ import { ArrowLeft, Ban, Bike, Check, CheckCircle2, DollarSign, Flame, LayoutGri
 import { TituloPantalla } from 'libra-ui/titulo-pantalla'
 import { formatoMoneda } from 'libra-ui/formatos'
 
+
+// El medio que fía. Sale del vocabulario del motor (`medios_pago`); los ids que trae `useMediosPago` son los canónicos.
+const MEDIO_CUENTA_CORRIENTE = 'cuenta_corriente'
 
 // Pantalla canónica de "pedido abierto" -- compartida por mesas
 // (canal='salon', montada en /salon/pedido/:id) y por canales sin mesa
@@ -63,6 +67,12 @@ export function PedidoDetalle() {
   const [descuento, setDescuento] = useState('0')
   const [descPct, setDescPct] = useState('')
   const [clienteCobro, setClienteCobro] = useState('')
+  // 🔑 El cliente al que se fía (decisión del humano, 2026-10-16). Sólo existe en el cobro y sólo
+  // cuando algún medio es cuenta corriente: el pedido nace sin cliente y el mozo no lo pide.
+  // `null` = la lista todavía no llegó (o no pudo traerse); se pide recién cuando se fía.
+  const [clientes, setClientes] = useState<Cliente[] | null>(null)
+  const [clientesError, setClientesError] = useState<string | null>(null)
+  const [clienteId, setClienteId] = useState('')
   const [cobrando, setCobrando] = useState(false)
   const [cobroError, setCobroError] = useState<string | null>(null)
 
@@ -195,8 +205,37 @@ export function PedidoDetalle() {
     setDescuento('0')
     setDescPct('')
     setClienteCobro(pedido?.cliente_nombre ?? '')
+    // Si el pedido ya trae cliente, queda elegido de entrada (si sigue activo; si no, hay que elegir otro).
+    setClienteId(pedido?.cliente_id ? String(pedido.cliente_id) : '')
+    setClientes(null)
+    setClientesError(null)
     setCobroError(null)
     setShowCobro(true)
+  }
+
+  // Fía quien tiene una línea en cuenta corriente con importe: es el mismo criterio de `pagosPayload`
+  // (las líneas en 0 no viajan) y del backend, que rechaza fiar sin cliente (422, ADR-061).
+  const fia = useMemo(() => pagosPayload(lineas).some((p) => p.medio === MEDIO_CUENTA_CORRIENTE), [lineas])
+  const clienteElegido = clientes?.find((c) => String(c.id) === clienteId) ?? null
+  const fiaSinCliente = fia && !clienteElegido
+
+  // La lista de clientes se pide la primera vez que se fía en este cobro, no al abrirlo: el caso
+  // normal (efectivo, tarjeta) no la necesita.
+  useEffect(() => {
+    if (!showCobro || !fia || clientes !== null) return
+    api.get<Cliente[]>('/api/clientes')
+      .then((todos) => setClientes(todos.filter((c) => c.activo)))
+      .catch((err) => setClientesError(describeError(err)))
+  }, [showCobro, fia, clientes]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // El alta del campo `SelectCliente` (ADR-071): el cliente nuevo entra a la lista y el campo lo elige solo.
+  // Un error (nombre repetido, módulo apagado) lo muestra el panel con su `detail`, sin perder lo cargado.
+  async function crearCliente(datos: ClienteNuevo) {
+    const nuevo = await api.post<Cliente>('/api/clientes', {
+      name: datos.nombre, phone: datos.telefono, email: datos.email,
+    })
+    setClientes((prev) => [...(prev ?? []), nuevo])
+    return opcionesCliente([nuevo])[0]
   }
 
   const total = pedido?.total ?? 0
@@ -231,11 +270,20 @@ export function PedidoDetalle() {
       )
       return
     }
+    if (fiaSinCliente) {
+      setCobroError('Para fiar hace falta saber a quién: elegí el cliente.')
+      return
+    }
     setCobrando(true)
     setCobroError(null)
     try {
       const res = await api.post<{ venta_id: number }>(`/api/pedidos/${pid}/cobrar`, {
-        pagos, descuento: Number(descuento) || 0, cliente_nombre: clienteCobro.trim(),
+        pagos, descuento: Number(descuento) || 0,
+        // Fiando, el cliente es el elegido (el backend toma el nombre de su registro); si no, el
+        // nombre libre de siempre, sin id.
+        ...(fia && clienteElegido
+          ? { cliente_id: clienteElegido.id, cliente_nombre: clienteElegido.name }
+          : { cliente_nombre: clienteCobro.trim() }),
       })
       setShowCobro(false)
       navigate(`/ventas/${res.venta_id}`)
@@ -446,7 +494,7 @@ export function PedidoDetalle() {
           dos columnas colapsan a una sola en pantalla angosta, que es como se
           ve en la tablet del salón. */}
       <Dialog open={showCobro} onOpenChange={setShowCobro}>
-        <DialogContent className="sm:max-w-3xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-3xl">
           <DialogHeader><DialogTitle className="flex items-center gap-2"><DollarSign className="size-4" />Cobrar pedido {pedido.numero}</DialogTitle></DialogHeader>
 
           {cobroError && <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-sm text-destructive">{cobroError}</p>}
@@ -476,10 +524,13 @@ export function PedidoDetalle() {
                     <Input aria-label="Descuento en importe" type="number" step="0.01" min="0" value={descuento} onChange={(e) => { setDescuento(e.target.value); setDescPct('') }} className="min-w-0 flex-1" />
                   </div>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="cobro-cliente" className="text-xs">Cliente (opcional)</Label>
-                  <Input id="cobro-cliente" value={clienteCobro} onChange={(e) => setClienteCobro(e.target.value)} placeholder="Consumidor final" />
-                </div>
+                {/* Fiando, el cliente se elige abajo (es obligatorio y tiene que existir): el nombre libre no alcanza. */}
+                {!fia && (
+                  <div className="grid gap-2">
+                    <Label htmlFor="cobro-cliente" className="text-xs">Cliente (opcional)</Label>
+                    <Input id="cobro-cliente" value={clienteCobro} onChange={(e) => setClienteCobro(e.target.value)} placeholder="Consumidor final" />
+                  </div>
+                )}
               </div>
 
               <LineasDePago
@@ -490,12 +541,35 @@ export function PedidoDetalle() {
                 formatCurrency={formatoMoneda}
                 deshabilitado={cobrando}
               />
+
+              {fia && (
+                <div className="grid gap-2 rounded-md border border-amber-500/50 bg-amber-50 p-3 text-sm dark:bg-amber-950/30">
+                  <SelectCliente
+                    etiqueta="Cliente al que se le fía"
+                    value={clienteId}
+                    onChange={setClienteId}
+                    opciones={opcionesCliente(clientes ?? [])}
+                    crear={crearCliente}
+                    placeholder={clientes === null && !clientesError ? 'Cargando clientes…' : 'Buscar cliente…'}
+                    emptyMessage="No hay clientes con ese nombre."
+                    ariaLabel="Cliente al que se le fía"
+                    disabled={cobrando || clientes === null}
+                  />
+                  {clientesError ? (
+                    <p className="text-destructive" role="alert">No se pudo cargar la lista de clientes: {clientesError}</p>
+                  ) : clienteElegido ? (
+                    <p>Queda como deuda de <strong>{clienteElegido.name}</strong>. No entra a la caja: el movimiento aparece cuando venga a pagar.</p>
+                  ) : (
+                    <p className="text-destructive">Para fiar hace falta saber a quién: elegí el cliente.</p>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCobro(false)}>Cancelar</Button>
-            <Button disabled={cobrando} onClick={confirmarCobro}><CheckCircle2 />{cobrando ? 'Confirmando…' : 'Confirmar cobro y generar venta'}</Button>
+            <Button disabled={cobrando || fiaSinCliente} onClick={confirmarCobro}><CheckCircle2 />{cobrando ? 'Confirmando…' : 'Confirmar cobro y generar venta'}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

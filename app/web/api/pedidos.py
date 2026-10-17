@@ -239,6 +239,11 @@ class PagoPayload(BaseModel):
 class CobroPayload(BaseModel):
     pagos: list[PagoPayload]
     descuento: float = 0
+    #: 🔑 **El cliente que se elige al cobrar** (decisión del humano, 2026-10-16). El pedido nace
+    #: sin cliente —el mozo no lo pide— y fiar necesita a quién: el diálogo de cobro lo manda
+    #: cuando algún medio es cuenta corriente. Gana sobre el del pedido (`cobrar_pedido`). Sin
+    #: cuenta corriente es opcional: anota la venta a ese cliente y no mueve su cuenta.
+    cliente_id: int | None = None
     cliente_nombre: str = ""
 
 
@@ -263,10 +268,26 @@ def cobrar(pid: int, payload: CobroPayload, user: dict = Depends(get_current_use
     if not pagos:
         raise HTTPException(422, "Registrá al menos un medio de pago.")
 
+    # 🔴 Un cliente que no existe o está dado de baja se rechaza ACÁ, con su motivo, y antes de
+    # reclamar el pedido: no es un conflicto que se cure reintentando sino un dato del cobro, como
+    # `FiadoSinCliente`, y el mozo tiene que leer qué elegir distinto.
+    # El nombre de la venta sale del registro y no de lo que mande el front, igual que en el POS
+    # del motor (`ventas_router`).
+    cliente_nombre = payload.cliente_nombre.strip()
+    if payload.cliente_id is not None:
+        cliente = db.get_client(payload.cliente_id)
+        if not cliente:
+            raise HTTPException(422, "El cliente elegido no existe. Elegí otro.")
+        if not cliente.get("activo"):
+            raise HTTPException(
+                422, f"El cliente {cliente['name']} está dado de baja. Elegí otro o reactivalo desde Clientes.")
+        cliente_nombre = cliente["name"]
+
     try:
         venta_id = db.cobrar_pedido(
             pid, pagos=pagos, descuento=max(0.0, payload.descuento),
-            cliente_nombre=payload.cliente_nombre.strip(), usuario_id=user["id"],
+            cliente_id=payload.cliente_id, cliente_nombre=cliente_nombre,
+            usuario_id=user["id"],
         )
     except FiadoSinCliente:
         # 🔴 Antes que el `ValueError` de abajo: `FiadoSinCliente` es un `ValueError`, y como «perdió la
@@ -274,8 +295,7 @@ def cobrar(pid: int, payload: CobroPayload, user: dict = Depends(get_current_use
         # cobro, se rechazó antes de escribir nada y el pedido sigue abierto: 422 (ADR-061 de libracommerce).
         raise HTTPException(
             422,
-            "No se puede fiar sin cliente: el pedido no tiene un cliente asociado. "
-            "Asociale uno o cobralo con otro medio.",
+            "No se puede fiar sin cliente: elegí el cliente al cobrar o cobralo con otro medio.",
         )
     except ValueError:
         # Perdió la carrera contra otro cobro simultáneo del mismo pedido
