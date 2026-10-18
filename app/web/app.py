@@ -295,8 +295,8 @@ def health():
 @app.get("/sw.js", include_in_schema=False)
 def salon_service_worker():
     """Service worker del modo mozo. Servido desde la raíz (no /static) para
-    poder registrarse con scope=/salon sin necesitar el header
-    Service-Worker-Allowed."""
+    que su scope sea `/` —el mismo del manifest— y cubra `/salon`, `/kds` y
+    `/pedidos` sin necesitar el header Service-Worker-Allowed."""
     return FileResponse(
         os.path.join(os.path.dirname(__file__), "sw.js"),
         media_type="application/javascript",

@@ -103,7 +103,7 @@ def test_un_pago_sin_estado_levanta(admin_client):
     """Los dos defaults posibles mueven plata en silencio y en direcciones
     opuestas: asumir `aprobado` infla la caja, asumir `pendiente` deja ventas
     impagas. Por eso no hay default."""
-    with pytest.raises(Exception):
+    with pytest.raises(acreditacion.PagoSinEstado):
         db.crear_venta_directa(
             fecha="2026-08-31", items=[{"nombre": "x", "qty": 1, "precio": 1.0, "subtotal": 1.0}],
             subtotal=1.0, descuento=0.0, total=1.0, cliente_id=None, cliente_nombre="",

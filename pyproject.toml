@@ -271,7 +271,7 @@ allow-direct-references = true
 # Queda como backlog aparte, para revisar a mano archivo por archivo.
 [tool.ruff]
 line-length = 120
-extend-exclude = ["frontend", "website", "node_modules"]
+extend-exclude = ["frontend", "node_modules"]
 
 [tool.ruff.lint]
 # Un solo regimen de lint para los 17 repos de la familia (etapa E2 de la
