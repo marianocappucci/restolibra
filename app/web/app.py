@@ -137,6 +137,9 @@ auditoria_del_motor.configurar_auditoria(registrador_dbapi({"clients": "cliente"
 agregar_middleware_de_usuario(app)
 
 
+# `/sw.js` no tiene ruta propia: lo sirve el catch-all de la SPA (`app/spa.py`) desde el `dist`, con `Cache-Control:
+# no-cache`. Queda en el bypass para que el corte de servicio no se lo lleve por delante: un service worker que
+# redirige a /suspendido es un registro roto. Hay UN solo archivo, `frontend/public/sw.js`.
 _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
 
 # El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery),
@@ -293,17 +296,6 @@ def health():
     no había ningún endpoint determinístico para chequear que la instancia
     de un cliente esté viva."""
     return {"status": "ok"}
-
-
-@app.get("/sw.js", include_in_schema=False)
-def salon_service_worker():
-    """Service worker del modo mozo. Servido desde la raíz (no /static) para
-    que su scope sea `/` —el mismo del manifest— y cubra `/salon`, `/kds` y
-    `/pedidos` sin necesitar el header Service-Worker-Allowed."""
-    return FileResponse(
-        os.path.join(os.path.dirname(__file__), "sw.js"),
-        media_type="application/javascript",
-    )
 
 
 @app.get("/suspendido")
