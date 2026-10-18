@@ -137,6 +137,9 @@ auditoria_del_motor.configurar_auditoria(registrador_dbapi({"clients": "cliente"
 agregar_middleware_de_usuario(app)
 
 
+# `/sw.js` no tiene ruta propia: lo sirve el catch-all de la SPA (`app/spa.py`) desde el `dist`, con `Cache-Control:
+# no-cache`. Queda en el bypass para que el corte de servicio no se lo lleve por delante: un service worker que
+# redirige a /suspendido es un registro roto. Hay UN solo archivo, `frontend/public/sw.js`.
 _BYPASS_PATHS = {"/suspendido", "/login", "/favicon.ico", "/api/auth/verify", "/sw.js", "/health"}
 
 # El rol "mozo" solo opera mesas (salón), pedidos sin mesa (barra/takeaway/delivery),
@@ -283,24 +286,16 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.get("/health", include_in_schema=False)
+# 🔑 **`GET` y `HEAD`.** Un monitor de uptime (uptime-kuma) sondea con `HEAD`, y
+# `@app.get` a secas lo contestaba con 405: la instancia figuraba caída estando
+# sana. FastAPI no deriva el `HEAD` del `GET`.
+@app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health():
     """Sin auth, sin lógica de negocio — para Docker HEALTHCHECK y monitoreo
     externo (uptime-kuma). Ver wiki/analyses/restolibra-auditoria-produccion:
     no había ningún endpoint determinístico para chequear que la instancia
     de un cliente esté viva."""
     return {"status": "ok"}
-
-
-@app.get("/sw.js", include_in_schema=False)
-def salon_service_worker():
-    """Service worker del modo mozo. Servido desde la raíz (no /static) para
-    poder registrarse con scope=/salon sin necesitar el header
-    Service-Worker-Allowed."""
-    return FileResponse(
-        os.path.join(os.path.dirname(__file__), "sw.js"),
-        media_type="application/javascript",
-    )
 
 
 @app.get("/suspendido")
@@ -681,7 +676,8 @@ def startup():
         db_usuarios.migrar_secretos()
 
 
-@app.get("/", include_in_schema=False)
+# `GET` y `HEAD`: la raíz que redirige tiene que dar lo mismo para los dos (ver `/health`).
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root():
     """La raíz manda al **mapa de mesas**, que es la pantalla de arranque de
     este producto desde el 2026-08-31.

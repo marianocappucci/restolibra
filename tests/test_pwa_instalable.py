@@ -16,16 +16,16 @@ se arma un `dist` de mentira y se registran las mismas rutas, para ejercitar el
 mecanismo del que depende todo esto.
 """
 import json
+import re
+import shutil
 import struct
 from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
 
-from app.spa import TIPOS_PROPIOS, archivo_publico
+from app.spa import archivo_publico, montar_spa
 
 RAIZ = Path(__file__).resolve().parent.parent
 PUBLICO = RAIZ / "frontend" / "public"
@@ -49,24 +49,19 @@ def dist_de_mentira(tmp_path):
     (dist / "index.html").write_text("<!doctype html><title>Restolibra</title>", encoding="utf-8")
     (dist / "assets" / "index-abc123.js").write_text("console.log(1)", encoding="utf-8")
     (dist / "manifest.webmanifest").write_text('{"name":"Restolibra"}', encoding="utf-8")
-    (dist / "sw.js").write_text("self.addEventListener('fetch', () => {})", encoding="utf-8")
+    # El service worker **de verdad**, no uno de mentira: lo que se mide abajo es lo que
+    # sale por `/sw.js`, y eso es el archivo del repositorio copiado al `dist` por el build.
+    shutil.copyfile(PUBLICO / "sw.js", dist / "sw.js")
     (dist / "icons" / "icon-192.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"\x00" * 8)
     return dist
 
 
 @pytest.fixture
 def cliente_con_spa(dist_de_mentira):
-    """Las mismas rutas que registra `app/web/app.py` cuando el `dist` existe."""
+    """Las mismas rutas que registra `app/web/app.py` cuando el `dist` existe:
+    `montar_spa`, la función que llama producción."""
     app = FastAPI()
-    app.mount("/assets", StaticFiles(directory=dist_de_mentira / "assets"), name="frontend-assets")
-
-    @app.get("/{full_path:path}", include_in_schema=False)
-    async def spa_fallback(full_path: str):
-        archivo = archivo_publico(dist_de_mentira, full_path)
-        if archivo is not None:
-            return FileResponse(archivo, media_type=TIPOS_PROPIOS.get(archivo.suffix))
-        return FileResponse(dist_de_mentira / "index.html")
-
+    montar_spa(app, dist_de_mentira)
     return TestClient(app)
 
 
@@ -96,6 +91,19 @@ def test_el_service_worker_sale_como_javascript(cliente_con_spa):
     assert r.status_code == 200
     assert "javascript" in r.headers["content-type"], r.headers["content-type"]
     assert "fetch" in r.text
+
+
+def test_el_service_worker_se_revalida_siempre(cliente_con_spa):
+    """Un service worker con caché HTTP larga es uno que no se actualiza.
+
+    Se sirve con `no-cache` (guarda y revalida): el navegador compara los bytes
+    en cada chequeo y, si cambiaron, instala el nuevo. Es lo que permite
+    reemplazar un `sw.js` viejo por uno nuevo sin que nadie limpie nada.
+    """
+    r = cliente_con_spa.get("/sw.js")
+
+    assert "no-cache" in r.headers.get("cache-control", ""), dict(r.headers)
+    assert "max-age" not in r.headers.get("cache-control", "")
 
 
 def test_los_iconos_salen_como_png(cliente_con_spa):
@@ -184,15 +192,20 @@ def test_el_index_engancha_el_manifest_y_el_color():
     )
 
 
-def test_el_service_worker_no_cachea():
+def test_el_service_worker_no_cachea(cliente_con_spa):
     """🔴 Es una decisión, no un olvido, y hay que poder verla.
 
     Un caché acá dejaría a un usuario con el bundle de anteayer contra una API
     nueva, sin manera de enterarse — el frontend se reemplaza entero en cada
     deploy. El service worker existe **sólo** para que el navegador ofrezca
     instalar la aplicación.
+
+    Se mide **lo que sale por `/sw.js`** y se compara con el archivo del
+    repositorio: hubo dos `sw.js` (uno en `app/web/`, que era el que servía la
+    ruta explícita, y éste), y el test miraba el que producción no servía.
     """
-    sw = (PUBLICO / "sw.js").read_text(encoding="utf-8")
+    sw = cliente_con_spa.get("/sw.js").text
+    assert sw == (PUBLICO / "sw.js").read_text(encoding="utf-8"), "lo servido no es frontend/public/sw.js"
     # Sin los comentarios: la explicación de por qué no se cachea nombra
     # justamente lo que está prohibido, y buscar sobre el archivo entero deja el
     # guard en rojo por su propia documentación.
@@ -201,6 +214,22 @@ def test_el_service_worker_no_cachea():
     assert "addEventListener('fetch'" in codigo, "sin manejador de fetch no es instalable"
     for prohibido in ("caches.open", "cache.put", "cache.addAll", "respondWith"):
         assert prohibido not in codigo, f"el service worker no tiene que cachear: apareció {prohibido}"
+
+
+def test_hay_un_solo_service_worker():
+    """🔴 Un `sw.js` suelto en `app/web/` y una ruta `/sw.js` que lo sirva le
+    ganan al catch-all de la SPA: producción serviría ése y no el del `dist`.
+
+    Era el caso: la ruta explícita servía `app/web/sw.js` (con
+    `respondWith(fetch(...))`, o sea un proxy de todos los pedidos) y el test
+    medía `frontend/public/sw.js`, que no se servía nunca.
+    """
+    assert not (RAIZ / "app" / "web" / "sw.js").exists(), "volvió el segundo sw.js"
+    fuente = (RAIZ / "app" / "web" / "app.py").read_text(encoding="utf-8")
+    assert not re.search(r"@app\.\w+\(\s*[\"']/sw\.js", fuente), (
+        "app.py vuelve a tener una ruta propia para /sw.js: le gana al catch-all del dist"
+    )
+    assert [p.relative_to(RAIZ) for p in RAIZ.glob("app/**/sw.js")] == []
 
 
 def test_el_icono_de_ios_no_tiene_transparencia():

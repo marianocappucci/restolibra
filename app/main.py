@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import date
 
+from libracore import fechas
 from rich import box
 from rich.console import Console
 from rich.panel import Panel
@@ -43,7 +44,7 @@ def input_float(prompt, default=None):
 
 
 def input_date(prompt):
-    today = date.today().isoformat()
+    today = fechas.hoy().isoformat()
     while True:
         raw = input(f"{prompt} [Enter = {today}]: ").strip()
         if raw == "":
