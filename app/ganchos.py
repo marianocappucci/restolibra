@@ -4,7 +4,8 @@ Acá vive **lo que hace a Restolibra distinto de Contalibra en el núcleo
 comercial**, expresado como los puntos de extensión que el motor declara en
 `libracommerce.erp.hooks` — sin `if producto` en el motor. M1 enganchó
 `resolver_receta`; M3 engancha el cierre del pedido del salón cuando la venta
-que lo cobró llega a `cobrada` (`al_confirmar_venta`).
+que lo cobró llega a `cobrada` (`al_confirmar_venta`), y desde el 2026-10-18 el
+mismo gancho encola en el outbox de un nodo offline la venta de mostrador.
 """
 
 from __future__ import annotations
@@ -78,4 +79,18 @@ def cerrar_pedido_cobrado(conn, venta: Mapping[str, Any]) -> None:
     )
 
 
-GANCHOS = Hooks(resolver_receta=resolver_receta, al_confirmar_venta=cerrar_pedido_cobrado)
+def al_confirmar_venta(conn, venta: Mapping[str, Any]) -> None:
+    """Lo que hace este producto cuando una venta llega a `cobrada`, en su transacción.
+
+    1. Cierra el pedido del salón que la venta cobró, si lo hay (`cerrar_pedido_cobrado`).
+    2. En un nodo offline, encola la venta de mostrador para el central
+       (`libraedge_integration.encolar_venta_de_mostrador`); una venta de pedido no,
+       porque ya la encoló el cobro de la mesa. Fuera de un nodo no hace nada.
+    """
+    from app.libraedge_integration import encolar_venta_de_mostrador
+
+    cerrar_pedido_cobrado(conn, venta)
+    encolar_venta_de_mostrador(conn, venta)
+
+
+GANCHOS = Hooks(resolver_receta=resolver_receta, al_confirmar_venta=al_confirmar_venta)
