@@ -1,5 +1,16 @@
 # Changelog
 
+## Sin publicar — 2026-10-18
+
+### La venta de mostrador hecha en un nodo offline llega al central (sin migración, sin cambio de pines)
+
+- **El defecto (abierto desde el 2026-09-11, medido otra vez en `develop`):** `encolar_pedido_cobrado` tenía un solo llamador, el cobro de una mesa (`app/db_cobro_pedido.py`). Una venta de `/ventas` (`POST /api/ventas`, `registrar_venta` del motor) en un nodo offline se quedaba en el nodo: no entraba al outbox y el central nunca la veía.
+- **La costura es el gancho que el motor ya tenía**: `al_confirmar_venta` de libracommerce corre con la misma conexión y dentro de la transacción de la venta cuando llega a `cobrada` (al nacer cobrada, o al acreditarse el QR). `app/ganchos.py` engancha ahora `al_confirmar_venta`, que cierra el pedido como antes y llama a `libraedge_integration.encolar_venta_de_mostrador`. Ni libracommerce ni libraedge cambian.
+- **Mismo mecanismo que la mesa:** misma operación `pedido.cobrado`, misma versión del contrato (1), con `"pedido": null`; mismo `aggregate_id` (`<nodo>:venta:<id>`) y la idempotencia de siempre del receptor de LibraEdge (`sync_inbox` por `operation_id`: un reintento es `duplicate` y no escribe otra venta). El aplicador central (`aplicar_pedido_cobrado`) ya leía el pedido como opcional; sin pedido, el movimiento de caja lleva el concepto del motor (`Venta V-00001 — Efectivo`), que es lo que encuentra `vincular_cobros_de_venta` al facturar.
+- **Una venta de pedido no se encola dos veces:** si una mesa se cobró por QR, la acreditación pasa por el mismo gancho; la venta se reconoce por `pedidos.venta_id` y no se encola de nuevo (ya la encoló el cobro de la mesa).
+- **Una venta de mostrador pendiente o parcial no viaja** hasta que llega a `cobrada`: el central la materializa como cobrada.
+- Tests: `tests/test_piloto_offline.py` (encola en un nodo y no fuera; por QR, sólo al acreditar; el QR de una mesa no duplica; si el encolado falla la venta no queda; el central la importa una sola vez por `SyncReceiver`).
+
 ## Sin publicar — 2026-10-16
 
 ### Pin libra-ui v0.158.1: el cliente de la factura se puede dar de alta ahí mismo (ADR-071 del kit, sin migración)
