@@ -27,9 +27,8 @@ vive en `web/api/pedidos.py` (pantalla compartida `PedidoDetalle.tsx`), no
 acá: `POST /api/salon/mesa/{id}/abrir` sólo crea el pedido y devuelve su id
 para que el frontend navegue a esa pantalla común.
 """
-from datetime import date
-
 from fastapi import APIRouter, Depends, HTTPException
+from libracore import fechas
 from pydantic import BaseModel
 
 from app import config_manager
@@ -46,7 +45,7 @@ def mapa(salon_id: int = 0):
     salones = db.get_salones(solo_activos=True)
     sel = salon_id or (salones[0]["id"] if salones else 0)
     mesas = db.get_mesas(salon_id=sel) if sel else []
-    reservas_por_mesa = db.get_proximas_reservas_por_mesa(date.today().isoformat())
+    reservas_por_mesa = db.get_proximas_reservas_por_mesa(fechas.hoy().isoformat())
     return {
         "salones": salones, "salon_sel": sel, "mesas": mesas,
         "reservas_por_mesa": {str(k): v for k, v in reservas_por_mesa.items()},
@@ -60,7 +59,7 @@ def mesa_detalle(mid: int):
         raise HTTPException(404, "Mesa no encontrada")
     pedido_abierto = db.get_pedido_abierto_de_mesa(mid)
     reservas_hoy = [
-        r for r in db.get_reservas(date.today().isoformat(), estado="pendiente")
+        r for r in db.get_reservas(fechas.hoy().isoformat(), estado="pendiente")
         if r["mesa_id"] == mid
     ]
     return {
@@ -140,7 +139,7 @@ def mesa_liberar(mid: int, user: dict = Depends(get_current_user_json)):
 
 @router.get("/reservas")
 def reservas_listar(fecha: str = "", mesa_id: int = 0):
-    f = fecha or date.today().isoformat()
+    f = fecha or fechas.hoy().isoformat()
     reservas = db.get_reservas(f)
     if mesa_id:
         reservas = [r for r in reservas if r["mesa_id"] == mesa_id]
@@ -318,7 +317,7 @@ def config_mesa_eliminar(mid: int):
 
 @router.get("/reportes")
 def reportes(desde: str = "", hasta: str = ""):
-    hoy = date.today()
+    hoy = fechas.hoy()
     hasta = hasta or hoy.isoformat()
     desde = desde or hoy.replace(day=1).isoformat()
     return db.reporte_gastronomia(desde, hasta)
