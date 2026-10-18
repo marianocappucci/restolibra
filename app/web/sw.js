@@ -1,7 +1,7 @@
-// Service worker del modo mozo (scope: /salon). Sin caché ni soporte offline
-// a propósito — Restolibra es server-rendered y siempre necesita red para
-// operar sobre el estado real de mesas/pedidos. Solo existe para que Chrome
-// considere instalable la PWA.
+// Service worker del modo mozo (scope: /, el del manifest: salón, KDS y pedidos).
+// Sin caché ni soporte offline a propósito — Restolibra es server-rendered y
+// siempre necesita red para operar sobre el estado real de mesas/pedidos. Solo
+// existe para que Chrome considere instalable la PWA.
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 });

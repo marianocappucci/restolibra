@@ -524,123 +524,11 @@ También se puede gestionar desde dentro del sistema web en `/config` → pesta�
 
 ## Website de marketing (restolibra.com.ar)
 
-El website de marketing es un contenedor nginx estático independiente del sistema de clientes.
-Se encuentra en `website/` dentro del repositorio.
-
-### Estructura del website
-
-```
-website/
-├── Dockerfile              ← FROM nginx:1.27-alpine
-├── nginx.conf              ← configuración del servidor web
-├── docker-compose.yml      ← definición del contenedor
-└── public/
-    ├── index.html          ← landing page principal
-    ├── css/
-    │   └── style.css       ← estilos compartidos
-    └── docs/               ← documentación pública
-        ├── index.html
-        ├── primeros-pasos.html
-        ├── empresa.html
-        ├── usuarios.html
-        ├── configuracion.html
-        ├── ventas.html
-        ├── caja-turnos.html
-        ├── facturacion.html
-        ├── productos-stock.html
-        └── reportes.html
-```
-
-### Deploy inicial (primera vez)
-
-```bash
-cd /root/restolibra/website
-
-# Construir la imagen
-docker build -t restolibra-web:latest .
-
-# Levantar el contenedor
-docker compose up -d
-
-# Verificar que está corriendo
-docker ps | grep restolibra-web
-```
-
-El contenedor escucha en el puerto **8069** y se conecta a la red `stack_stack-net` para que NPM pueda hacer proxy.
-
-### Configurar proxy en Nginx Proxy Manager
-
-1. En NPM, crear un nuevo Proxy Host:
-   - **Domain Names:** `restolibra.com.ar`, `www.restolibra.com.ar`
-   - **Forward Hostname/IP:** `restolibra-web` (nombre del contenedor)
-   - **Forward Port:** `80`
-   - **SSL:** habilitar con Let's Encrypt
-
-2. Configurar también el subdominio `docs.restolibra.com.ar` si se desea separar la documentación (opcional — actualmente está bajo `/docs/` en el mismo dominio).
-
-### Actualizar el website
-
-El website es completamente estático. Cualquier cambio de HTML/CSS requiere **reconstruir la imagen**:
-
-```bash
-cd /root/restolibra/website
-
-# Traer los últimos cambios del repo
-git pull
-
-# Reconstruir y reiniciar
-docker compose build
-docker compose up -d
-
-# Verificar
-docker logs restolibra-web --tail 20
-```
-
-No hay reinicio en caliente — siempre se reconstruye porque el contenido se copia durante el `docker build`.
-
-### Rollback del website
-
-Si la nueva versión tiene problemas:
-
-```bash
-cd /root/restolibra/website
-
-# Ver historial de imágenes
-docker images | grep restolibra-web
-
-# Si tenés una imagen anterior con otro tag:
-docker compose down
-docker tag restolibra-web:<tag-anterior> restolibra-web:latest
-docker compose up -d
-```
-
-Para evitar problemas, antes de reconstruir en producción podés hacer:
-
-```bash
-docker tag restolibra-web:latest restolibra-web:backup
-docker compose build
-docker compose up -d
-```
-
-Así si algo falla, hacés `docker tag restolibra-web:backup restolibra-web:latest` y levantás la versión anterior.
-
-### Agregar o editar páginas de documentación
-
-1. Editá o creá el archivo HTML en `website/public/docs/`.
-2. Si es una página nueva, agregá el link en el sidebar de todas las otras páginas de docs.
-3. Reconstruí el contenedor como se indica en "Actualizar el website".
-
-### Verificar que el website está funcionando
-
-```bash
-# Desde el VPS
-curl -I http://localhost:8069/
-
-# Respuesta esperada: HTTP/1.1 200 OK
-
-# Ver logs de nginx
-docker logs restolibra-web --tail 50
-```
+El sitio de marketing y la documentación pública **no viven en este repositorio**:
+tienen repo propio, `restolibra.com.ar` (contenedor `restolibra-web`, nginx
+estático detrás de NPM). El directorio `website/` que había acá era una copia
+vieja, sin uso, y se retiró; su deploy, su rollback y la edición de las páginas
+de `/docs/` se hacen desde ese otro repo.
 
 ---
 
@@ -677,13 +565,5 @@ docker logs restolibra-web --tail 50
 ├── plans.py                    ← planes y módulos por plan
 ├── Dockerfile
 ├── pyproject.toml             ← dependencias y metadata del paquete
-├── OPERACIONES.md              ← este archivo
-└── website/                    ← website de marketing (restolibra.com.ar)
-    ├── Dockerfile
-    ├── nginx.conf
-    ├── docker-compose.yml
-    └── public/
-        ├── index.html          ← landing page
-        ├── css/style.css
-        └── docs/               ← documentación pública
+└── OPERACIONES.md              ← este archivo
 ```
