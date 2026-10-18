@@ -570,3 +570,155 @@ def test_vigilar_con_un_revocado_al_lado_cuenta_solo_el_activo(admin_client, cap
         assert "Los 2 nodos" not in salida
     finally:
         _limpiar_nodos()
+
+
+# --------------------------------------------------------------------------
+# La venta de mostrador (`POST /api/ventas`) en un nodo.
+#
+# Hasta el 2026-10-18 `encolar_pedido_cobrado` tenía un solo llamador, el cobro
+# de una mesa, así que lo que se vendía en `/ventas` en un nodo offline nunca
+# llegaba al central. Ahora entra por el gancho `al_confirmar_venta`, dentro de
+# la transacción de la venta.
+# --------------------------------------------------------------------------
+
+
+def _vender_en_mostrador(client, monto=5000.0, con_qr=False):
+    r = client.post("/api/ventas", json={
+        "fecha": "2026-10-18",
+        "items": [{"nombre": "Empanada", "qty": 2, "precio": monto / 2}],
+        "pagos": [{"medio": "mercadopago" if con_qr else "efectivo",
+                   "monto": monto, "cobrar_con_qr": con_qr}],
+    })
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_una_venta_de_mostrador_en_un_nodo_entra_al_outbox(admin_client, como_nodo):
+    from app.db_core import get_connection
+
+    venta = _vender_en_mostrador(admin_client)
+
+    with get_connection() as conn:
+        pendientes = _outbox(conn)
+
+    assert len(pendientes) == 1, "la venta de mostrador no entró al outbox del nodo"
+    operacion = pendientes[0]
+    assert operacion.operation_type == TIPO_OPERACION
+    assert operacion.aggregate_id == f"{NODO}:venta:{venta['id']}"
+    assert operacion.payload["pedido"] is None
+    assert operacion.payload["numero"] == venta["numero"]
+    assert operacion.payload["estado"] == "cobrada"
+    assert float(operacion.payload["total"]) == 5000.0
+    assert [i["nombre"] for i in operacion.payload["items"]] == ["Empanada"]
+    assert [(p["medio"], float(p["monto"])) for p in operacion.payload["pagos"]] == [("efectivo", 5000.0)]
+
+
+def test_una_venta_de_mostrador_fuera_de_un_nodo_no_encola(admin_client, monkeypatch):
+    """El control: la instancia de siempre vende igual y no publica nada."""
+    monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID", raising=False)
+    from app.db_core import get_connection
+
+    _vender_en_mostrador(admin_client)
+    with get_connection() as conn:
+        assert _outbox(conn) == ()
+
+
+def test_la_venta_de_mostrador_por_qr_se_encola_al_acreditar(admin_client, como_nodo):
+    """Pendiente no viaja (el central la daría por cobrada); acreditada, sí, una vez."""
+    from app import database as db
+    from app.db_core import get_connection
+
+    venta = _vender_en_mostrador(admin_client, con_qr=True)
+    assert venta["estado"] == "pendiente"
+    with get_connection() as conn:
+        assert _outbox(conn) == (), "una venta pendiente de QR no puede subir como cobrada"
+
+    assert db.acreditar_pago_qr(venta["id"], "555") is True
+    with get_connection() as conn:
+        pendientes = _outbox(conn)
+    assert len(pendientes) == 1
+    assert pendientes[0].payload["estado"] == "cobrada"
+
+
+def test_el_qr_de_una_mesa_no_encola_la_venta_por_segunda_vez(admin_client, mesa, como_nodo):
+    """🔴 La venta de un pedido ya la encoló el cobro de la mesa.
+
+    La acreditación del QR pasa por el mismo gancho; una segunda operación de
+    la misma venta llegaría al central como una colisión de numeración.
+    """
+    from app import database as db
+    from app.db_core import get_connection
+
+    producto = _producto(admin_client)
+    pid = _abrir_pedido(admin_client, mesa)
+    admin_client.post(f"/api/pedidos/{pid}/items", json={
+        "producto_id": producto["id"], "nombre": producto["nombre"],
+        "precio": 8000.0, "qty": 1, "estacion": "cocina"})
+    cobro = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
+        "pagos": [{"medio": "mercadopago", "monto": 8000.0, "cobrar_con_qr": True}]})
+    assert cobro.status_code == 200, cobro.text
+    with get_connection() as conn:
+        assert len(_outbox(conn)) == 1, "el cobro de la mesa no encoló: el test no prueba nada"
+
+    assert db.acreditar_pago_qr(cobro.json()["venta_id"], "777") is True
+    with get_connection() as conn:
+        assert len(_outbox(conn)) == 1, "la acreditación encoló la venta de la mesa otra vez"
+
+
+def test_si_el_encolado_falla_la_venta_de_mostrador_no_queda(admin_client, como_nodo, monkeypatch):
+    """🔴 La misma atomicidad que el cobro de la mesa: venta y operación juntas."""
+    from app import libraedge_integration
+    from app.db_core import get_connection
+
+    # `OSError` y no `RuntimeError`: el router de ventas traduce `RuntimeError` a
+    # un 409 de «reintentá», y acá se quiere ver la excepción tal cual.
+    def encolado_roto(conn, **datos):
+        raise OSError("el outbox no acepta")
+
+    monkeypatch.setattr(libraedge_integration, "encolar_pedido_cobrado", encolado_roto)
+
+    with pytest.raises(OSError, match="el outbox no acepta"):
+        admin_client.post("/api/ventas", json={
+            "fecha": "2026-10-18",
+            "items": [{"nombre": "Empanada", "qty": 1, "precio": 2500.0}],
+            "pagos": [{"medio": "efectivo", "monto": 2500.0}],
+        })
+
+    with get_connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
+        assert _outbox(conn) == ()
+
+
+def test_el_central_importa_la_venta_de_mostrador_una_sola_vez(admin_client, como_nodo):
+    """De punta a punta por el receptor de LibraEdge: se acepta, y el reintento
+    de la misma operación es `duplicate` sin escribir una segunda venta.
+
+    El nodo y el central comparten la base en el test, así que la operación del
+    outbox se reenvía con otro número de venta: con el mismo, el central la vería
+    (bien) como una colisión, que es otro test.
+    """
+    from libraedge.sync.receiver import SyncReceiver
+
+    from app.db_core import get_connection
+
+    _vender_en_mostrador(admin_client)
+    with get_connection() as conn:
+        (operacion,) = _outbox(conn)
+    operacion = type(operacion)(**{
+        **operacion.__dict__,
+        "payload": {**operacion.payload, "numero": "N1-00001"},
+    })
+
+    with get_connection() as conn:
+        receptor = SyncReceiver(conn, operation_handler=lambda op: aplicar_pedido_cobrado(conn, op))
+        assert receptor.accept(operacion).result == "accepted"
+        assert receptor.accept(operacion).result == "duplicate"
+
+        ventas = conn.execute(
+            "SELECT id FROM sales WHERE number = ?", ("N1-00001",)).fetchall()
+        assert len(ventas) == 1
+        conceptos = [f[0] for f in conn.execute(
+            "SELECT concepto FROM caja_movimientos WHERE concepto LIKE ?",
+            ("Venta N1-00001 %",)).fetchall()]
+    assert len(conceptos) == 1
+    assert "pedido" not in conceptos[0], conceptos[0]

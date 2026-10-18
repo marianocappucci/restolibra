@@ -1,4 +1,4 @@
-"""Traduccion entre el cobro de un pedido de Restolibra y LibraEdge.
+"""Traduccion entre una venta cobrada de Restolibra (pedido o mostrador) y LibraEdge.
 
 Restolibra es el primer piloto del nodo offline. La division de trabajo es la
 misma que en el resto de la familia: **LibraEdge no sabe que es un pedido ni una
@@ -104,7 +104,7 @@ def _outbox_operation():
 
 def pedido_cobrado_a_operacion(
     node_id: str, sequence: int, occurred_at: str, *,
-    pedido: dict, venta_id: int, numero: str, fecha: str, items: list,
+    pedido: dict | None, venta_id: int, numero: str, fecha: str, items: list,
     pagos: list, subtotal: float, descuento: float, total: float, estado: str,
     cliente_id: int | None, cliente_nombre: str, usuario_id: int | None,
     observaciones: str, stock_descontado: bool, turno_id: int | None = None,
@@ -113,6 +113,10 @@ def pedido_cobrado_a_operacion(
 
     `aggregate_id` lleva el `node_id` adentro para que dos nodos distintos no
     produzcan el mismo identificador con su propio `venta_id` local.
+
+    `pedido=None` es una venta de mostrador (sin pedido): viaja `"pedido": null`
+    con el mismo tipo y la misma version del contrato, porque el aplicador
+    central ya leia el pedido como opcional (`datos.get("pedido") or {}`).
     """
     OutboxOperation = _outbox_operation()
     payload = {
@@ -129,7 +133,7 @@ def pedido_cobrado_a_operacion(
         "observaciones": observaciones,
         "turno_id": turno_id,
         "stock_descontado": stock_descontado,
-        "pedido": {
+        "pedido": None if pedido is None else {
             "id": pedido.get("id"),
             "numero": pedido.get("numero"),
             "mesa_id": pedido.get("mesa_id"),
@@ -194,6 +198,73 @@ def encolar_pedido_cobrado(conn, **datos) -> None:
     repo.enqueue_operation(operacion, commit=False)
 
 
+def encolar_venta_de_mostrador(conn, venta) -> None:
+    """La venta de mostrador cobrada en un nodo entra al outbox, como el cobro de una mesa.
+
+    Corre desde el gancho `al_confirmar_venta` (`app/ganchos.py`), que el motor
+    llama con **la misma conexion y dentro de la transaccion de la venta**
+    cuando llega a `cobrada`: al nacer cobrada en `registrar_venta`, o al
+    acreditarse el QR en `acreditar_pago_qr`. Es la misma atomicidad que
+    `encolar_pedido_cobrado` (venta y operacion viven o mueren juntas) y el mismo
+    mecanismo de subida: misma operacion `pedido.cobrado`, con `pedido` nulo.
+
+    Hasta el 2026-10-18 `encolar_pedido_cobrado` tenia un solo llamador
+    (`cobrar_pedido`), asi que una venta hecha en `/ventas` en un nodo offline
+    se quedaba en el nodo para siempre.
+
+    🔴 **Una venta que cerro un pedido no se encola de nuevo.** El cobro de la
+    mesa ya la encolo en su transaccion (`db_cobro_pedido`); si se pago por QR,
+    la acreditacion vuelve a pasar por este gancho, y una segunda operacion de
+    la misma venta llegaria al central como una colision de numeracion. Se
+    reconoce por `pedidos.venta_id`, que el cobro escribe en la misma
+    transaccion que la venta.
+
+    Silencioso si esta instancia no es un nodo.
+    """
+    if not nodo_offline():
+        return
+    venta_id = venta["id"]
+    if conn.execute(
+        "SELECT 1 FROM pedidos WHERE venta_id = ? LIMIT 1", (venta_id,)
+    ).fetchone() is not None:
+        return
+
+    from app.db_core import _ar_now
+
+    # Lo mismo que el router lee para decidir si descuenta (`_stock_habilitado`),
+    # pero con la conexion de la transaccion: un gancho no abre la suya.
+    fila = conn.execute(
+        "SELECT habilitado FROM modulos WHERE modulo = 'stock'"
+    ).fetchone()
+    stock_descontado = bool(fila and fila[0])
+
+    encolar_pedido_cobrado(
+        conn, occurred_at=_ar_now(), pedido=None, venta_id=venta_id,
+        # `str`: en PostgreSQL `occurred_on` es DATE y el payload va a JSON.
+        numero=venta["numero"], fecha=str(venta["fecha"]),
+        items=[
+            {
+                "nombre": item["nombre"], "qty": item["qty"],
+                "precio": item["precio"], "subtotal": item["subtotal"],
+                "producto_id": item.get("producto_id"), "modificadores": "",
+            }
+            for item in venta["items"]
+        ],
+        pagos=[
+            {"medio": pago["medio"], "monto": pago["monto"],
+             "referencia": pago.get("referencia") or ""}
+            for pago in venta["pagos"]
+        ],
+        subtotal=venta["subtotal"], descuento=venta["descuento"],
+        total=venta["total"], estado=venta["estado"],
+        cliente_id=venta.get("cliente_id"),
+        cliente_nombre=venta.get("cliente_nombre") or "",
+        usuario_id=venta.get("usuario_id"),
+        observaciones=venta.get("observaciones") or "",
+        stock_descontado=stock_descontado, turno_id=venta.get("turno_id"),
+    )
+
+
 def aplicar_pedido_cobrado(conn, operation) -> None:
     """Handler central: materializa un `pedido.cobrado` que llego de un nodo.
 
@@ -214,6 +285,8 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
             f"schema {operation.schema_version} de {TIPO_OPERACION} desconocido"
         )
 
+    from libracommerce.erp.ventas import CONCEPTO_VENTA
+    from libracore import medios_pago
     from libracore import pagos as acreditacion
 
     from app.db_caja import create_caja_movimiento
@@ -274,9 +347,17 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
         add_venta_pago(venta_id, pago["medio"], monto, pago.get("referencia") or "",
                        conn=conn,
                        estado=acreditacion.EstadoAcreditacion.APROBADO.value)
+        # El concepto es el del camino que la origino en el nodo: el cobro de
+        # una mesa mete el pedido en el medio; el mostrador es el del motor
+        # (`CONCEPTO_VENTA`). Los dos empiezan con `Venta {numero} `, que es lo
+        # que busca `vincular_cobros_de_venta` al facturar.
+        if pedido_numero:
+            concepto = f"Venta {numero} (pedido {pedido_numero}) — {pago['medio']}"
+        else:
+            concepto = CONCEPTO_VENTA.format(numero=numero) + medios_pago.label(pago["medio"])
         create_caja_movimiento(
             fecha=datos["fecha"], tipo="ingreso",
-            concepto=f"Venta {numero} (pedido {pedido_numero}) — {pago['medio']}",
+            concepto=concepto,
             monto=monto, referencia=pago.get("referencia") or "",
             medio_pago=pago["medio"], usuario_id=datos.get("usuario_id"),
             conn=conn,
