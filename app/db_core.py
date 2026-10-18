@@ -9,6 +9,7 @@ wiki/entities/libracore.md).
 """
 import os
 
+from libracore import fechas as _fechas
 from libracore.db import core as _lc_core
 
 _DATA_DIR = os.environ.get("DATA_DIR", os.path.dirname(__file__))
@@ -47,7 +48,8 @@ _lc_core.configure(db_path=DB_PATH, timeout=15)
 #: engine de SQLAlchemy— y la suite, para no repetir el criterio.
 ES_POSTGRES = _lc_core.es_url_postgres(DB_PATH)
 
-_AR_TZ = _lc_core._AR_TZ
+# v1.182.0 (ADR-070) sacó `_AR_TZ` de `libracore.db.core`: la zona es `libracore.fechas.ZONA_AR`.
+_AR_TZ = _fechas.ZONA_AR
 _ar_now = _lc_core._ar_now
 minutos_desde = _lc_core.minutos_desde
 get_connection = _lc_core.get_connection
