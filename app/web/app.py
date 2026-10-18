@@ -283,7 +283,10 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.get("/health", include_in_schema=False)
+# 🔑 **`GET` y `HEAD`.** Un monitor de uptime (uptime-kuma) sondea con `HEAD`, y
+# `@app.get` a secas lo contestaba con 405: la instancia figuraba caída estando
+# sana. FastAPI no deriva el `HEAD` del `GET`.
+@app.api_route("/health", methods=["GET", "HEAD"], include_in_schema=False)
 def health():
     """Sin auth, sin lógica de negocio — para Docker HEALTHCHECK y monitoreo
     externo (uptime-kuma). Ver wiki/analyses/restolibra-auditoria-produccion:
@@ -681,7 +684,8 @@ def startup():
         db_usuarios.migrar_secretos()
 
 
-@app.get("/", include_in_schema=False)
+# `GET` y `HEAD`: la raíz que redirige tiene que dar lo mismo para los dos (ver `/health`).
+@app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
 def root():
     """La raíz manda al **mapa de mesas**, que es la pantalla de arranque de
     este producto desde el 2026-08-31.
