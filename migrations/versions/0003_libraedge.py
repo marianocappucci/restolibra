@@ -8,10 +8,12 @@ desincroniza en el primer cambio** del motor.
 **Se crean en toda instancia, sea nodo o no.** Un central que nunca corra
 offline igual las necesita: `node_identity` para autenticar a los nodos que le
 pushean, `sync_inbox` para deduplicar operaciones repetidas y `sync_changelog`
-para publicar la bajada. Y crearlas sólo donde `RESTOLIBRA_EDGE_NODE_ID` esté
-definida dejaría el schema de unas instancias distinto del de otras **en
-silencio** — el mismo problema que la baseline evita al no declarar FK
-condicionales.
+para publicar la bajada. Y crearlas sólo donde la instancia sea un nodo
+(`app.offline.nodo()`, que es `libraedge.identidad.nodo_actual("RESTOLIBRA")`:
+`LIBRAEDGE_NODE_ID` o la vieja `RESTOLIBRA_EDGE_NODE_ID`) dejaría el schema de
+unas instancias distinto del de otras **en silencio** — el mismo problema que la
+baseline evita al no declarar FK condicionales. Por eso esta revisión **no
+consulta** la identidad del nodo: corre igual en todas.
 
 Es idempotente (`CREATE TABLE IF NOT EXISTS`), así que corre igual sobre una
 instancia viva que sobre una base vacía: las instancias existentes se **migran**,

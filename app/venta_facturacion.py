@@ -17,12 +17,19 @@ from libracore.venta_facturacion import (  # noqa: F401
     VentaNoFacturable,
 )
 
-from app import db_ventas
+from app import db_ventas, offline
 
 
 async def _numerar(punto_venta: int, tipo: int):
     # Resuelve el nombre en cada llamada: es lo que hace que el `monkeypatch`
     # sobre este módulo llegue al motor.
+    #
+    # 🔴 En un nodo offline no: el número lo pide a ARCA con el ticket que
+    # presta el central (`offline.numerar_en_el_nodo`, libracore ADR-074). El
+    # nodo no tiene la clave, y `get_next_numero_with_arca` caería a la
+    # numeración local, que choca con la de ARCA y con la del central.
+    if offline.CONEXION.es_nodo():
+        return await offline.numerar_en_el_nodo(punto_venta, tipo)
     return await get_next_numero_with_arca(punto_venta, tipo)
 
 
@@ -33,6 +40,11 @@ PUERTO = dataclasses.replace(db_ventas.PUERTO, numerar_comprobante=_numerar)
 
 async def facturar_venta(venta_id: int, *, usuario_id: int | None = None) -> dict:
     return await _vf.facturar_venta(PUERTO, venta_id, usuario_id=usuario_id)
+
+
+def pendiente_de_facturar(venta_id: int) -> dict | None:
+    """La fila abierta de la bandeja del nodo para esta venta, o `None`: el ticket lo dice («no válido como factura»)."""
+    return _vf.pendiente_de_facturar(PUERTO, venta_id)
 
 
 async def facturar_si_esta_prendida(venta_id: int, cfg: dict | None = None) -> int | None:

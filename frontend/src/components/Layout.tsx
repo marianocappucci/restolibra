@@ -133,6 +133,9 @@ export const Layout = createLayout<User>({
   navSections: NAV_SECTIONS,
   icon: ChefHat,
   homeTo: '/salon',
+  // Nodo offline de LibraEdge (libra-ui ADR-077): el cartel «sin conexión» arriba del contenido, que consulta
+  // `GET /api/nodo/conexion`. Fuera de un nodo el backend contesta `es_nodo: false` y no se muestra nada.
+  conexionDelNodo: true,
   accountTo: '/mi-cuenta',
   // Ya no se pasa `topbar`: desde libra-ui v0.19.0 la barra no existe para
   // ningún producto, así que la opción se fue. El render de acá no cambia --

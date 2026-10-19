@@ -13,8 +13,15 @@ from app.db_stock import _resumen_modificadores
 
 
 def get_next_pedido_numero() -> str:
+    # En el central, los pedidos que deja `offline.al_materializar` para las ventas que subieron de un nodo traen el
+    # número del nodo y no cuentan: sin esto la numeración propia saltaría a la del nodo (el mismo criterio que
+    # `siguiente_numero` de LibraCommerce para las ventas, ADR-067). Sin nodos, la consulta da la fila de siempre.
     with get_connection() as conn:
-        row = conn.execute("SELECT numero FROM pedidos ORDER BY id DESC LIMIT 1").fetchone()
+        row = conn.execute(
+            "SELECT p.numero FROM pedidos p LEFT JOIN sales s ON s.id = p.venta_id"
+            " WHERE s.source_type IS NULL OR s.source_type NOT LIKE ? ORDER BY p.id DESC LIMIT 1",
+            ("libraedge:%",),
+        ).fetchone()
     n = 1
     if row:
         try:

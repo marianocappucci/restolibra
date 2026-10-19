@@ -13,12 +13,14 @@ import pathlib
 import pytest
 from libraauth.session_auth import SERVICE_TOKEN_ENV, SERVICE_TOKEN_HEADER
 from libracore import adicionales
+from libraedge.aprovisionamiento import AltaRechazada
+from libraedge.aprovisionamiento import sucursales_con_nodo as sucursales_con_nodo_en
 
 import plans
 from app import database as db
-from app.libraedge_integration import sucursales_con_nodo, verificar_alta_de_nodo
+from app.offline import aprovisionamiento, sucursales_con_nodo
 from scripts.nodo_offline import main as provisionar
-from tests.offline_helpers import contratar_offline, dar_de_baja_offline, definir_sucursales
+from tests.offline_helpers import cabeceras_del_nodo, contratar_offline, dar_de_baja_offline, definir_sucursales
 
 TOKEN = "un-token-de-servicio-de-prueba"
 SERVICIO = {SERVICE_TOKEN_HEADER: TOKEN}
@@ -34,10 +36,17 @@ def _sucursales_de_la_instancia(request):
 
 
 def _registrar(nodo, sucursal, capsys):
-    """Corre `registrar` y devuelve (codigo, salida)."""
+    """Corre `registrar` y devuelve (codigo, salida). La salida junta las dos: `libraedge-central` (E5) escribe el
+    error en stderr."""
     capsys.readouterr()
     codigo = provisionar(["registrar", nodo, "--sucursal", sucursal])
-    return codigo, capsys.readouterr().out
+    salida = capsys.readouterr()
+    return codigo, salida.out + salida.err
+
+
+def verificar_alta_de_nodo(conn, node_id, branch_id):
+    """La guarda que el central corre al registrar: la del adicional de libracore, declarada en `app.offline`."""
+    aprovisionamiento.verificar_alta(conn, node_id, branch_id)
 
 
 def _nodos():
@@ -133,9 +142,9 @@ def test_varios_nodos_activos_en_una_sucursal_cuentan_una_sola_vez(admin_client)
                 "INSERT INTO node_identity (node_id, branch_id, installed_at, schema_version, active, secret_hash) VALUES (?,?,?,?,?,?)",
                 (nodo, sucursal, "2026-10-13T10:00:00Z", 1, 1 if sucursal == "centro" else 0, "x"))
         conn.commit()
-        assert sucursales_con_nodo(conn) == 1, "el nodo de `norte` esta dado de baja y no cuenta"
+        assert sucursales_con_nodo_en(conn) == 1, "el nodo de `norte` esta dado de baja y no cuenta"
         verificar_alta_de_nodo(conn, "d", "centro")  # ya tiene nodo: no suma, aunque este al tope
-        with pytest.raises(adicionales.AdicionalExcedido):
+        with pytest.raises(AltaRechazada, match="sucursal"):
             verificar_alta_de_nodo(conn, "d", "sur")
 
 
@@ -171,7 +180,7 @@ def test_un_nodo_registrado_sigue_sincronizando_sin_el_adicional(admin_client, c
     secreto = next(l for l in salida.splitlines() if "LIBRAEDGE_NODE_SECRET=" in l).split("=", 1)[1]
     dar_de_baja_offline()
 
-    r = client.get("/sync/v1/pull", params={"node_id": "node-1"}, headers={"Authorization": f"Bearer {secreto}"})
+    r = client.get("/sync/v1/pull", params={"node_id": "node-1"}, headers=cabeceras_del_nodo(secreto))
 
     assert r.status_code == 200, r.text
     assert sucursales_con_nodo() == 1
@@ -276,7 +285,7 @@ def test_la_migracion_contrata_las_sucursales_distintas_con_nodo_y_nadie_se_cort
     # y con eso el alta de una PC de reemplazo en una sucursal existente sigue andando
     with get_connection() as conn:
         verificar_alta_de_nodo(conn, "e", "norte")
-        with pytest.raises(adicionales.AdicionalExcedido):
+        with pytest.raises(AltaRechazada, match="sucursal"):
             verificar_alta_de_nodo(conn, "e", "este")
 
 
