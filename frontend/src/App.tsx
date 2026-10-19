@@ -43,6 +43,7 @@ import { Reportes } from './pages/Reportes'
 import { CajaMedios } from './pages/CajaMedios'
 import { LibrosIva } from './pages/LibrosIva'
 import { Logs } from './pages/Logs'
+import { SucursalSinInternet } from './pages/SucursalSinInternet'
 import { Usuarios } from './pages/Usuarios'
 import { MiCuenta } from './pages/MiCuenta'
 import { Productos } from './pages/Productos'
@@ -363,6 +364,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Logs />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/sucursal-sin-internet"
+        element={
+          <ProtectedRoute>
+            <SucursalSinInternet />
           </ProtectedRoute>
         }
       />

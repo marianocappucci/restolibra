@@ -39,6 +39,8 @@ const RUTA_A_CONCEPTO: Record<string, Concepto> = {
   '/libros-iva': 'librosDeIva',
   '/config': 'configuracion',
   '/usuarios': 'usuarios',
+  // LibraEdge (libra-ui ADR-080).
+  '/sucursal-sin-internet': 'sucursalSinInternet',
   '/logs': 'logDeActividad',
 }
 
@@ -55,7 +57,7 @@ describe('el menú usa los íconos del catálogo de la familia', () => {
 
   it('🔴 el control: el guard midió todas las rutas del mapa', () => {
     expect(auditoria.medidas).toBe(Object.keys(RUTA_A_CONCEPTO).length)
-    expect(auditoria.medidas).toBe(24)
+    expect(auditoria.medidas).toBe(25)
   })
 })
 

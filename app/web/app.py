@@ -51,6 +51,7 @@ from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
 from libracore.tema_router import build_tema_admin_router, build_tema_router
 from libracore.tesoreria_router import build_tesoreria_router
+from libraedge.pantalla_del_central import create_nodos_router
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -59,6 +60,7 @@ from app import config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
+from app.offline import aprovisionamiento as aprovisionamiento_offline
 from app.offline import sucursales_con_nodo
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
@@ -349,6 +351,14 @@ app.include_router(kds_router.router)
 # instalado que no puede sincronizar contra un central que debería tener el
 # endpoint—.
 app.include_router(sincronizacion_offline.router)
+# «Sucursal sin internet» (libraedge ADR-011, libra-ui ADR-080): el admin da de alta el nodo de una sucursal y descarga su
+# carga (`carga-nodo-….json`, con el secreto del nodo: sólo viaja como adjunto de ese POST), ve los nodos y los da de baja.
+# Toda la lógica es de LibraEdge (las mismas funciones que `libraedge-central nodo registrar --carga`); acá sólo la guarda
+# de admin y el aprovisionamiento de este producto (`app/offline.py`). El adicional `offline` lo hace cumplir el alta.
+app.include_router(
+    create_nodos_router(aprovisionamiento_offline, _abrir_conexion),
+    dependencies=[Depends(require_admin_json)],
+)
 
 # --- API JSON para la SPA React (ver wiki/entities/restolibra.md, migracion
 # a React) -- ahora es la interfaz real, ya no convive con paginas HTML
