@@ -59,7 +59,7 @@ from app import config_manager, db_usuarios
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
-from app.libraedge_integration import sucursales_con_nodo
+from app.offline import sucursales_con_nodo
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -446,7 +446,7 @@ app.include_router(build_tema_router())
 app.include_router(build_tema_admin_router(), dependencies=[Depends(require_admin_o_servicio_json)])
 # Los adicionales contratados (libracore ADR-048): `GET /api/adicionales` lo ve el admin o el backoffice; `PUT /api/adicionales/{clave}` SOLO el token
 # de servicio (🔴 un adicional es un limite comercial: si lo cargara el admin del cliente, contratar no costaria nada). `offline` se mide en sucursales
-# DISTINTAS con un nodo activo, que es lo que cobra y lo que hace cumplir `scripts/nodo_offline.py registrar`.
+# DISTINTAS con un nodo activo, que es lo que cobra y lo que hace cumplir `libraedge-central nodo registrar` (`app/offline.py`).
 app.include_router(build_adicionales_router(
     require_admin_o_servicio_json, require_solo_servicio_json, medir={"offline": sucursales_con_nodo}, plans=plans,
     leer_modulos=db.get_modulos, escribir_modulo=db.set_addon,
@@ -528,6 +528,12 @@ app.include_router(
     ),
     dependencies=[Depends(require_admin_json), Depends(require_module("resguardo_externo"))],
 )
+# El detalle con `factura_pendiente` (nodo offline, libracore ADR-074) va ANTES que el router del motor: gana el mismo
+# `GET /api/ventas/{id}`.
+app.include_router(
+    api_ventas_router.detalle,
+    dependencies=[_auth_json, Depends(require_module("ventas"))],
+)
 app.include_router(
     api_ventas_router.router,
     dependencies=[_auth_json, Depends(require_module("ventas"))],
@@ -536,6 +542,12 @@ app.include_router(
 # y el mismo gate que el punto de venta (P9-M3).
 app.include_router(
     api_ventas_router.cobro,
+    dependencies=[_auth_json, Depends(require_module("ventas"))],
+)
+# La facturación del nodo offline (libracore ADR-074): `/api/nodo/conexion` y
+# `/api/nodo/facturar-pendientes`, con el mismo gate que el cobro.
+app.include_router(
+    api_ventas_router.nodo,
     dependencies=[_auth_json, Depends(require_module("ventas"))],
 )
 app.include_router(
@@ -674,6 +686,29 @@ def startup():
         # convertiria un schema viejo en un 500 en vez del error que dice el comando.
         # Idempotente: la segunda vez no hace nada.
         db_usuarios.migrar_secretos()
+
+    # Nodo offline (libracore ADR-074, libracommerce ADR-068): la bandeja de comprobantes pendientes se factura sola al
+    # volver la conexión, y en cada vuelta se encola la `venta.facturada` que `al_facturar` no llegó a encolar. Fuera de
+    # un nodo no arranca nada. Con varios workers cada uno arranca el suyo: el candado por venta evita la doble factura.
+    global _parar_facturacion_al_volver
+    from libracommerce.erp.offline import reconciliador
+    from libracore.venta_facturacion import arrancar_facturacion_al_volver
+
+    from app import venta_facturacion
+    from app.offline import OUTBOX
+
+    _parar_facturacion_al_volver = arrancar_facturacion_al_volver(
+        venta_facturacion.PUERTO, en_cada_vuelta=reconciliador(OUTBOX, _abrir_conexion),
+    )
+
+
+_parar_facturacion_al_volver = None
+
+
+@app.on_event("shutdown")
+def parar_facturacion_al_volver():
+    if _parar_facturacion_al_volver is not None:
+        _parar_facturacion_al_volver.set()
 
 
 # `GET` y `HEAD`: la raíz que redirige tiene que dar lo mismo para los dos (ver `/health`).

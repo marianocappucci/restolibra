@@ -1,37 +1,33 @@
-"""El piloto del nodo offline: cobrar un pedido publica al outbox de LibraEdge.
+"""El nodo offline de RestoLibra sobre lo genérico (E5 de LibraEdge, 2026-10-19).
 
-Fase 3 del nodo espejo. La subida y la bajada de LibraEdge ya existian; lo que
-faltaba era el primer producto que las use de verdad.
+RestoLibra fue el piloto: el cobro de una mesa encolaba una operación propia, `pedido.cobrado`. Desde E5 las ventas
+suben por la capa ERP de LibraCommerce (`venta.registrada`, `venta.pago_acreditado`, `venta.anulada`,
+`venta.devolucion`, `venta.facturada`; libracommerce ADR-067 y ADR-068) con los ganchos
+`con_outbox(GANCHOS_PROPIOS, offline.OUTBOX)`, y el pedido viaja en `extra`.
 
-Los tests del cobro van por el **flujo HTTP real** —abrir mesa, cargar items,
-cobrar— y no llamando a `cobrar_pedido()` a mano: el gancho vive dentro de la
-transaccion de esa funcion, y una llamada directa se saltearia el router, la
-sesion y el gateo de modulos, que es justo donde un cobro real puede romperse.
+Los tests del cobro van por el **flujo HTTP real** —abrir mesa, cargar ítems, cobrar— y no llamando a
+`cobrar_pedido()` a mano: el encolado vive dentro de la transacción de la venta, y una llamada directa se saltearía el
+router, la sesión y el gateo de módulos. El recorrido completo nodo → central, con dos bases, está en
+`test_libraedge_de_punta_a_punta.py`.
 """
 import os
 
 import pytest
+from libracommerce.erp import offline as erp_offline
+from libraedge.identidad import IdentidadEnConflicto
 
-from app.libraedge_integration import (
-    TIPO_OPERACION,
-    aplicar_pedido_cobrado,
-    nodo_offline,
-    pedido_cobrado_a_operacion,
-)
+from app.libraedge_integration import TIPO_OPERACION, aplicar_pedido_cobrado, pedido_cobrado_a_operacion
+from app.offline import TABLAS_DE_REFERENCIA, nodo
+from scripts.nodo_offline import main as provisionar
 from tests.test_restaurant import _abrir_pedido, _producto
 
 NODO = "nodo-suipacha-1"
+PREFIJO = "S02"
 
 
 @pytest.fixture()
 def mesa(admin_client):
-    """Un salon con una mesa: el piso minimo para abrir un pedido.
-
-    Se define aca en vez de importar la fixture de :
-    importarla y despues usar su nombre como parametro la sombrea, y ruff lo
-    marca (F811). Son seis lineas y quita el acoplamiento entre dos archivos
-    de tests.
-    """
+    """Un salón con una mesa: el piso mínimo para abrir un pedido."""
     admin_client.post("/api/salon/config/salones",
                       json={"nombre": "Salon principal", "orden": 1})
     sid = admin_client.get("/api/salon/config").json()["salones"][0]["id"]
@@ -43,21 +39,23 @@ def mesa(admin_client):
 
 @pytest.fixture()
 def como_nodo(monkeypatch):
-    """Esta instancia se comporta como un nodo offline."""
-    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", NODO)
+    """Esta instancia se comporta como un nodo offline registrado (con el prefijo que le dio el central)."""
+    monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID", raising=False)
+    monkeypatch.setenv("LIBRAEDGE_NODE_ID", NODO)
+    monkeypatch.setenv("LIBRAEDGE_PREFIJO", PREFIJO)
     return NODO
 
 
-def _cobrar(client, mesa_id, precio=8000.0, qty=2):
+def _cobrar(client, mesa_id, precio=8000.0, qty=2, pagos=None):
     producto = _producto(client)
     pid = _abrir_pedido(client, mesa_id)
     client.post(f"/api/pedidos/{pid}/items", json={
         "producto_id": producto["id"], "nombre": producto["nombre"],
         "precio": precio, "qty": qty, "estacion": "cocina"})
     resp = client.post(f"/api/pedidos/{pid}/cobrar", json={
-        "pagos": [{"medio": "efectivo", "monto": precio * qty}]})
+        "pagos": pagos or [{"medio": "efectivo", "monto": precio * qty}]})
     assert resp.status_code == 200, resp.text
-    return resp.json()
+    return {**resp.json(), "pedido_id": pid}
 
 
 def _outbox(conn):
@@ -66,120 +64,159 @@ def _outbox(conn):
     return NodeRepository(conn).list_pending_operations()
 
 
-# ── El opt-in ────────────────────────────────────────────────────────────
+def _tipos(conn):
+    return [op.operation_type for op in _outbox(conn)]
+
+
+# ── La identidad ─────────────────────────────────────────────────────────
 
 def test_sin_id_de_nodo_esta_instancia_no_es_un_nodo(monkeypatch):
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID", raising=False)
     monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID", raising=False)
-    assert nodo_offline() is None
+    assert nodo() is None
 
 
 def test_un_id_vacio_tampoco_lo_es(monkeypatch):
-    """Una variable definida pero vacia --lo que deja un `.env` a medio
-    llenar-- no puede convertir la instancia en un nodo a medias."""
-    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", "")
-    assert nodo_offline() is None
+    """Una variable definida pero vacía —lo que deja un `.env` a medio llenar— no convierte la instancia en un nodo."""
+    monkeypatch.setenv("LIBRAEDGE_NODE_ID", "")
+    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", "  ")
+    assert nodo() is None
 
+
+def test_la_variable_vieja_del_producto_sigue_valiendo(monkeypatch):
+    """Una instalación del piloto sólo tiene `RESTOLIBRA_EDGE_NODE_ID`: no deja de ser un nodo (libraedge ADR-008)."""
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID", raising=False)
+    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", "nodo-viejo")
+    assert nodo() == "nodo-viejo"
+
+
+def test_las_dos_variables_distintas_son_un_error(monkeypatch):
+    """🔴 El producto encolaría con un id y el proceso del nodo se autenticaría con otro."""
+    monkeypatch.setenv("LIBRAEDGE_NODE_ID", "nodo-a")
+    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", "nodo-b")
+    with pytest.raises(IdentidadEnConflicto):
+        nodo()
+
+
+def test_el_id_del_nodo_no_se_lee_al_importar(monkeypatch):
+    """Se lee en cada venta: activar el nodo no exige reiniciar el proceso y la suite no depende del orden."""
+    monkeypatch.setenv("LIBRAEDGE_NODE_ID", "otro-nodo")
+    assert nodo() == "otro-nodo"
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID")
+    assert nodo() is None
+
+
+def test_las_variables_no_quedaron_definidas_en_el_entorno_de_la_suite():
+    """Guard del propio arnés: si algo las dejara puestas, los tests del camino normal medirían el de nodo."""
+    for variable in ("LIBRAEDGE_NODE_ID", "RESTOLIBRA_EDGE_NODE_ID", "LIBRAEDGE_PREFIJO", "LIBRAEDGE_ESTADO"):
+        assert variable not in os.environ, variable
+
+
+# ── El cobro de una mesa ─────────────────────────────────────────────────
 
 def test_una_instancia_normal_cobra_sin_encolar_nada(admin_client, mesa, monkeypatch):
-    """🔴 El camino de siempre no puede cambiar.
-
-    La inmensa mayoria de las instancias no son nodos, y el cobro es la
-    operacion mas caliente del producto: si el gancho rompiera ahi, rompe todo.
-    """
-    monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID", raising=False)
+    """🔴 El camino de siempre no puede cambiar: la inmensa mayoría de las instancias no son nodos."""
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID", raising=False)
     from app.db_core import get_connection
 
     cobro = _cobrar(admin_client, mesa)
-    assert cobro["venta_id"]
-
     with get_connection() as conn:
         assert _outbox(conn) == ()
+        numero = conn.execute("SELECT number FROM sales WHERE id = ?", (cobro["venta_id"],)).fetchone()[0]
+    assert numero.startswith("V-"), "fuera de un nodo el número no lleva prefijo"
 
 
-# ── El cobro en un nodo ──────────────────────────────────────────────────
-
-def test_cobrar_en_un_nodo_encola_la_operacion(admin_client, mesa, como_nodo):
+def test_cobrar_en_un_nodo_sube_la_venta_con_el_pedido(admin_client, mesa, como_nodo):
     from app.db_core import get_connection
 
     cobro = _cobrar(admin_client, mesa)
 
     with get_connection() as conn:
         pendientes = _outbox(conn)
+        pedido = conn.execute("SELECT numero, estado, venta_id FROM pedidos WHERE id = ?",
+                              (cobro["pedido_id"],)).fetchone()
 
-    assert len(pendientes) == 1
+    assert [op.operation_type for op in pendientes] == [erp_offline.TIPO_VENTA_REGISTRADA], (
+        "una sola operación por venta: ni `pedido.cobrado` (la vieja) ni dos `venta.registrada`"
+    )
     operacion = pendientes[0]
-    assert operacion.operation_type == TIPO_OPERACION
     assert operacion.node_id == NODO
     assert operacion.aggregate_id == f"{NODO}:venta:{cobro['venta_id']}"
-    assert operacion.payload["total"] == "16000.0"
-    assert len(operacion.payload["items"]) == 1
-    assert operacion.payload["pagos"][0]["medio"] == "efectivo"
+    datos = operacion.payload
+    assert datos["numero"].startswith(f"{PREFIJO}-V-"), "el número lleva el prefijo del nodo (decisión 4)"
+    assert datos["estado"] == "cobrada"
+    assert float(datos["total"]) == 16000.0
+    assert [p["medio"] for p in datos["pagos"]] == ["efectivo"]
+    assert datos["extra"]["pedido"]["id"] == cobro["pedido_id"]
+    assert datos["extra"]["pedido"]["numero"] == pedido[0]
+    assert datos["extra"]["pedido"]["mesa_id"] == mesa
+    assert (pedido[1], pedido[2]) == ("cobrado", cobro["venta_id"])
+
+
+def test_una_mesa_cobrada_en_parte_sube_igual(admin_client, mesa, como_nodo):
+    """🔑 Decisión 5 del humano: toda venta sube al nacer, también la parcial. Antes el cobro de la mesa no pasaba
+    por `registrar_venta` y una venta con el QR pendiente se quedaba en el nodo hasta acreditarse."""
+    from app import database as db
+    from app.db_core import get_connection
+
+    cobro = _cobrar(admin_client, mesa, pagos=[
+        {"medio": "efectivo", "monto": 6000.0},
+        {"medio": "mercadopago", "monto": 10000.0, "cobrar_con_qr": True},
+    ])
+    with get_connection() as conn:
+        (operacion,) = _outbox(conn)
+    assert operacion.operation_type == erp_offline.TIPO_VENTA_REGISTRADA
+    assert operacion.payload["estado"] == "parcial"
+    assert [p["estado"] for p in operacion.payload["pagos"]] == ["aprobado", "pendiente"]
+
+    assert db.acreditar_pago_qr(cobro["venta_id"], "777") is True
+    with get_connection() as conn:
+        tipos = _tipos(conn)
+        estado_pedido = conn.execute("SELECT estado FROM pedidos WHERE id = ?", (cobro["pedido_id"],)).fetchone()[0]
+    assert tipos == [erp_offline.TIPO_VENTA_REGISTRADA, erp_offline.TIPO_PAGO_ACREDITADO], (
+        "la acreditación sube como un hecho propio, no como la venta otra vez"
+    )
+    assert estado_pedido == "cobrado"
 
 
 def test_dos_cobros_producen_dos_secuencias_distintas(admin_client, mesa, como_nodo):
-    """La secuencia del nodo ordena la subida; repetirla romperia el indice
-    unico `(node_id, sequence)` del outbox."""
     from app.db_core import get_connection
 
     _cobrar(admin_client, mesa)
     _cobrar(admin_client, mesa)
-
     with get_connection() as conn:
         pendientes = _outbox(conn)
-
     assert len(pendientes) == 2
     assert len({op.sequence for op in pendientes}) == 2
 
 
-def test_el_encolado_no_commitea_por_su_cuenta(admin_client, como_nodo):
-    """🔴 La otra mitad de la atomicidad, y la que el flujo HTTP no puede ver.
-
-    En `cobrar_pedido()` el encolado es lo ultimo antes del `conn.commit()`, asi
-    que en el camino feliz commitear antes o despues da lo mismo y un test del
-    flujo completo **pasa igual con `commit=True`** — se verifico con una
-    mutacion. La diferencia aparece cuando el commit del producto no llega a
-    ocurrir: ahi `commit=True` deja una operacion de outbox que sincroniza una
-    venta que no existe, y el central materializaria una venta inventada.
-
-    Por eso se mide en el punto donde vive la bandera: se encola y se deshace la
-    transaccion. Si el encolado commiteara, la operacion sobreviviria.
-    """
+def test_un_nodo_sin_prefijo_no_cobra(admin_client, mesa, como_nodo, monkeypatch):
+    """🔴 Un nodo sin prefijo numeraría igual que el central: se registró antes de libraedge v0.8 y hay que volver a
+    registrarlo. El cobro falla entero y el pedido queda cobrable."""
     from app.db_core import get_connection
-    from app.libraedge_integration import encolar_pedido_cobrado
 
+    monkeypatch.delenv("LIBRAEDGE_PREFIJO")
+    producto = _producto(admin_client)
+    pid = _abrir_pedido(admin_client, mesa)
+    admin_client.post(f"/api/pedidos/{pid}/items", json={
+        "producto_id": producto["id"], "nombre": producto["nombre"], "precio": 100.0, "qty": 1})
+    # `NodoLocal` levanta `ValueError` y el router del cobro lo contesta como cualquier `ValueError` del cobro (409).
+    r = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={"pagos": [{"medio": "efectivo", "monto": 100.0}]})
+    assert r.status_code == 409, r.text
     with get_connection() as conn:
-        encolar_pedido_cobrado(
-            conn, occurred_at="2026-08-30 10:00:00",
-            pedido={"id": 1, "numero": "P-1", "mesa_id": None},
-            venta_id=1, numero="V-00001", fecha="2026-08-30",
-            items=[{"nombre": "Milanesa", "qty": 1, "precio": 8000.0,
-                    "subtotal": 8000.0, "producto_id": None, "modificadores": ""}],
-            pagos=[{"medio": "efectivo", "monto": 8000.0, "referencia": "r"}],
-            subtotal=8000.0, descuento=0.0, total=8000.0, estado="cobrada",
-            cliente_id=None, cliente_nombre="", usuario_id=None,
-            observaciones="", stock_descontado=False,
-        )
-        assert len(_outbox(conn)) == 1, "no llego a encolar: el test no prueba nada"
-
-        conn.rollback()
-        assert _outbox(conn) == (), "el encolado commiteo por su cuenta"
+        assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
+        assert conn.execute("SELECT estado FROM pedidos WHERE id = ?", (pid,)).fetchone()[0] == "abierto"
 
 
 def test_si_el_encolado_falla_la_venta_no_queda(admin_client, mesa, como_nodo, monkeypatch):
-    """🔴 La atomicidad, medida: no puede quedar una venta sin su operacion.
-
-    Es la propiedad por la que Restolibra fue el piloto elegido. Si el encolado
-    se cae, la transaccion entera se deshace: pedido, venta, items, pagos, caja
-    y stock. Una venta que el nodo nunca va a sincronizar es peor que un cobro
-    que fallo, porque nadie se entera hasta la conciliacion.
-    """
-    from app import db_cobro_pedido
+    """🔴 La atomicidad, medida: no puede quedar una venta sin su operación. Si el encolado se cae, la transacción
+    entera se deshace: pedido, venta, ítems, pagos, caja y stock."""
     from app.db_core import get_connection
 
-    def encolado_roto(conn, **datos):
+    def encolado_roto(*args, **kwargs):
         raise RuntimeError("el outbox no acepta")
 
-    monkeypatch.setattr(db_cobro_pedido, "encolar_pedido_cobrado", encolado_roto)
+    monkeypatch.setattr(erp_offline, "encolar_venta_registrada", encolado_roto)
 
     producto = _producto(admin_client)
     pid = _abrir_pedido(admin_client, mesa)
@@ -187,23 +224,79 @@ def test_si_el_encolado_falla_la_venta_no_queda(admin_client, mesa, como_nodo, m
         "producto_id": producto["id"], "nombre": producto["nombre"],
         "precio": 8000.0, "qty": 1, "estacion": "cocina"})
 
-    # El TestClient re-lanza la excepcion del servidor en vez de devolver 500,
-    # asi que el cobro se ve como la excepcion propagando. Lo que importa es lo
-    # que quedo --o no quedo-- en la base.
     with pytest.raises(RuntimeError, match="el outbox no acepta"):
         admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
             "pagos": [{"medio": "efectivo", "monto": 8000.0}]})
 
     with get_connection() as conn:
         assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM caja_movimientos").fetchone()[0] == 0
         assert _outbox(conn) == ()
-        estado = conn.execute(
-            "SELECT estado FROM pedidos WHERE id = ?", (pid,)
-        ).fetchone()[0]
-    assert estado == "abierto", "el pedido tiene que quedar cobrable de nuevo"
+        estado = conn.execute("SELECT estado, venta_id FROM pedidos WHERE id = ?", (pid,)).fetchone()
+    assert tuple(estado) == ("abierto", None), "el pedido tiene que quedar cobrable de nuevo"
 
 
-# ── El aplicador central ─────────────────────────────────────────────────
+# ── La venta de mostrador ────────────────────────────────────────────────
+
+def _vender_en_mostrador(client, monto=5000.0, con_qr=False):
+    r = client.post("/api/ventas", json={
+        "fecha": "2026-10-18",
+        "items": [{"nombre": "Empanada", "qty": 2, "precio": monto / 2}],
+        "pagos": [{"medio": "mercadopago" if con_qr else "efectivo",
+                   "monto": monto, "cobrar_con_qr": con_qr}],
+    })
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_una_venta_de_mostrador_en_un_nodo_sube_sin_pedido(admin_client, como_nodo):
+    from app.db_core import get_connection
+
+    venta = _vender_en_mostrador(admin_client)
+    with get_connection() as conn:
+        (operacion,) = _outbox(conn)
+    assert operacion.operation_type == erp_offline.TIPO_VENTA_REGISTRADA
+    assert operacion.aggregate_id == f"{NODO}:venta:{venta['id']}"
+    assert operacion.payload["numero"] == venta["numero"]
+    assert venta["numero"].startswith(f"{PREFIJO}-")
+    assert operacion.payload["extra"] is None
+    assert [i["nombre"] for i in operacion.payload["items"]] == ["Empanada"]
+
+
+def test_una_venta_de_mostrador_fuera_de_un_nodo_no_encola(admin_client, monkeypatch):
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID", raising=False)
+    from app.db_core import get_connection
+
+    _vender_en_mostrador(admin_client)
+    with get_connection() as conn:
+        assert _outbox(conn) == ()
+
+
+def test_la_venta_de_mostrador_por_qr_sube_pendiente_y_despues_el_pago(admin_client, como_nodo):
+    from app import database as db
+    from app.db_core import get_connection
+
+    venta = _vender_en_mostrador(admin_client, con_qr=True)
+    assert venta["estado"] == "pendiente"
+    with get_connection() as conn:
+        assert _tipos(conn) == [erp_offline.TIPO_VENTA_REGISTRADA]
+
+    assert db.acreditar_pago_qr(venta["id"], "555") is True
+    with get_connection() as conn:
+        assert _tipos(conn) == [erp_offline.TIPO_VENTA_REGISTRADA, erp_offline.TIPO_PAGO_ACREDITADO]
+
+
+def test_anular_en_el_nodo_sube_la_anulacion(admin_client, como_nodo):
+    from app.db_core import get_connection
+
+    venta = _vender_en_mostrador(admin_client)
+    r = admin_client.post(f"/api/ventas/{venta['id']}/anular")
+    assert r.status_code == 200, r.text
+    with get_connection() as conn:
+        assert _tipos(conn) == [erp_offline.TIPO_VENTA_REGISTRADA, erp_offline.TIPO_VENTA_ANULADA]
+
+
+# ── `pedido.cobrado` v1: compatibilidad en el central ────────────────────
 
 def _operacion(numero="V-00099", venta_id=7, secuencia=1, **extra):
     datos = {
@@ -219,84 +312,80 @@ def _operacion(numero="V-00099", venta_id=7, secuencia=1, **extra):
         "stock_descontado": False,
     }
     datos.update(extra)
-    return pedido_cobrado_a_operacion(
-        NODO, secuencia, "2026-08-30 10:00:00", **datos
-    )
+    return pedido_cobrado_a_operacion(NODO, secuencia, "2026-08-30 10:00:00", **datos)
 
 
-def test_el_central_materializa_la_venta_del_nodo(admin_client):
-    """El handler central reconstruye la venta con sus pagos y su caja."""
+def test_el_central_sigue_aplicando_un_pedido_cobrado_de_un_nodo_de_antes(admin_client):
+    """Un nodo del piloto pudo quedar con `pedido.cobrado` en el outbox: el despachador del central la aplica."""
+    from libraedge.sync.receiver import SyncReceiver
+
     from app.db_core import get_connection
+    from app.web.routers.sincronizacion_offline import despachador
 
     with get_connection() as conn:
-        aplicar_pedido_cobrado(conn, _operacion())
-        conn.commit()
-
-        venta = conn.execute(
-            "SELECT id, total FROM sales WHERE number = ?", ("V-00099",)
-        ).fetchone()
-        assert venta is not None, "la venta del nodo no llego al central"
-        assert float(venta[1]) == 16000.0
-
-        pagos = conn.execute(
-            "SELECT medio, monto FROM ventas_pagos WHERE venta_id = ?", (venta[0],)
-        ).fetchall()
-        assert [(p[0], float(p[1])) for p in pagos] == [("efectivo", 16000.0)]
-
-        caja = conn.execute(
-            "SELECT COUNT(*) FROM caja_movimientos WHERE referencia = ?", ("ref-1",)
-        ).fetchone()[0]
-        assert caja == 1, "el ingreso de caja tambien tiene que materializarse"
+        receptor = SyncReceiver(conn, despachador=despachador)
+        assert receptor.accept(_operacion()).result == "accepted"
+        assert receptor.accept(_operacion()).result == "duplicate"
+        venta = conn.execute("SELECT id, total FROM sales WHERE number = ?", ("V-00099",)).fetchall()
+        assert len(venta) == 1 and float(venta[0][1]) == 16000.0
+        caja = conn.execute("SELECT COUNT(*) FROM caja_movimientos WHERE referencia = ?", ("ref-1",)).fetchone()[0]
+    assert caja == 1
 
 
 def test_una_colision_de_numeracion_se_rechaza_y_no_pasa_por_duplicado(admin_client):
-    """🔴 Un choque de numeros NO puede parecer un reintento deduplicado.
-
-    `ventas.numero` es UNIQUE, asi que dejar llegar el choque al INSERT tira
-    IntegrityError -- y `SyncReceiver.accept()` traduce IntegrityError a
-    "duplicate". La venta del segundo nodo se perderia **pareciendo que el
-    central la deduplico bien**, que es la peor forma de perder una venta.
-
-    Rechazarla la manda a revision manual, que es lo que corresponde: la
-    numeracion por nodo es una decision de producto que todavia no se tomo.
-    """
+    """🔴 Un choque de números NO puede parecer un reintento deduplicado: va a revisión manual."""
     from app.db_core import get_connection
 
     with get_connection() as conn:
         aplicar_pedido_cobrado(conn, _operacion(numero="V-00077"))
         conn.commit()
-
         with pytest.raises(ValueError, match="colision"):
-            aplicar_pedido_cobrado(
-                conn, _operacion(numero="V-00077", venta_id=99, secuencia=2)
-            )
+            aplicar_pedido_cobrado(conn, _operacion(numero="V-00077", venta_id=99, secuencia=2))
 
 
-def test_el_central_ignora_una_operacion_de_otro_producto(admin_client):
-    """El handler central es uno solo por instancia: tiene que dejar pasar lo
-    que no es suyo en vez de romper."""
+def test_el_aplicador_viejo_rechaza_otro_tipo(admin_client):
+    """Con el despachador cada aplicador recibe sólo su tipo; si igual le llega otro, lo rechaza (antes lo dejaba
+    pasar en silencio y la operación quedaba `applied`)."""
     from app.db_core import get_connection
 
     operacion = _operacion()
-    ajena = type(operacion)(
-        **{**operacion.__dict__, "operation_type": "sale.confirmed"}
-    )
+    ajena = type(operacion)(**{**operacion.__dict__, "operation_type": "sale.confirmed"})
     with get_connection() as conn:
-        aplicar_pedido_cobrado(conn, ajena)
+        with pytest.raises(ValueError, match=TIPO_OPERACION):
+            aplicar_pedido_cobrado(conn, ajena)
         assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
 
 
-def test_un_schema_desconocido_se_rechaza_en_vez_de_materializarse_a_medias(admin_client):
+def test_un_tipo_que_el_central_no_conoce_va_a_revision_y_no_se_aplica(admin_client):
+    """🔴 El agujero que cierra el despachador (libraedge ADR-007): antes un tipo desconocido quedaba `applied`."""
+    from libraedge.sync.receiver import SyncReceiver
+
     from app.db_core import get_connection
+    from app.web.routers.sincronizacion_offline import despachador
+
+    operacion = _operacion()
+    ajena = type(operacion)(**{**operacion.__dict__, "operation_type": "turno.cerrado"})
+    with get_connection() as conn:
+        assert SyncReceiver(conn, despachador=despachador).accept(ajena).result == "rejected"
+        estado = conn.execute("SELECT status FROM sync_inbox WHERE operation_id = ?",
+                              (ajena.operation_id,)).fetchone()[0]
+    assert estado == "manual_review"
+
+
+def test_un_schema_desconocido_no_se_materializa_a_medias(admin_client):
+    from libraedge.sync.receiver import SyncReceiver
+
+    from app.db_core import get_connection
+    from app.web.routers.sincronizacion_offline import despachador
 
     operacion = _operacion()
     futura = type(operacion)(**{**operacion.__dict__, "schema_version": 99})
     with get_connection() as conn:
-        with pytest.raises(ValueError, match="schema"):
-            aplicar_pedido_cobrado(conn, futura)
+        assert SyncReceiver(conn, despachador=despachador).accept(futura).result == "rejected"
+        assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
 
 
-# ── El schema ────────────────────────────────────────────────────────────
+# ── El schema y el aprovisionamiento ─────────────────────────────────────
 
 def test_las_tablas_de_libraedge_existen_en_toda_instancia(admin_client):
     """El central las necesita aunque no sea un nodo: auth, inbox y changelog."""
@@ -305,8 +394,7 @@ def test_las_tablas_de_libraedge_existen_en_toda_instancia(admin_client):
     with get_connection() as conn:
         faltan = [
             tabla for tabla in
-            ("node_identity", "local_sequences", "sync_outbox", "sync_inbox",
-             "sync_changelog")
+            ("node_identity", "local_sequences", "sync_outbox", "sync_inbox", "sync_changelog")
             if conn.execute(
                 "SELECT COUNT(*) FROM information_schema.tables"
                 " WHERE table_schema = 'public' AND table_name = ?", (tabla,)
@@ -315,410 +403,46 @@ def test_las_tablas_de_libraedge_existen_en_toda_instancia(admin_client):
     assert faltan == [], f"faltan tablas de LibraEdge: {faltan}"
 
 
-def test_el_id_del_nodo_no_se_lee_al_importar(monkeypatch):
-    """Se lee en cada cobro, no una vez al importar el modulo.
-
-    Un valor cacheado al importar haria que activar el nodo exigiera reiniciar
-    el proceso, y --peor para la suite-- que el resultado dependiera del orden
-    de los tests.
-    """
-    monkeypatch.setenv("RESTOLIBRA_EDGE_NODE_ID", "otro-nodo")
-    assert nodo_offline() == "otro-nodo"
-    monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID")
-    assert nodo_offline() is None
-
-
-def test_la_variable_no_quedo_definida_en_el_entorno_de_la_suite():
-    """Guard del propio arnes: si algo la dejara puesta, los tests del camino
-    normal medirian el camino de nodo y nadie se enteraria."""
-    assert "RESTOLIBRA_EDGE_NODE_ID" not in os.environ
-
-
-# --------------------------------------------------------------------------
-# La lista de tablas que el nodo espeja, y el corte cuando una no se puede.
-#
-# Nace el 2026-08-31, de que `publicar` venía diciendo "21 de 22": salteaba
-# `lista_precio_items` por su PK compuesta `(lista_id, producto_id)`. La
-# resolución no fue enseñarle al aplicador esa clave sino sacar la tabla: este
-# producto no la lee. Ver el comentario de `TABLAS_DE_REFERENCIA`.
-# --------------------------------------------------------------------------
-
-
 def test_las_tablas_de_precios_viejas_de_libracore_no_se_espejan():
-    """Las cuatro que el producto dejó de usar en la migración a LibraCommerce.
-
-    El test mira **las dos mitades**, y no sólo la ausencia: que falten las
-    cuatro viejas no dice nada si por el mismo descuido faltaran también las
-    nuevas — la lista quedaría igual de vacía de precios y el test igual de
-    verde. Así que se exige además que estén las que el producto sí consulta.
-    """
-    from scripts.nodo_offline import TABLAS_DE_REFERENCIA
-
-    viejas = {"productos", "categorias_producto", "listas_precio",
-              "lista_precio_items"}
-    assert not (viejas & TABLAS_DE_REFERENCIA), (
-        "volvieron las tablas de precios de LibraCore a la lista del espejo; "
-        "este producto cotiza por price_lists/item_prices desde P8"
-    )
-
+    """Las cuatro que el producto dejó de usar en la migración a LibraCommerce, y las que sí usa, presentes."""
+    viejas = {"productos", "categorias_producto", "listas_precio", "lista_precio_items"}
+    assert not (viejas & TABLAS_DE_REFERENCIA)
     nuevas = {"catalog_items", "categories", "price_lists", "item_prices"}
-    assert nuevas <= TABLAS_DE_REFERENCIA, (
-        "faltan las tablas de precios que el producto SÍ usa: "
-        f"{sorted(nuevas - TABLAS_DE_REFERENCIA)}"
-    )
+    assert nuevas <= TABLAS_DE_REFERENCIA
 
 
-def test_publicar_no_saltea_ninguna_tabla(admin_client, capsys):
-    """Con la lista de hoy, el espejo del nodo sale completo.
-
-    Es el test que hace valer al de abajo: sin él, el corte por salteo podría
-    no dispararse nunca y nadie se enteraría de que la lista quedó rota.
-    """
-    from scripts import nodo_offline
-
-    assert nodo_offline.publicar() == 0
-    assert "SALTEADA" not in capsys.readouterr().out
+def test_arca_config_se_espeja_para_facturar_en_el_nodo():
+    """libracore ADR-074, punto 11: sin `arca_config` el nodo contesta 422 `nodo_sin_arca`. La clave no viaja: la
+    tabla guarda CUIT, punto de venta, ambiente y rutas; el nodo firma con el ticket que presta el central."""
+    assert {"arca_config", "cajas"} <= TABLAS_DE_REFERENCIA
 
 
-def test_una_tabla_que_el_nodo_no_puede_espejar_corta_el_aprovisionamiento(
-    admin_client, monkeypatch, capsys
-):
-    """El control: `publicar` sale con 1, no imprime y sigue.
-
-    Antes el salteo era una línea de texto entre veinte de "trigger ok", y el
-    comando salía con 0 igual. Un aprovisionamiento que deja al nodo con una
-    copia incompleta tiene que fallar, porque lo que sigue es un cliente
-    vendiendo contra datos que no están.
-    """
-    from libracore.db import core
-
-    from scripts import nodo_offline
-
-    conn = core.get_connection()
-    conn.execute("DROP TABLE IF EXISTS dos_claves")
-    conn.execute("CREATE TABLE dos_claves (a INTEGER, b INTEGER, nombre TEXT,"
-                 " PRIMARY KEY (a, b))")
-    conn.commit()
-    conn.close()
-
-    monkeypatch.setattr(
-        nodo_offline, "TABLAS_DE_REFERENCIA",
-        frozenset(nodo_offline.TABLAS_DE_REFERENCIA | {"dos_claves"}),
-    )
-    try:
-        assert nodo_offline.publicar() == 1
-        salida = capsys.readouterr().out
-        assert "dos_claves: SALTEADA" in salida
-        assert "copia INCOMPLETA" in salida
-    finally:
-        conn = core.get_connection()
-        conn.execute("DROP TABLE IF EXISTS dos_claves")
-        conn.commit()
-        conn.close()
+def test_publicar_el_aprovisionamiento_del_producto_no_saltea_ninguna_tabla(admin_client, capsys):
+    """Con la lista de hoy el espejo del nodo sale completo: `publicar` sale 0 (sale 1 si saltea alguna)."""
+    assert provisionar(["publicar"]) == 0
+    capsys.readouterr()
 
 
-def test_publicar_retira_el_trigger_de_una_tabla_que_salio_de_la_lista(
-    admin_client, capsys
-):
-    """🔴 Sacar la tabla del código no la despublica del central.
-
-    Es lo que pasó al sacar las cuatro tablas de precios de LibraCore: tres de
-    ellas seguían con su trigger instalado en el central de demo, escribiendo al
-    changelog de algo que el nodo ya no espera. `publicar` tiene que **converger
-    a la lista declarada**, no sólo agregar.
-
-    El control va adentro: primero se comprueba que el trigger de más está
-    puesto y **registra**, porque si no el "ya no registra" del final lo daría
-    igual un trigger que nunca se instaló.
-    """
-    from libracore.db import core
-    from libraedge.db.changelog import instalar_trigger, listar_cambios
-
-    from scripts import nodo_offline
-
-    conn = core.get_connection()
-    conn.execute("DROP TABLE IF EXISTS sobrante")
-    conn.execute("CREATE TABLE sobrante (id SERIAL PRIMARY KEY, nombre TEXT)")
-    instalar_trigger(conn, "sobrante", "id")
-    conn.execute("INSERT INTO sobrante (nombre) VALUES (?)", ("antes",))
-    conn.commit()
-    antes = len([c for c in listar_cambios(conn) if c.table_name == "sobrante"])
-    conn.close()
-    assert antes == 1, "el trigger de más no estaba registrando"
-
-    try:
-        # `sobrante` NO está en TABLAS_DE_REFERENCIA: publicar tiene que sacarlo.
-        assert nodo_offline.publicar() == 0
-        assert "sobrante: trigger RETIRADO" in capsys.readouterr().out
-
-        conn = core.get_connection()
-        conn.execute("INSERT INTO sobrante (nombre) VALUES (?)", ("despues",))
-        conn.commit()
-        despues = len([c for c in listar_cambios(conn) if c.table_name == "sobrante"])
-        conn.close()
-        assert despues == antes, "siguió publicando después de retirarlo"
-    finally:
-        conn = core.get_connection()
-        conn.execute("DROP TABLE IF EXISTS sobrante")
-        conn.commit()
-        conn.close()
-
-
-# --------------------------------------------------------------------------
-# `vigilar`, que no tenía un solo test — y por eso el 2026-08-31 pasó a mentir
-# apenas se dio de baja el único nodo de la demo.
-# --------------------------------------------------------------------------
-
-
-def _un_nodo(node_id="nodo-test", sucursal="test", hace_minutos=1, activo=True):
-    """Registra un nodo y le estampa `last_seen_at` hace N minutos."""
+def test_vigilar_por_el_envoltorio(admin_client, capsys):
+    """`scripts/nodo_offline.py vigilar` (lo que corre el cron del central) es el del motor: 1 si un nodo activo se
+    calló, 0 si está al día."""
     import datetime
 
-    from libracore.db import core
     from libraedge.db.repository import NodeRepository
 
-    conn = core.get_connection()
-    NodeRepository(conn).register_node(node_id, branch_id=sucursal)
-    visto = datetime.datetime.now(datetime.UTC) - datetime.timedelta(
-        minutes=hace_minutos
-    )
-    conn.execute(
-        "UPDATE node_identity SET last_seen_at = ? WHERE node_id = ?",
-        (visto.isoformat(), node_id),
-    )
-    if not activo:
-        NodeRepository(conn).deactivate_node(node_id)
-    conn.commit()
-    conn.close()
-
-
-def _limpiar_nodos():
-    from libracore.db import core
-
-    conn = core.get_connection()
-    conn.execute("DELETE FROM node_identity")
-    conn.commit()
-    conn.close()
-
-
-def test_vigilar_sale_con_cero_cuando_el_nodo_esta_al_dia(admin_client, capsys):
-    from scripts import nodo_offline
-
-    _limpiar_nodos()
-    try:
-        _un_nodo(hace_minutos=1)
-        assert nodo_offline.vigilar(15) == 0
-        assert "al día" in capsys.readouterr().out
-    finally:
-        _limpiar_nodos()
-
-
-def test_vigilar_sale_con_uno_cuando_el_nodo_se_pasa_del_umbral(admin_client, capsys):
-    """Y el mismo nodo con umbral holgado vuelve a 0.
-
-    Ese segundo caso es el que hace valer al primero: sobre **los mismos datos**
-    prueba que lo que decide es el umbral y no otra cosa.
-    """
-    from scripts import nodo_offline
-
-    _limpiar_nodos()
-    try:
-        _un_nodo(hace_minutos=90)
-        assert nodo_offline.vigilar(15) == 1
-        assert "SIN NOTICIAS" in capsys.readouterr().out
-
-        assert nodo_offline.vigilar(10_000) == 0
-        assert "El nodo dio señales" in capsys.readouterr().out
-    finally:
-        _limpiar_nodos()
-
-
-def test_vigilar_no_dice_que_dio_senales_un_nodo_revocado(admin_client, capsys):
-    """🔴 El falso verde que apareció al dar de baja el único nodo de la demo.
-
-    El resumen contaba `len(nodos)`, que incluye a los revocados, así que con el
-    único nodo dado de baja —y la PC apagada hacía cuatro horas— el cron pasó a
-    escribir cada 10 minutos *"El nodo dio señales dentro de los 15 minutos"*.
-    Sale con 0, que está bien: un nodo revocado no se vigila. Lo que no puede
-    hacer es **afirmar que dio señales**.
-    """
-    from scripts import nodo_offline
-
-    _limpiar_nodos()
-    try:
-        _un_nodo(hace_minutos=240, activo=False)
-        assert nodo_offline.vigilar(15) == 0
-        salida = capsys.readouterr().out
-        assert "REVOCADO, no se vigila" in salida
-        assert "dio señales" not in salida, "afirmó que un nodo revocado dio señales"
-        assert "No hay nodos activos" in salida
-    finally:
-        _limpiar_nodos()
-
-
-def test_vigilar_con_un_revocado_al_lado_cuenta_solo_el_activo(admin_client, capsys):
-    """El contraste: con un activo al día, el revocado no infla la cuenta."""
-    from scripts import nodo_offline
-
-    _limpiar_nodos()
-    try:
-        _un_nodo(node_id="nodo-vivo", sucursal="a", hace_minutos=1)
-        _un_nodo(node_id="nodo-muerto", sucursal="b", hace_minutos=500, activo=False)
-        assert nodo_offline.vigilar(15) == 0
-        salida = capsys.readouterr().out
-        assert "El nodo dio señales" in salida, "contó también al revocado"
-        assert "Los 2 nodos" not in salida
-    finally:
-        _limpiar_nodos()
-
-
-# --------------------------------------------------------------------------
-# La venta de mostrador (`POST /api/ventas`) en un nodo.
-#
-# Hasta el 2026-10-18 `encolar_pedido_cobrado` tenía un solo llamador, el cobro
-# de una mesa, así que lo que se vendía en `/ventas` en un nodo offline nunca
-# llegaba al central. Ahora entra por el gancho `al_confirmar_venta`, dentro de
-# la transacción de la venta.
-# --------------------------------------------------------------------------
-
-
-def _vender_en_mostrador(client, monto=5000.0, con_qr=False):
-    r = client.post("/api/ventas", json={
-        "fecha": "2026-10-18",
-        "items": [{"nombre": "Empanada", "qty": 2, "precio": monto / 2}],
-        "pagos": [{"medio": "mercadopago" if con_qr else "efectivo",
-                   "monto": monto, "cobrar_con_qr": con_qr}],
-    })
-    assert r.status_code == 200, r.text
-    return r.json()
-
-
-def test_una_venta_de_mostrador_en_un_nodo_entra_al_outbox(admin_client, como_nodo):
     from app.db_core import get_connection
 
-    venta = _vender_en_mostrador(admin_client)
+    def visto_hace(minutos):
+        with get_connection() as conn:
+            visto = datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=minutos)
+            conn.execute("UPDATE node_identity SET last_seen_at = ? WHERE node_id = ?", (visto.isoformat(), NODO))
+            conn.commit()
 
     with get_connection() as conn:
-        pendientes = _outbox(conn)
-
-    assert len(pendientes) == 1, "la venta de mostrador no entró al outbox del nodo"
-    operacion = pendientes[0]
-    assert operacion.operation_type == TIPO_OPERACION
-    assert operacion.aggregate_id == f"{NODO}:venta:{venta['id']}"
-    assert operacion.payload["pedido"] is None
-    assert operacion.payload["numero"] == venta["numero"]
-    assert operacion.payload["estado"] == "cobrada"
-    assert float(operacion.payload["total"]) == 5000.0
-    assert [i["nombre"] for i in operacion.payload["items"]] == ["Empanada"]
-    assert [(p["medio"], float(p["monto"])) for p in operacion.payload["pagos"]] == [("efectivo", 5000.0)]
-
-
-def test_una_venta_de_mostrador_fuera_de_un_nodo_no_encola(admin_client, monkeypatch):
-    """El control: la instancia de siempre vende igual y no publica nada."""
-    monkeypatch.delenv("RESTOLIBRA_EDGE_NODE_ID", raising=False)
-    from app.db_core import get_connection
-
-    _vender_en_mostrador(admin_client)
-    with get_connection() as conn:
-        assert _outbox(conn) == ()
-
-
-def test_la_venta_de_mostrador_por_qr_se_encola_al_acreditar(admin_client, como_nodo):
-    """Pendiente no viaja (el central la daría por cobrada); acreditada, sí, una vez."""
-    from app import database as db
-    from app.db_core import get_connection
-
-    venta = _vender_en_mostrador(admin_client, con_qr=True)
-    assert venta["estado"] == "pendiente"
-    with get_connection() as conn:
-        assert _outbox(conn) == (), "una venta pendiente de QR no puede subir como cobrada"
-
-    assert db.acreditar_pago_qr(venta["id"], "555") is True
-    with get_connection() as conn:
-        pendientes = _outbox(conn)
-    assert len(pendientes) == 1
-    assert pendientes[0].payload["estado"] == "cobrada"
-
-
-def test_el_qr_de_una_mesa_no_encola_la_venta_por_segunda_vez(admin_client, mesa, como_nodo):
-    """🔴 La venta de un pedido ya la encoló el cobro de la mesa.
-
-    La acreditación del QR pasa por el mismo gancho; una segunda operación de
-    la misma venta llegaría al central como una colisión de numeración.
-    """
-    from app import database as db
-    from app.db_core import get_connection
-
-    producto = _producto(admin_client)
-    pid = _abrir_pedido(admin_client, mesa)
-    admin_client.post(f"/api/pedidos/{pid}/items", json={
-        "producto_id": producto["id"], "nombre": producto["nombre"],
-        "precio": 8000.0, "qty": 1, "estacion": "cocina"})
-    cobro = admin_client.post(f"/api/pedidos/{pid}/cobrar", json={
-        "pagos": [{"medio": "mercadopago", "monto": 8000.0, "cobrar_con_qr": True}]})
-    assert cobro.status_code == 200, cobro.text
-    with get_connection() as conn:
-        assert len(_outbox(conn)) == 1, "el cobro de la mesa no encoló: el test no prueba nada"
-
-    assert db.acreditar_pago_qr(cobro.json()["venta_id"], "777") is True
-    with get_connection() as conn:
-        assert len(_outbox(conn)) == 1, "la acreditación encoló la venta de la mesa otra vez"
-
-
-def test_si_el_encolado_falla_la_venta_de_mostrador_no_queda(admin_client, como_nodo, monkeypatch):
-    """🔴 La misma atomicidad que el cobro de la mesa: venta y operación juntas."""
-    from app import libraedge_integration
-    from app.db_core import get_connection
-
-    # `OSError` y no `RuntimeError`: el router de ventas traduce `RuntimeError` a
-    # un 409 de «reintentá», y acá se quiere ver la excepción tal cual.
-    def encolado_roto(conn, **datos):
-        raise OSError("el outbox no acepta")
-
-    monkeypatch.setattr(libraedge_integration, "encolar_pedido_cobrado", encolado_roto)
-
-    with pytest.raises(OSError, match="el outbox no acepta"):
-        admin_client.post("/api/ventas", json={
-            "fecha": "2026-10-18",
-            "items": [{"nombre": "Empanada", "qty": 1, "precio": 2500.0}],
-            "pagos": [{"medio": "efectivo", "monto": 2500.0}],
-        })
-
-    with get_connection() as conn:
-        assert conn.execute("SELECT COUNT(*) FROM sales").fetchone()[0] == 0
-        assert _outbox(conn) == ()
-
-
-def test_el_central_importa_la_venta_de_mostrador_una_sola_vez(admin_client, como_nodo):
-    """De punta a punta por el receptor de LibraEdge: se acepta, y el reintento
-    de la misma operación es `duplicate` sin escribir una segunda venta.
-
-    El nodo y el central comparten la base en el test, así que la operación del
-    outbox se reenvía con otro número de venta: con el mismo, el central la vería
-    (bien) como una colisión, que es otro test.
-    """
-    from libraedge.sync.receiver import SyncReceiver
-
-    from app.db_core import get_connection
-
-    _vender_en_mostrador(admin_client)
-    with get_connection() as conn:
-        (operacion,) = _outbox(conn)
-    operacion = type(operacion)(**{
-        **operacion.__dict__,
-        "payload": {**operacion.payload, "numero": "N1-00001"},
-    })
-
-    with get_connection() as conn:
-        receptor = SyncReceiver(conn, operation_handler=lambda op: aplicar_pedido_cobrado(conn, op))
-        assert receptor.accept(operacion).result == "accepted"
-        assert receptor.accept(operacion).result == "duplicate"
-
-        ventas = conn.execute(
-            "SELECT id FROM sales WHERE number = ?", ("N1-00001",)).fetchall()
-        assert len(ventas) == 1
-        conceptos = [f[0] for f in conn.execute(
-            "SELECT concepto FROM caja_movimientos WHERE concepto LIKE ?",
-            ("Venta N1-00001 %",)).fetchall()]
-    assert len(conceptos) == 1
-    assert "pedido" not in conceptos[0], conceptos[0]
+        NodeRepository(conn).register_node(NODO, branch_id="1")
+        conn.commit()
+    visto_hace(90)
+    assert provisionar(["vigilar", "--umbral", "15"]) == 1
+    visto_hace(1)
+    assert provisionar(["vigilar", "--umbral", "15"]) == 0
+    capsys.readouterr()

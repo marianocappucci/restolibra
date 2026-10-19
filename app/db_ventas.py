@@ -12,10 +12,12 @@ hay nada que enganchar). `venta_links` sigue en `schema_propio` hasta M5.
 import contextlib
 
 from libracommerce.erp import ventas as _v
+from libracommerce.erp.offline import al_facturar_con_outbox
 from libracore.venta_facturacion import PuertoDeVentas
 
 from app.db_core import get_connection
 from app.ganchos import GANCHOS
+from app.offline import CONEXION, OUTBOX, PRODUCTO
 
 
 def _cm(conn):
@@ -133,6 +135,12 @@ def _alicuota_de(venta_id: int) -> float | None:
 #: Cómo llegan a las ventas de este producto la factura desde la venta y el
 #: cobro por QR de LibraCore (`libracore.venta_facturacion`,
 #: `libracore.ventas_cobro_router`, el webhook).
+#:
+#: En un nodo offline (libracore ADR-074, E5 de LibraEdge): `conexion` dice si
+#: el nodo ve al central (sin conexión, la factura va a la bandeja y el QR se
+#: apaga), `producto` es el origen de la bandeja y del candado por venta, y
+#: `al_facturar` encola la `venta.facturada` para el central (libracommerce
+#: ADR-068). Fuera de un nodo los tres no cambian nada.
 PUERTO = PuertoDeVentas(
     obtener=get_venta,
     vincular_factura=vincular_venta_factura,
@@ -142,4 +150,7 @@ PUERTO = PuertoDeVentas(
     sellar_referencia_mp=add_venta_pago_referencia_mp,
     set_orden_mp=set_venta_mp_order,
     alicuota_de=_alicuota_de,
+    conexion=CONEXION,
+    producto=PRODUCTO,
+    al_facturar=al_facturar_con_outbox(OUTBOX, get_connection),
 )

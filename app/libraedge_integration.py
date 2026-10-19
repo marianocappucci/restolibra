@@ -1,93 +1,23 @@
-"""Traduccion entre una venta cobrada de Restolibra (pedido o mostrador) y LibraEdge.
+"""`pedido.cobrado` v1: lo que encolaba el piloto del nodo offline, aplicado en el central **por compatibilidad**.
 
-Restolibra es el primer piloto del nodo offline. La division de trabajo es la
-misma que en el resto de la familia: **LibraEdge no sabe que es un pedido ni una
-venta**; este modulo traduce el dominio de Restolibra al `OutboxOperation`
-generico, y provee el `operation_handler` que el central usa para materializarlo
-de vuelta.
+RestoLibra fue el piloto de LibraEdge (2026-08-30): el cobro de una mesa (y desde el 2026-10-18 la venta de
+mostrador) encolaba una operacion propia, `pedido.cobrado`, y el central la materializaba con el aplicador de abajo.
 
-## El opt-in comercial es un adicional por sucursal; el id de nodo es solo la identidad
+Desde E5 (2026-10-19) **ya no se encola**: las ventas suben por la capa ERP de LibraCommerce (`venta.registrada` y
+compania, libracommerce ADR-067), con el pedido en `extra` (`app/offline.py`). Si siguiera encolandose, la venta
+subiria dos veces. Lo que queda es el aplicador, registrado en el `Despachador` del central
+(`app/web/routers/sincronizacion_offline.py`), para una `pedido.cobrado` que un nodo de antes pudiera tener todavia en
+su outbox. `pedido_cobrado_a_operacion` arma una (la usan los tests de esa compatibilidad).
 
-Son dos cosas distintas y durante un tiempo estuvieron mezcladas aca.
-
-- **Contratar el modulo offline** es el adicional `offline` (`plans.ADICIONALES`, libracore ADR-048): un modulo de la tabla `modulos`
-  (`plan="addon"`, lo que ya lee `require_module`) mas una cantidad de **sucursales con offline** en el `config.json`
-  (`adicionales.offline`). Se cobra por sucursal, fuera de la escalera de planes y desde cualquiera de ellos. Lo carga el backoffice con el token
-  de servicio (`PUT /api/adicionales/offline`); un cambio de plan no lo toca (`apply_plan` saltea los modulos de los adicionales).
-- **`RESTOLIBRA_EDGE_NODE_ID`** es la **identidad del nodo** en la PC del cliente: la escribe el instalador y dice "esta instancia es el nodo X". No
-  es el opt-in. Antes lo era (se pensaba que "la presencia del nodo es el opt-in") porque el mecanismo de planes no sabia expresar un adicional
-  fuera de la escalera; ya lo sabe.
-
-Donde se hace cumplir: **al registrar un nodo** (`scripts/nodo_offline.py registrar`, via `verificar_alta_de_nodo`). Sin el adicional prendido, o
-con una sucursal mas de las contratadas, el alta se rechaza. La unidad es la **sucursal**, no el nodo: lo que se cuenta son las sucursales
-**distintas** (`node_identity.branch_id`) con al menos un nodo activo, asi que un segundo nodo en una sucursal que ya tiene no consume otra unidad
-(el reemplazo de una PC, o un nodo que quedo de antes).
-
-**Lo que no se corta nunca:** la sincronizacion. Un nodo ya registrado sigue autenticando por su `node_identity` y sincronizando aunque el
-adicional se de de baja o la cantidad quede por debajo de lo instalado: el nodo tiene ventas sin subir y bloquearlo seria perder plata del cliente.
-Dar de baja el adicional frena **altas nuevas**, nada mas.
-
-## Los ids no hay que traducirlos, y no es casualidad
-
-El payload manda `producto_id`, `cliente_id`, `usuario_id` y `mesa_id` tal cual.
-Puede hacerlo porque esas tablas son **de autoridad del central** y el nodo las
-espeja con la misma clave primaria (ver la bajada de LibraEdge). Si el nodo
-inventara sus propios ids para datos de referencia, cada operacion necesitaria
-una tabla de correspondencias y la reconciliacion se volveria el problema. El
-reparto de autoridad se lleva ese problema puesto.
+Los ids (`producto_id`, `cliente_id`, `usuario_id`, `mesa_id`) viajan tal cual: son de tablas de autoridad del
+central que el nodo espeja con la misma clave primaria.
 """
 
-import os
-
-#: El tipo de operacion que publica este producto. El equivalente de
-#: `sale.confirmed` de LibraCommerce, pero para el cierre de un pedido.
+#: El tipo de operacion del piloto.
 TIPO_OPERACION = "pedido.cobrado"
 
-#: Version del contrato del payload. Si cambia la forma, sube: el receptor
-#: central rechaza lo que no entiende en vez de materializar algo a medias.
+#: Version del contrato del payload del piloto.
 SCHEMA_VERSION = 1
-
-
-def nodo_offline() -> str | None:
-    """El id de este nodo, o `None` si esta instancia no es un nodo offline.
-
-    Es la **identidad** del nodo en la PC del cliente, no el opt-in comercial (ver el docstring del modulo)."""
-    return os.environ.get("RESTOLIBRA_EDGE_NODE_ID") or None
-
-
-def sucursales_con_nodo(conn=None) -> int:
-    """Cuantas sucursales DISTINTAS tienen al menos un nodo activo: lo que el adicional `offline` cobra y limita.
-
-    Se cuentan sucursales y no nodos a proposito: varios nodos en una misma sucursal no suman (decision del humano, 2026-10-13). Un nodo dado de
-    baja (`active = 0`) no cuenta. Sin `conn` abre su propia conexion."""
-    if conn is None:
-        from app.db_core import get_connection
-
-        with get_connection() as propia:
-            return sucursales_con_nodo(propia)
-    fila = conn.execute("SELECT COUNT(DISTINCT branch_id) FROM node_identity WHERE active = 1").fetchone()
-    return int(fila[0])
-
-
-def verificar_alta_de_nodo(conn, node_id: str, branch_id: str) -> None:
-    """La guarda de alta de un nodo: levanta `libracore.adicionales.AdicionalNoContratado` o `AdicionalExcedido` (con el mensaje para el cliente).
-
-    - Sin el adicional `offline` prendido en `modulos`: no se registra ningun nodo.
-    - Si `branch_id` ya tiene un nodo activo (otro, o este mismo al re-registrarlo) no se suma ninguna unidad: solo cuenta el modulo prendido.
-    - Si es una sucursal nueva, `sucursales_con_nodo + 1` no puede superar la cantidad contratada. Sin cantidad cargada no hay tope.
-
-    Leer el modulo y la cantidad es de la instancia (`modulos` y `config.json`); `conn` es la conexion del alta, para que la cuenta y el alta vean lo mismo."""
-    from libracore.adicionales import verificar_alta
-
-    import plans
-
-    modulos = {fila[0]: bool(fila[1]) for fila in conn.execute("SELECT modulo, habilitado FROM modulos").fetchall()}
-    ya_tiene_nodo = conn.execute(
-        "SELECT 1 FROM node_identity WHERE branch_id = ? AND active = 1 LIMIT 1", (branch_id,)).fetchone() is not None
-    # Una sucursal que ya cuenta no suma NI se compara con el tope: si el contrato se achico por debajo de lo instalado, reemplazar la PC de una de
-    # las sucursales que ya estan no puede quedar bloqueado (solo cuenta que el modulo siga prendido).
-    usadas = 0 if ya_tiene_nodo else sucursales_con_nodo(conn)
-    verificar_alta(plans, "offline", usadas, sumar=0 if ya_tiene_nodo else 1, modulos=modulos)
 
 
 def _outbox_operation():
@@ -171,107 +101,13 @@ def pedido_cobrado_a_operacion(
     )
 
 
-def encolar_pedido_cobrado(conn, **datos) -> None:
-    """Encola la operacion **dentro de la transaccion que ya abrio el llamador**.
-
-    🔴 `commit=False` en las dos llamadas, y es el punto de todo el piloto: la
-    operacion del outbox tiene que entrar en la misma transaccion que la venta
-    que la origina. O quedan las dos, o no queda ninguna. Si el enqueue
-    commiteara por su cuenta, publicaria una venta a medio hacer; si la venta se
-    cae despues, quedaria una operacion de outbox que sincroniza algo que no
-    existe.
-
-    Silencioso si esta instancia no es un nodo: `cobrar_pedido()` llama siempre y
-    la decision vive aca, en un solo lugar.
-    """
-    node_id = nodo_offline()
-    if not node_id:
-        return
-
-    from libraedge.db.repository import NodeRepository
-
-    repo = NodeRepository(conn)
-    sequence = repo.next_sequence(commit=False)
-    operacion = pedido_cobrado_a_operacion(
-        node_id, sequence, datos.pop("occurred_at"), **datos
-    )
-    repo.enqueue_operation(operacion, commit=False)
-
-
-def encolar_venta_de_mostrador(conn, venta) -> None:
-    """La venta de mostrador cobrada en un nodo entra al outbox, como el cobro de una mesa.
-
-    Corre desde el gancho `al_confirmar_venta` (`app/ganchos.py`), que el motor
-    llama con **la misma conexion y dentro de la transaccion de la venta**
-    cuando llega a `cobrada`: al nacer cobrada en `registrar_venta`, o al
-    acreditarse el QR en `acreditar_pago_qr`. Es la misma atomicidad que
-    `encolar_pedido_cobrado` (venta y operacion viven o mueren juntas) y el mismo
-    mecanismo de subida: misma operacion `pedido.cobrado`, con `pedido` nulo.
-
-    Hasta el 2026-10-18 `encolar_pedido_cobrado` tenia un solo llamador
-    (`cobrar_pedido`), asi que una venta hecha en `/ventas` en un nodo offline
-    se quedaba en el nodo para siempre.
-
-    🔴 **Una venta que cerro un pedido no se encola de nuevo.** El cobro de la
-    mesa ya la encolo en su transaccion (`db_cobro_pedido`); si se pago por QR,
-    la acreditacion vuelve a pasar por este gancho, y una segunda operacion de
-    la misma venta llegaria al central como una colision de numeracion. Se
-    reconoce por `pedidos.venta_id`, que el cobro escribe en la misma
-    transaccion que la venta.
-
-    Silencioso si esta instancia no es un nodo.
-    """
-    if not nodo_offline():
-        return
-    venta_id = venta["id"]
-    if conn.execute(
-        "SELECT 1 FROM pedidos WHERE venta_id = ? LIMIT 1", (venta_id,)
-    ).fetchone() is not None:
-        return
-
-    from app.db_core import _ar_now
-
-    # Lo mismo que el router lee para decidir si descuenta (`_stock_habilitado`),
-    # pero con la conexion de la transaccion: un gancho no abre la suya.
-    fila = conn.execute(
-        "SELECT habilitado FROM modulos WHERE modulo = 'stock'"
-    ).fetchone()
-    stock_descontado = bool(fila and fila[0])
-
-    encolar_pedido_cobrado(
-        conn, occurred_at=_ar_now(), pedido=None, venta_id=venta_id,
-        # `str`: en PostgreSQL `occurred_on` es DATE y el payload va a JSON.
-        numero=venta["numero"], fecha=str(venta["fecha"]),
-        items=[
-            {
-                "nombre": item["nombre"], "qty": item["qty"],
-                "precio": item["precio"], "subtotal": item["subtotal"],
-                "producto_id": item.get("producto_id"), "modificadores": "",
-            }
-            for item in venta["items"]
-        ],
-        pagos=[
-            {"medio": pago["medio"], "monto": pago["monto"],
-             "referencia": pago.get("referencia") or ""}
-            for pago in venta["pagos"]
-        ],
-        subtotal=venta["subtotal"], descuento=venta["descuento"],
-        total=venta["total"], estado=venta["estado"],
-        cliente_id=venta.get("cliente_id"),
-        cliente_nombre=venta.get("cliente_nombre") or "",
-        usuario_id=venta.get("usuario_id"),
-        observaciones=venta.get("observaciones") or "",
-        stock_descontado=stock_descontado, turno_id=venta.get("turno_id"),
-    )
-
-
 def aplicar_pedido_cobrado(conn, operation) -> None:
     """Handler central: materializa un `pedido.cobrado` que llego de un nodo.
 
-    Se le pasa como `operation_handler` a `libraedge.sync.receiver.SyncReceiver`.
-    LibraEdge solo sabe que recibio una operacion generica; solo Restolibra sabe
-    convertirla de vuelta en una venta con sus pagos, su movimiento de caja y su
-    descuento de stock.
+    Registrado en el `Despachador` del central para `pedido.cobrado` v1 (compatibilidad:
+    los nodos de E5 en adelante no la encolan). LibraEdge solo sabe que recibio una
+    operacion generica; solo Restolibra sabe convertirla de vuelta en una venta con
+    sus pagos, su movimiento de caja y su descuento de stock.
 
     Reusa las mismas funciones que el nodo (`create_venta`, `add_venta_pago`,
     `create_caja_movimiento`, `descontar_stock_venta`) en vez de escribir un
@@ -279,7 +115,7 @@ def aplicar_pedido_cobrado(conn, operation) -> None:
     y la que se ejercita menos es justo esta.
     """
     if operation.operation_type != TIPO_OPERACION:
-        return
+        raise ValueError(f"se esperaba {TIPO_OPERACION}, llego {operation.operation_type!r}")
     if operation.schema_version != SCHEMA_VERSION:
         raise ValueError(
             f"schema {operation.schema_version} de {TIPO_OPERACION} desconocido"

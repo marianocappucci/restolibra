@@ -8,17 +8,13 @@ LibraCore, sub-paso previo dentro de cada producto, sin cambiar
 comportamiento — ver wiki/entities/libracore.md). Dominio propio de
 Restolibra, sin equivalente en Contalibra.
 """
-from libracommerce.erp.ventas import FiadoSinCliente, _fia
+from libracommerce.erp.ventas import FiadoSinCliente, _fia, registrar_venta
 from libracore import pagos as acreditacion
 
-from app.db_caja import create_caja_movimiento
 from app.db_core import _ar_now, get_connection
 from app.db_modulos import get_modulos
 from app.db_pedidos import get_pedido
-from app.db_stock import descontar_stock_venta
-from app.db_turnos import get_turno_activo, vincular_venta_turno
-from app.db_ventas import add_venta_pago, create_venta, get_next_venta_numero
-from app.libraedge_integration import encolar_pedido_cobrado
+from app.ganchos import ganchos_del_cobro
 
 
 def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
@@ -91,6 +87,12 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
     obs = observaciones or f"Pedido {pedido['numero']}"
     stock_habilitado = bool(get_modulos().get("stock"))
 
+    # Cada pago sin referencia lleva la del pedido: identifica la línea en la caja y en los pagos de la venta.
+    pagos = [
+        {**p, "referencia": p.get("referencia") or f"pedido:{pedido_id}:pago:{i}"}
+        for i, p in enumerate(pagos)
+    ]
+
     with get_connection() as conn:
         try:
             cur = conn.execute(
@@ -102,46 +104,24 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
                     "El pedido ya fue cobrado o modificado por otra operación"
                 )
 
-            numero = get_next_venta_numero(conn=conn)
-            venta_id = create_venta(
-                numero=numero, fecha=fecha, items=items,
-                subtotal=subtotal, descuento=descuento, total=total,
-                cliente_id=cliente_id, cliente_nombre=cliente_nombre,
-                usuario_id=usuario_id, observaciones=obs, estado=estado,
-                conn=conn,
+            # 🔑 **La venta de la mesa es una venta del motor** (E5 de LibraEdge, 2026-10-19): número, encabezado,
+            # líneas, pagos, la caja de lo acreditado (al ACREDITAR, no al declarar: un QR que nadie escaneó no
+            # toca la caja), stock con la receta, turno y los ganchos, en `registrar_venta`. Hasta acá este cobro
+            # armaba la venta con esas mismas piezas pero por su cuenta, así que no llamaba a `al_registrar_venta`
+            # y en un nodo offline una venta parcial no subía nunca (decisión 5 del humano: sube toda venta).
+            #
+            # Lo que cambia a la vista: el concepto de la caja es el del motor (`Venta V-00007 — Efectivo`, sin el
+            # pedido en el medio; el pedido queda en las observaciones de la venta) y la referencia por defecto de
+            # un pago es `pedido:<id>:pago:<n>`.
+            #
+            # `ganchos_del_cobro` vincula el pedido a la venta al nacer, antes de que en un nodo se encole: el
+            # pedido viaja con la venta (`offline.extra_de_venta`). La fiada sin cliente ya se rechazó arriba.
+            venta_id = registrar_venta(
+                conn, fecha=fecha, items=items, subtotal=subtotal, descuento=descuento,
+                total=total, cliente_id=cliente_id, cliente_nombre=cliente_nombre,
+                usuario_id=usuario_id, observaciones=obs, estado=estado, pagos=pagos,
+                stock_habilitado=stock_habilitado, hooks=ganchos_del_cobro(pedido_id),
             )
-            for i, p in enumerate(pagos):
-                monto = float(p["monto"])
-                referencia = p.get("referencia") or f"pedido:{pedido_id}:venta:{venta_id}:pago:{i}"
-                # El estado lo trae la línea de pago. Sin `estado` levanta:
-                # los dos defaults posibles mueven plata en silencio y en
-                # direcciones opuestas.
-                estado_del_pago = acreditacion.estado_de(p)
-                add_venta_pago(venta_id, p["medio"], monto, referencia, conn=conn,
-                               estado=estado_del_pago.value)
-                # 🔴 **La caja se escribe al ACREDITAR, no al declarar.** Un
-                # pago por QR que todavía nadie escaneó queda registrado como
-                # línea y no toca la caja: escribirlo acá infla el arqueo con
-                # plata que no entró.
-                if estado_del_pago not in acreditacion.ACREDITAN:
-                    continue
-                create_caja_movimiento(
-                    fecha=fecha, tipo="ingreso",
-                    concepto=f"Venta {numero} (pedido {pedido['numero']}) — {p['medio']}",
-                    monto=monto, referencia=referencia,
-                    medio_pago=p["medio"], usuario_id=usuario_id,
-                    conn=conn,
-                )
-
-            if stock_habilitado:
-                descontar_stock_venta(venta_id, items, fecha=fecha, usuario_id=usuario_id, conn=conn)
-
-            turno_id = None
-            if usuario_id:
-                turno = get_turno_activo(usuario_id, conn=conn)
-                if turno:
-                    turno_id = turno["id"]
-                    vincular_venta_turno(venta_id, turno_id, conn=conn)
 
             # 🔑 **El pedido queda en `cobrando` mientras el QR no acredite.**
             #
@@ -176,22 +156,6 @@ def cobrar_pedido(pedido_id: int, pagos: list[dict], descuento: float = 0.0,
             #
             # Hay un test que fija la regla sobre el código, no sobre este
             # comentario: ver `test_ninguna_ruta_financiera_toca_mesas`.
-
-            # Nodo offline: la operación de outbox entra **en esta misma
-            # transacción**, justo antes del commit. Es lo que hace que la venta
-            # y su registro de sincronización vivan o mueran juntos — si esto
-            # commiteara por su cuenta publicaría una venta a medio hacer, y si
-            # fuera después del commit una caída acá dejaría una venta que
-            # nunca se sincroniza. No hace nada si la instancia no es un nodo.
-            encolar_pedido_cobrado(
-                conn, occurred_at=_ar_now(), pedido=pedido, venta_id=venta_id,
-                numero=numero, fecha=fecha, items=items, pagos=pagos,
-                subtotal=subtotal, descuento=descuento, total=total,
-                estado=estado, cliente_id=cliente_id,
-                cliente_nombre=cliente_nombre, usuario_id=usuario_id,
-                observaciones=obs, stock_descontado=stock_habilitado,
-                turno_id=turno_id,
-            )
 
             conn.commit()
         except Exception:
