@@ -113,8 +113,9 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       { to: '/usuarios', label: 'Usuarios', icon: ICONOS.usuarios, adminOnly: true },
-      // LibraEdge (libra-ui ADR-080): sólo con el adicional `offline` contratado y sólo para el admin; el backend corta igual.
-      { to: '/sucursal-sin-internet', label: 'Sucursal sin internet', icon: ICONOS.sucursalSinInternet, module: 'offline', adminOnly: true },
+      // LibraEdge (libra-ui ADR-080): sólo admin, y se ve con el adicional `offline` contratado o mientras queden nodos activos
+      // (para poder darlos de baja); lo decide el kit con una consulta por página. El backend corta igual.
+      { to: '/sucursal-sin-internet', label: 'Sucursal sin internet', icon: ICONOS.sucursalSinInternet, nodosOffline: true, adminOnly: true },
       { to: '/logs', label: 'Logs', icon: ICONOS.logDeActividad, adminOnly: true },
     ],
   },
