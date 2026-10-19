@@ -81,8 +81,9 @@ def test_toda_llamada_a_add_venta_pago_declara_el_estado():
                 total += 1
                 if not any(k.arg == "estado" for k in n.keywords):
                     faltan.append(f"{f.relative_to(APP)}:{n.lineno}")
-    # Eran 3 hasta P9-M3: la de `crear_venta_directa` vive en el motor desde entonces.
-    assert total >= 2, f"el barrido sólo encontró {total} llamadas: ¿cambió el nombre?"
+    # Eran 3 hasta P9-M3: la de `crear_venta_directa` vive en el motor desde entonces. Y desde E5 de LibraEdge
+    # (2026-10-19) el cobro de una mesa pasa por `registrar_venta` del motor: queda la del aplicador de `pedido.cobrado`.
+    assert total >= 1, f"el barrido sólo encontró {total} llamadas: ¿cambió el nombre?"
     assert not faltan, "Llamadas sin declarar el estado del pago:\n  " + "\n  ".join(faltan)
 
 

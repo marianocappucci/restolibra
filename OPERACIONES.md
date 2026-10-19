@@ -19,6 +19,7 @@ desplegar actualizaciones del sistema.
 10. [Gestión del estado del servicio](#gestión-del-estado-del-servicio)
 11. [Website de marketing (restolibra.com.ar)](#website-de-marketing-restolibracomar)
 12. [Estructura de directorios](#estructura-de-directorios)
+13. [Nodo offline (LibraEdge)](#nodo-offline-libraedge)
 
 ---
 
@@ -567,3 +568,41 @@ de `/docs/` se hacen desde ese otro repo.
 ├── pyproject.toml             ← dependencias y metadata del paquete
 └── OPERACIONES.md              ← este archivo
 ```
+
+---
+
+## Nodo offline (LibraEdge)
+
+Desde 2026-10-19 el nodo offline es el genérico de la suite (LibraEdge v0.9.0, libracommerce v0.68.0, libracore
+v1.186.0). Lo propio de Restolibra está en `app/offline.py`. Todo se corre **en el contenedor del cliente**, con su
+`RESTOLIBRA_DATABASE_URL`; ningún secreto pasa por la línea de comandos.
+
+**En el central** (requiere el adicional `offline` contratado para la sucursal):
+
+```bash
+export LIBRAEDGE_APROVISIONAMIENTO=app.offline:aprovisionamiento
+libraedge-central nodo publicar                      # triggers del changelog y siembra (incluye arca_config)
+libraedge-central nodo sucursales                    # las sucursales y cuál ya tiene nodo
+libraedge-central nodo registrar <node_id> --sucursal <id o nombre>   # secreto (una sola vez) y prefijo
+libraedge-central nodo estado | dar-de-baja <node_id> | vigilar --umbral 15
+```
+
+`python -m scripts.nodo_offline <acción>` es lo mismo con el aprovisionamiento puesto (sirve el cron viejo de
+`vigilar`). Lo que el central no pudo aplicar queda en revisión manual:
+
+```bash
+export LIBRAEDGE_DESPACHADOR=app.web.routers.sincronizacion_offline:despachador
+libraedge-central revision listar | reintentar <operation_id> --por <quién> | descartar <operation_id> --por <quién> --motivo "..."
+```
+
+**En la PC del local**, el entorno que imprime `registrar`: `LIBRAEDGE_NODE_ID`, `LIBRAEDGE_NODE_SECRET`,
+`LIBRAEDGE_PREFIJO` (las ventas se numeran `S02-V-00001`; un nodo sin prefijo no vende) y `LIBRAEDGE_TABLAS_ESPEJO`,
+más `LIBRAEDGE_CENTRAL_URL` y `LIBRAEDGE_ESTADO` (el archivo de estado del proceso del nodo: sin él, el nodo está
+siempre «sin conexión» y no factura). La vieja `RESTOLIBRA_EDGE_NODE_ID` se sigue leyendo; si está junto con
+`LIBRAEDGE_NODE_ID` tienen que coincidir.
+
+**Facturar en el nodo:** con conexión, el nodo pide a ARCA el número con el ticket que le presta el central (la clave
+no sale del VPS). Sin conexión, la venta queda en la bandeja con ticket «no válido como factura» y se factura sola al
+volver, con la fecha de la venta si ARCA todavía la admite (5 días). **El punto de venta de una sucursal con nodo lo usa
+sólo el nodo.**
+

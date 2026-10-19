@@ -23,10 +23,14 @@ Auth = Annotated[str, Depends(require_auth)]
 
 @router.get("/ventas/{vid}/ticket")
 def venta_ticket(vid: int, user: Auth):
-    from app import ticket_generator
+    from app import ticket_generator, venta_facturacion
     venta = db.get_venta(vid)
     if not venta:
         raise HTTPException(404)
+    # En un nodo offline sin conexión la factura queda en la bandeja y sale al
+    # volver: el ticket lo dice («NO VÁLIDO COMO FACTURA», libracore ADR-074).
+    # Fuera de un nodo no consulta nada.
+    venta["factura_pendiente"] = venta_facturacion.pendiente_de_facturar(vid) is not None
     pdf_bytes = ticket_generator.generar_ticket_venta(venta)
     return Response(
         content=pdf_bytes,

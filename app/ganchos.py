@@ -4,17 +4,29 @@ Acá vive **lo que hace a Restolibra distinto de Contalibra en el núcleo
 comercial**, expresado como los puntos de extensión que el motor declara en
 `libracommerce.erp.hooks` — sin `if producto` en el motor. M1 enganchó
 `resolver_receta`; M3 engancha el cierre del pedido del salón cuando la venta
-que lo cobró llega a `cobrada` (`al_confirmar_venta`), y desde el 2026-10-18 el
-mismo gancho encola en el outbox de un nodo offline la venta de mostrador.
+que lo cobró llega a `cobrada` (`al_confirmar_venta`).
+
+Desde E5 de LibraEdge (2026-10-19) los ganchos que se usan son
+`con_outbox(GANCHOS_PROPIOS, offline.OUTBOX)`: en un nodo offline cada venta
+(de mostrador o de una mesa, en cualquier estado), cada pago acreditado, cada
+anulación y cada devolución se encolan para el central en la transacción de la
+venta, y el número lleva el prefijo del nodo. Fuera de un nodo son exactamente
+los propios. El cobro de una mesa pasa por `registrar_venta` con
+`ganchos_del_cobro(pedido_id)`, que además vincula el pedido a la venta antes de
+encolarla (el pedido viaja con ella, ver `offline.extra_de_venta`).
 """
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from decimal import Decimal
 from typing import Any
 
 from libracommerce.erp import Hooks, Insumo
+from libracommerce.erp.offline import con_outbox
+
+from app.offline import OUTBOX
 
 
 def _parse_modificadores(modificadores) -> dict:
@@ -79,18 +91,22 @@ def cerrar_pedido_cobrado(conn, venta: Mapping[str, Any]) -> None:
     )
 
 
-def al_confirmar_venta(conn, venta: Mapping[str, Any]) -> None:
-    """Lo que hace este producto cuando una venta llega a `cobrada`, en su transacción.
+def ganchos_del_cobro(pedido_id: int) -> Hooks:
+    """Los ganchos del cobro de una mesa (`db_cobro_pedido.cobrar_pedido`): los de siempre, más vincular el pedido a la
+    venta **al nacer**, en su transacción.
 
-    1. Cierra el pedido del salón que la venta cobró, si lo hay (`cerrar_pedido_cobrado`).
-    2. En un nodo offline, encola la venta de mostrador para el central
-       (`libraedge_integration.encolar_venta_de_mostrador`); una venta de pedido no,
-       porque ya la encoló el cobro de la mesa. Fuera de un nodo no hace nada.
+    Va en `al_registrar_venta` del producto, que `con_outbox` corre antes de encolar: así, en un nodo,
+    `offline.extra_de_venta` encuentra el pedido y viaja con la venta. Antes el vínculo se escribía al final del cobro.
     """
-    from app.libraedge_integration import encolar_venta_de_mostrador
 
-    cerrar_pedido_cobrado(conn, venta)
-    encolar_venta_de_mostrador(conn, venta)
+    def vincular_pedido(conn, venta: Mapping[str, Any]) -> None:
+        conn.execute("UPDATE pedidos SET venta_id=? WHERE id=?", (venta["id"], pedido_id))
+
+    return con_outbox(replace(GANCHOS_PROPIOS, al_registrar_venta=vincular_pedido), OUTBOX)
 
 
-GANCHOS = Hooks(resolver_receta=resolver_receta, al_confirmar_venta=al_confirmar_venta)
+#: Los ganchos de este producto, sin el outbox.
+GANCHOS_PROPIOS = Hooks(resolver_receta=resolver_receta, al_confirmar_venta=cerrar_pedido_cobrado)
+
+#: Los que usan las ventas, el stock y el central: los propios con el outbox de LibraEdge (no-op fuera de un nodo).
+GANCHOS = con_outbox(GANCHOS_PROPIOS, OUTBOX)

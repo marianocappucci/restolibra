@@ -134,6 +134,10 @@ def _mesa_cobrada_mitad_y_mitad(client, mesa_id, monto=MONTO) -> int:
         Venta V-00007 (pedido P-0009) — efectivo   ← al cobrar (db_cobro_pedido)
         Venta V-00007 — MercadoPago                ← al acreditar (acreditar_pago_qr)
 
+    (Desde E5 de LibraEdge, 2026-10-19, el cobro de la mesa pasa por
+    `registrar_venta` del motor y el primero también es `Venta V-00007 —
+    Efectivo`; el test se queda porque cubre igual los dos momentos.)
+
     Con la mesa cobrada 100 % por QR sólo existe el segundo, que sí matchea el
     patrón de Contalibra: la primera versión de este test cobraba así y la
     mutación que ponía el guion en el patrón **sobrevivía**.

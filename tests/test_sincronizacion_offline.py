@@ -9,9 +9,9 @@ import json
 
 import pytest
 
-from scripts.nodo_offline import TABLAS_DE_REFERENCIA
+from app.offline import TABLAS_DE_REFERENCIA
 from scripts.nodo_offline import main as provisionar
-from tests.offline_helpers import contratar_offline, definir_sucursales
+from tests.offline_helpers import cabeceras_del_nodo, contratar_offline, definir_sucursales, version_del_central
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +24,12 @@ def _offline_contratado(request):
     contratar_offline(5)
     # `registrar --sucursal` exige una sucursal que exista y este activa: las de estos tests, por nombre.
     definir_sucursales("centro", "norte", "sur")
+
+
+def _salida(capsys) -> str:
+    """Lo que imprimió el comando, las dos salidas juntas: `libraedge-central` (E5) escribe los errores en stderr."""
+    salida = capsys.readouterr()
+    return salida.out + salida.err
 
 
 def _payload(node_id="node-1", sequence=1, numero="V-90001"):
@@ -111,7 +117,7 @@ def test_las_rutas_de_sync_no_pasan_por_la_sesion_del_producto(client):
     secreto = _registrar_nodo()
     respuesta = client.get(
         "/sync/v1/pull", params={"node_id": "node-1"},
-        headers={"Authorization": f"Bearer {secreto}"},
+        headers=cabeceras_del_nodo(secreto),
     )
     assert respuesta.status_code == 200, respuesta.text
 
@@ -179,7 +185,7 @@ def test_publicar_es_idempotente(admin_client, capsys):
 
 def test_registrar_imprime_el_secreto_una_vez_y_el_entorno(admin_client, capsys):
     assert provisionar(["registrar", "node-1", "--sucursal", "centro"]) == 0
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert "LIBRAEDGE_NODE_ID=node-1" in salida
     assert "LIBRAEDGE_NODE_SECRET=" in salida
@@ -195,20 +201,21 @@ def test_las_tablas_que_publica_el_central_son_las_que_espeja_el_nodo(admin_clie
     avanza y no baja nada más, nunca. Por eso el `registrar` imprime la lista
     exacta, y por eso esto se compara en vez de confiar.
     """
+    from libraedge.aprovisionamiento import espejo_del_nodo
     from libraedge.cli import tablas_espejo
 
     from app.db_core import get_connection
-    from scripts.nodo_offline import espejo_del_nodo
+    from app.offline import aprovisionamiento
 
     provisionar(["registrar", "node-1", "--sucursal", "centro"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
     linea = next(l for l in salida.splitlines() if "LIBRAEDGE_TABLAS_ESPEJO=" in l)
     del_nodo = tablas_espejo(linea.split("=", 1)[1])
 
     with get_connection() as conn:
-        del_central = espejo_del_nodo(conn)
+        del_central = espejo_del_nodo(conn, aprovisionamiento)
 
-    assert del_nodo == del_central
+    assert {t: (k,) if isinstance(k, str) else k for t, k in del_nodo.items()} == del_central
     assert del_nodo, "la lista no puede salir vacía: no probaría nada"
 
 
@@ -222,13 +229,15 @@ def test_las_claves_primarias_salen_de_la_base_y_no_de_una_lista(admin_client):
     La PK **no es una decisión, es un hecho del schema**: se lee de la base. Este
     test lo fija con el caso que lo destapó.
     """
+    from libraedge.aprovisionamiento import espejo_del_nodo
+
     from app.db_core import get_connection
-    from scripts.nodo_offline import espejo_del_nodo
+    from app.offline import aprovisionamiento
 
     with get_connection() as conn:
-        espejo = espejo_del_nodo(conn)
+        espejo = espejo_del_nodo(conn, aprovisionamiento)
 
-    assert espejo.get("units") == "code", (
+    assert espejo.get("units") == ("code",), (
         "si esto es 'id', se volvió a declarar la PK a mano"
     )
     # El contraste: una tabla normal tiene que dar `id`, o el primer assert
@@ -237,12 +246,12 @@ def test_las_claves_primarias_salen_de_la_base_y_no_de_una_lista(admin_client):
     # Era `productos`, que el 2026-08-31 salió de la lista del espejo: este
     # producto cotiza por LibraCommerce desde P8 y esa tabla de LibraCore no la
     # lee nadie. Se apunta a `catalog_items`, que es el catálogo de verdad.
-    assert espejo.get("catalog_items") == "id"
+    assert espejo.get("catalog_items") == ("id",)
 
 
 def test_estado_dice_que_falta_cuando_no_hay_nada(admin_client, capsys):
     assert provisionar(["estado"]) == 0
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
     assert "falta correr `publicar`" in salida
     assert "falta correr `registrar`" in salida
 
@@ -284,10 +293,10 @@ def _publicar_las_de_commerce():
     (`test_las_tablas_que_publica_el_central_son_las_que_espeja_el_nodo`) y
     `publicar` tiene los suyos; esto aísla el recorrido.
     """
+    from libraedge.aprovisionamiento import orden_de_siembra
     from libraedge.db.changelog import instalar_trigger, sembrar
 
     from app.db_core import get_connection
-    from scripts.nodo_offline import orden_de_siembra
 
     with get_connection() as conn:
         for tabla in orden_de_siembra(conn, ["units", "categories", "catalog_items"]):
@@ -332,15 +341,18 @@ def _armar_nodo(repo_nodo, nodo_conn, secreto, ruta_estado, con_subida=True):
     from libraedge.sync.pull import HttpPullTransport, MirrorApplier, PullWorker
     from libraedge.sync.worker import OutboxWorker
 
+    # El nodo real calcula la versión de su esquema de su base, migrada igual que el central; esta base de prueba no
+    # tiene Alembic, así que se le da la del central (sin ella el central contesta 409, libraedge ADR-007).
+    version = version_del_central()
     subida = None
     if con_subida:
         subida = OutboxWorker(
-            repo_nodo, http_module.HttpSyncTransport("https://central.example", secreto))
+            repo_nodo, http_module.HttpSyncTransport("https://central.example", secreto, version_esquema=version))
     return Nodo(
         repo_nodo, "node-1", outbox_worker=subida,
         pull_worker=PullWorker(
             repo_nodo,
-            HttpPullTransport("https://central.example", "node-1", secreto),
+            HttpPullTransport("https://central.example", "node-1", secreto, version_esquema=version),
             MirrorApplier(nodo_conn, {"units": "code", "categories": "id",
                                       "catalog_items": "id"}),
         ),
@@ -463,7 +475,7 @@ def test_un_cambio_posterior_en_el_central_llega_al_nodo(admin_client, monkeypat
 def test_una_sucursal_con_un_nodo_se_registra_sin_problema(admin_client, capsys):
     """El positivo, primero: sin esto el test de abajo no probaría nada."""
     assert provisionar(["registrar", "nodo-1", "--sucursal", "centro"]) == 0
-    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+    assert "LIBRAEDGE_NODE_SECRET=" in _salida(capsys)
 
 
 def test_un_segundo_nodo_en_la_misma_sucursal_se_rechaza(admin_client, capsys):
@@ -478,7 +490,7 @@ def test_un_segundo_nodo_en_la_misma_sucursal_se_rechaza(admin_client, capsys):
     capsys.readouterr()
 
     codigo = provisionar(["registrar", "nodo-2", "--sucursal", "centro"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1, "tiene que salir distinto de cero"
     assert "ya tiene un nodo activo" in salida
@@ -510,10 +522,10 @@ def test_re_registrar_el_mismo_nodo_sigue_permitido(admin_client, capsys):
     tocar la base a mano.
     """
     provisionar(["registrar", "nodo-1", "--sucursal", "centro"])
-    primero = capsys.readouterr().out
+    primero = _salida(capsys)
 
     assert provisionar(["registrar", "nodo-1", "--sucursal", "centro"]) == 0
-    segundo = capsys.readouterr().out
+    segundo = _salida(capsys)
 
     def secreto(salida):
         linea = next(l for l in salida.splitlines() if "LIBRAEDGE_NODE_SECRET=" in l)
@@ -529,7 +541,7 @@ def test_otra_sucursal_si_puede_tener_su_nodo(admin_client, capsys):
     capsys.readouterr()
 
     assert provisionar(["registrar", "nodo-norte", "--sucursal", "norte"]) == 0
-    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+    assert "LIBRAEDGE_NODE_SECRET=" in _salida(capsys)
 
 
 def test_dar_de_baja_libera_la_sucursal(admin_client, capsys):
@@ -539,15 +551,15 @@ def test_dar_de_baja_libera_la_sucursal(admin_client, capsys):
     capsys.readouterr()
 
     assert provisionar(["dar-de-baja", "nodo-viejo"]) == 0
-    assert "deja de verificar" in capsys.readouterr().out
+    assert "deja de verificar" in _salida(capsys)
 
     assert provisionar(["registrar", "nodo-nuevo", "--sucursal", "centro"]) == 0
-    assert "LIBRAEDGE_NODE_SECRET=" in capsys.readouterr().out
+    assert "LIBRAEDGE_NODE_SECRET=" in _salida(capsys)
 
 
 def test_dar_de_baja_un_nodo_que_no_existe_lo_dice(admin_client, capsys):
     assert provisionar(["dar-de-baja", "no-existe"]) == 1
-    assert "No hay ningún nodo" in capsys.readouterr().out
+    assert "No hay ningun nodo" in _salida(capsys)
 
 
 def test_un_nodo_dado_de_baja_no_puede_sincronizar(admin_client):
@@ -565,13 +577,13 @@ def test_un_nodo_dado_de_baja_no_puede_sincronizar(admin_client):
         conn.commit()
 
     antes = admin_client.get("/sync/v1/pull", params={"node_id": "nodo-1"},
-                             headers={"Authorization": f"Bearer {secreto}"})
+                             headers=cabeceras_del_nodo(secreto))
     assert antes.status_code == 200, "el control: antes de la baja tiene que andar"
 
     provisionar(["dar-de-baja", "nodo-1"])
 
     despues = admin_client.get("/sync/v1/pull", params={"node_id": "nodo-1"},
-                               headers={"Authorization": f"Bearer {secreto}"})
+                               headers=cabeceras_del_nodo(secreto))
     assert despues.status_code == 401
 
 
@@ -583,25 +595,6 @@ def _nodos_registrados():
     with get_connection() as conn:
         return [tuple(f) for f in conn.execute(
             "SELECT node_id, branch_id FROM node_identity ORDER BY node_id").fetchall()]
-
-
-def _como_terminal(monkeypatch, respuestas):
-    """La entrada es una terminal y `input()` contesta con `respuestas`, en orden. Devuelve la lista de prompts vistos."""
-    import sys
-
-    prompts: list[str] = []
-    pendientes = iter(respuestas)
-
-    def _input(prompt=""):
-        prompts.append(prompt)
-        try:
-            return next(pendientes)
-        except StopIteration:
-            raise EOFError from None
-
-    monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
-    monkeypatch.setattr("builtins.input", _input)
-    return prompts
 
 
 def _sin_terminal(monkeypatch):
@@ -616,7 +609,7 @@ def test_una_sucursal_que_no_existe_se_rechaza_y_lista_las_validas(admin_client,
     ids = definir_sucursales("Centro", "Norte")
 
     codigo = provisionar(["registrar", "nodo-1", "--sucursal", "Cnetro"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1
     assert "'Cnetro' no existe" in salida
@@ -629,7 +622,7 @@ def test_una_sucursal_inactiva_se_rechaza(admin_client, capsys):
     ids = definir_sucursales("Centro", ("Cerrada", False))
 
     codigo = provisionar(["registrar", "nodo-1", "--sucursal", str(ids[1])])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1
     assert "inactiva" in salida and "'Cerrada'" in salida
@@ -652,7 +645,7 @@ def test_un_nombre_repetido_pide_el_id(admin_client, capsys):
     ids = definir_sucursales("Centro", "centro")
 
     codigo = provisionar(["registrar", "nodo-1", "--sucursal", "CENTRO"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1 and "usar el id" in salida
     assert provisionar(["registrar", "nodo-1", "--sucursal", str(ids[1])]) == 0
@@ -663,10 +656,10 @@ def test_sin_sucursal_y_una_sola_activa_se_usa_sola_y_lo_informa(admin_client, c
     _sin_terminal(monkeypatch)
 
     codigo = provisionar(["registrar", "nodo-1"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 0
-    assert "única sucursal activa" in salida and "'Centro'" in salida
+    assert "unica sucursal activa" in salida and "'Centro'" in salida
     assert _nodos_registrados() == [("nodo-1", str(ids[0]))]
 
 
@@ -675,7 +668,7 @@ def test_sin_sucursal_y_varias_activas_sin_terminal_es_un_error_con_la_lista(adm
     _sin_terminal(monkeypatch)
 
     codigo = provisionar(["registrar", "nodo-1"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1
     assert "Falta --sucursal" in salida
@@ -688,31 +681,13 @@ def test_sin_sucursal_y_sin_ninguna_activa_es_un_error(admin_client, capsys, mon
     _sin_terminal(monkeypatch)
 
     assert provisionar(["registrar", "nodo-1"]) == 1
-    assert "ninguna sucursal activa" in capsys.readouterr().out
+    assert "ninguna sucursal activa" in _salida(capsys)
     assert _nodos_registrados() == []
 
 
-def test_sin_sucursal_y_con_terminal_ofrece_un_menu_numerado(admin_client, capsys, monkeypatch):
-    ids = definir_sucursales("Centro", ("Cerrada", False), "Norte")
-    prompts = _como_terminal(monkeypatch, ["9", "abc", "2"])  # dos opciones invalidas y despues la 2
-
-    codigo = provisionar(["registrar", "nodo-1"])
-    salida = capsys.readouterr().out
-
-    assert codigo == 0
-    assert "1) Centro" in salida and "2) Norte" in salida
-    assert "Cerrada" not in salida, "el menu ofrece solo las activas"
-    assert len(prompts) == 3, "re-pregunta ante una opcion invalida"
-    assert _nodos_registrados() == [("nodo-1", str(ids[2]))]
-
-
-def test_el_menu_cerrado_sin_elegir_es_un_error(admin_client, capsys, monkeypatch):
-    definir_sucursales("Centro", "Norte")
-    _como_terminal(monkeypatch, [])  # EOF en el primer input()
-
-    assert provisionar(["registrar", "nodo-1"]) == 1
-    assert "No se eligió ninguna sucursal" in capsys.readouterr().out
-    assert _nodos_registrados() == []
+# El menú numerado con terminal (re-pregunta ante una opción inválida, EOF sin elegir es un error) es del motor desde
+# E5: lo prueba libraedge (`tests/test_aprovisionamiento.py`). Lee con el `input` que recibe por parámetro, así que acá
+# no se puede simular sin tocar sus internos.
 
 
 def test_la_sucursal_validada_sigue_pasando_por_la_guarda_de_un_nodo_por_sucursal(admin_client, capsys):
@@ -722,7 +697,7 @@ def test_la_sucursal_validada_sigue_pasando_por_la_guarda_de_un_nodo_por_sucursa
     capsys.readouterr()
 
     codigo = provisionar(["registrar", "nodo-2", "--sucursal", "Centro"])
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
     assert codigo == 1 and "ya tiene un nodo activo" in salida and "nodo-1" in salida and "'Centro'" in salida
 
@@ -735,11 +710,11 @@ def test_la_sucursal_se_valida_antes_que_el_adicional(admin_client, capsys):
     dar_de_baja_offline()
 
     assert provisionar(["registrar", "nodo-1", "--sucursal", "Inexistente"]) == 1
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
     assert "no existe" in salida and "Modo offline" not in salida
 
     assert provisionar(["registrar", "nodo-1", "--sucursal", "Centro"]) == 1
-    assert "Modo offline" in capsys.readouterr().out
+    assert "Modo offline" in _salida(capsys)
 
 
 def test_el_subcomando_sucursales_lista_id_nombre_estado_y_nodo(admin_client, capsys):
@@ -748,7 +723,7 @@ def test_el_subcomando_sucursales_lista_id_nombre_estado_y_nodo(admin_client, ca
     capsys.readouterr()
 
     assert provisionar(["sucursales"]) == 0
-    lineas = {l.split()[0]: l for l in capsys.readouterr().out.splitlines() if l.strip()[:1].isdigit()}
+    lineas = {l.split()[0]: l for l in _salida(capsys).splitlines() if l.strip()[:1].isdigit()}
 
     assert "Centro" in lineas[str(ids[0])] and "activa" in lineas[str(ids[0])] and "nodo nodo-1" in lineas[str(ids[0])]
     assert "Norte" in lineas[str(ids[1])] and "sin nodo" in lineas[str(ids[1])]
@@ -759,7 +734,7 @@ def test_el_subcomando_sucursales_sin_ninguna_lo_dice(admin_client, capsys):
     definir_sucursales()
 
     assert provisionar(["sucursales"]) == 0
-    assert "ninguna" in capsys.readouterr().out
+    assert "ninguna" in _salida(capsys)
 
 
 def test_el_subcomando_sucursales_senala_los_nodos_de_antes_con_texto_libre(admin_client, capsys):
@@ -768,6 +743,6 @@ def test_el_subcomando_sucursales_senala_los_nodos_de_antes_con_texto_libre(admi
     _registrar_nodo("nodo-viejo")  # branch_id="centro", a mano, como antes de la validacion
 
     assert provisionar(["sucursales"]) == 0
-    salida = capsys.readouterr().out
+    salida = _salida(capsys)
 
-    assert "nodo-viejo" in salida and "texto libre" in salida
+    assert "nodo-viejo" in salida and "no es una sucursal de la instancia" in salida
