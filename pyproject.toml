@@ -231,7 +231,8 @@ dependencies = [
 # ARCA prestado por el central (ADR-009). `init_schema()` agrega con ALTER las columnas nuevas de `sync_inbox` y
 # `node_identity.prefijo`; la migracion `0003_libraedge` no cambia.
     # v0.9.0 -> v0.10.0 (2026-10-19): instalador del nodo por producto (E7, ADR-010) y `nodo registrar --carga`. Sin migracion.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.10.0",
+    # v0.10.0 -> v0.10.1 (2026-10-19): el icono del instalador lleva BMP de 16 a 48 px (#135). Sin migracion.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.10.1",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
