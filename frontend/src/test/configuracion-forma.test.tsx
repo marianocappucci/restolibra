@@ -28,6 +28,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { Config } from '../pages/Config'
 
+// La Configuración elige las secciones según el rol (`useAuth().user.role`): «Sucursal sin internet» es sólo del administrador.
+const sesion = vi.hoisted(() => ({ rol: 'operador' }))
+vi.mock('../context/AuthContext', () => ({
+  useAuth: () => ({ user: { id: 'u1', username: 'u', name: 'U', role: sesion.rol }, loading: false }),
+}))
+
 let pedidos: { url: string; metodo: string; cuerpo: unknown }[] = []
 
 function json(body: unknown) {
@@ -38,11 +44,20 @@ function json(body: unknown) {
 
 beforeEach(() => {
   pedidos = []
+  sesion.rol = 'operador'
   vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
     const u = String(url)
     const metodo = init?.method ?? 'GET'
     pedidos.push({ url: u, metodo, cuerpo: init?.body ?? null })
 
+    if (u.includes('/api/nodos-offline')) {
+      return Promise.resolve(json({
+        producto: 'restolibra', contratado: true,
+        instalador_url: 'https://github.com/marianocappucci/libraedge/releases/latest/download/libraedge-nodo-restolibra.exe',
+        central_url: 'https://demo.restolibra.com.ar', central_url_error: null, emisor_faltan: [], emisor_error: null,
+        umbral_minutos: 30, sucursales: [], nodos: [],
+      }))
+    }
     if (u.includes('/logo')) return Promise.resolve(new Response('', { status: 404 }))
     if (u.includes('/api/config/smtp')) {
       return Promise.resolve(json({
@@ -247,5 +262,33 @@ describe('la Configuración de Restolibra', () => {
     // PDF angosto, que Contalibra no tiene.
     expect(await screen.findByText(/ticketeadora térmica/)).toBeInTheDocument()
     expect(screen.getByText(/PDF angosto/)).toBeInTheDocument()
+  })
+
+  it('🔴 el administrador tiene la pestaña «Sucursal sin internet» (LibraEdge, libra-ui ADR-082)', async () => {
+    // Dejó de ser una entrada del menú (2026-10-20): es una sección de esta pantalla, sólo para el admin.
+    sesion.rol = 'admin'
+    montar()
+
+    const pestanias = (await screen.findAllByRole('tab')).map((t) => t.textContent)
+    expect(pestanias).toEqual([
+      'Empresa', 'Integraciones', 'Ticket / Impresora', 'Sucursal sin internet', 'Datos / Backup',
+    ])
+  })
+
+  it('la sección «Sucursal sin internet» se abre por `?seccion=` y pega en /api/nodos-offline', async () => {
+    // Es el destino de la ruta vieja `/sucursal-sin-internet` (App.tsx la redirige acá).
+    sesion.rol = 'admin'
+    montar('/config?seccion=sucursal-sin-internet')
+
+    await waitFor(() => expect(pedidos.some((p) => p.url.includes('/api/nodos-offline'))).toBe(true))
+  })
+
+  it.each(['operador', 'cajero', 'mozo'])('🔴 el rol %s no tiene la pestaña ni consulta los nodos', async (rol) => {
+    sesion.rol = rol
+    montar('/config?seccion=sucursal-sin-internet')
+
+    const pestanias = (await screen.findAllByRole('tab')).map((t) => t.textContent)
+    expect(pestanias).not.toContain('Sucursal sin internet')
+    expect(pedidos.some((p) => p.url.includes('/api/nodos-offline'))).toBe(false)
   })
 })

@@ -1,5 +1,17 @@
 # Changelog
 
+## Sin publicar — 2026-10-20
+
+### «Sucursal sin internet» pasa a ser una sección de Configuración, sólo para el admin (libra-ui `v0.168.0`, ADR-082; sin migración, sin cambio de backend)
+
+Decisión del humano (2026-10-20): las descargas de LibraEdge se ofrecen dentro de la app, en Configuración, y no como una entrada propia del menú.
+
+- **`pages/Config.tsx`:** suma `seccionSucursalSinInternet()` a las secciones propias **sólo si `useAuth().user.role === 'admin'`**. A `/config` entran todos los roles menos el mozo (que no ve la entrada del menú), así que hay dos configuraciones armadas a nivel de módulo (`createConfiguracion`) y `Config` elige según el rol. Un operador o cajero no ve la pestaña ni dispara la consulta; el backend corta igual (`/api/nodos-offline` contesta 403 a quien no es admin).
+- **Menú:** se retira la entrada «Sucursal sin internet» de Administración. La ruta vieja `/sucursal-sin-internet` redirige (`<Navigate replace>`) a `/config?seccion=sucursal-sin-internet`, para que los links guardados sigan andando. Se borra `pages/SucursalSinInternet.tsx` (el envoltorio quedó sin uso).
+- **Rutas de backend:** `/api/nodos-offline` no cambia.
+- **Tests:** `configuracion-forma.test.tsx` (el admin tiene la pestaña y la sección pega en `/api/nodos-offline`; operador, cajero y mozo no la tienen ni consultan los nodos), `smoke.test.tsx` (la ruta vieja redirige a la sección; el menú ya no tiene la entrada), `iconos-del-catalogo.test.ts` (sin `/sucursal-sin-internet`: 24 rutas medidas).
+- Cambio de comportamiento: antes la entrada del menú se veía con el adicional `offline` o con nodos activos; ahora la sección está siempre para el admin y es la pantalla del kit la que, sin el adicional, muestra el texto para contratarlo (y la lista de nodos, si los hay, para darlos de baja).
+
 ## Sin publicar — 2026-10-19
 
 ### LibraEdge genérico: RestoLibra pasa a lo de la suite (E5, sin migración del producto)
