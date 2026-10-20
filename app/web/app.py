@@ -41,6 +41,7 @@ from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
 from libracore.docs_api import cerrar_docs_de_la_api
 from libracore.egresos_router import build_egresos_router, build_proveedores_router
 from libracore.errores import instalar_registro_de_errores
+from libracore.estado_del_sistema import build_estado_del_sistema_router
 from libracore.facturas_router import smtp_efectivo
 from libracore.libros_iva_router import build_libros_iva_export_router, build_libros_iva_router
 from libracore.logs_router import build_logs_export_router, build_logs_router
@@ -56,12 +57,12 @@ from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 import plans
-from app import config_manager, db_usuarios
+from app import config_manager, db_usuarios, venta_facturacion
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
 from app.offline import aprovisionamiento as aprovisionamiento_offline
-from app.offline import sucursales_con_nodo
+from app.offline import nodos_del_central, sucursales_con_nodo
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -560,6 +561,13 @@ app.include_router(
     api_ventas_router.nodo,
     dependencies=[_auth_json, Depends(require_module("ventas"))],
 )
+# La barra de estado del pie (libracore ADR-075, libra-ui ADR-083): LibraEdge (el nodo con su bandeja, o los nodos del
+# central), usuario, versión, el certificado de ARCA y el último respaldo, en una consulta. Cualquier usuario logueado; lo
+# que ve cada rol lo decide el motor (ARCA y respaldo, sólo admin). Sin `require_module`: la barra es de todas las pantallas.
+app.include_router(build_estado_del_sistema_router(
+    usuario_actual=get_current_user_json, ventas=venta_facturacion.PUERTO,
+    nodos_del_central=nodos_del_central, backups_dir=config_router.BACKUPS_DIR,
+))
 app.include_router(
     api_mp_bandeja_router.router,
     dependencies=[_auth_json],

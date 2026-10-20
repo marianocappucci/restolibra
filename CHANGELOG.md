@@ -2,6 +2,14 @@
 
 ## Sin publicar — 2026-10-20
 
+### La barra de estado del pie (libracore ADR-075, libra-ui ADR-083; sin migración)
+
+- **Pedido del humano (2026-10-19/20):** una línea chica al pie de todas las pantallas con LibraEdge (en el nodo: en línea, operaciones por subir y ventas por facturar; en el central: los nodos sin noticias), usuario, el certificado de ARCA que vence en menos de 30 días o venció, el último respaldo y la versión. Igual en el central y en un nodo.
+- **`app/web/app.py`** monta `build_estado_del_sistema_router` del motor (`GET /api/estado-del-sistema`, cualquier usuario logueado; ARCA, respaldo y nodos del central sólo para el admin) con el `PuertoDeVentas`, la carpeta de respaldos y **`app/offline.py::nodos_del_central`** (la lista de `libraedge.pantalla_del_central.nodos_de_la_instancia`).
+- **Frontend:** `createLayout({ barraDeEstado: true })`.
+- Tests: `tests/test_estado_del_sistema.py` (sin sesión 401; el admin con respaldo y sin LibraEdge; el central con un nodo registrado «sin noticias»).
+- Pines: **libracore `v1.187.0`** (antes `v1.186.2`) y **libra-ui `v0.170.0`** (antes `v0.168.0`; trae también el ADR-084 del kit, «Sucursal sin internet» dice que en el local se entra por la copia local). Sin migración.
+
 ### «Sucursal sin internet» pasa a ser una sección de Configuración, sólo para el admin (libra-ui `v0.168.0`, ADR-082; sin migración, sin cambio de backend)
 
 Decisión del humano (2026-10-20): las descargas de LibraEdge se ofrecen dentro de la app, en Configuración, y no como una entrada propia del menú.
