@@ -8,7 +8,7 @@
 - **`app/web/app.py`** monta `build_estado_del_sistema_router` del motor (`GET /api/estado-del-sistema`, cualquier usuario logueado; ARCA, respaldo y nodos del central sólo para el admin) con el `PuertoDeVentas`, la carpeta de respaldos y **`app/offline.py::nodos_del_central`** (la lista de `libraedge.pantalla_del_central.nodos_de_la_instancia`).
 - **Frontend:** `createLayout({ barraDeEstado: true })`.
 - Tests: `tests/test_estado_del_sistema.py` (sin sesión 401; el admin con respaldo y sin LibraEdge; el central con un nodo registrado «sin noticias»).
-- Pines: **libracore** al commit del PR del motor (libracore#421, propuesto **v1.187.0**) y **libra-ui** al del kit (libra-ui#342, propuesto **v0.169.0**): 🔴 cambiarlos por los tags antes de mergear.
+- Pines: **libracore `v1.187.0`** (antes `v1.186.2`) y **libra-ui `v0.170.0`** (antes `v0.168.0`; trae también el ADR-084 del kit, «Sucursal sin internet» dice que en el local se entra por la copia local). Sin migración.
 
 ### «Sucursal sin internet» pasa a ser una sección de Configuración, sólo para el admin (libra-ui `v0.168.0`, ADR-082; sin migración, sin cambio de backend)
 
