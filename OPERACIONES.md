@@ -579,13 +579,16 @@ v1.186.0). Lo propio de Restolibra está en `app/offline.py`. Todo se corre **en
 
 **Desde la pantalla (libraedge v0.11.0, libra-ui v0.166.0):** «Sucursal sin internet» (desde 2026-10-20 es una **sección de
 Configuración**, `/config?seccion=sucursal-sin-internet`, sólo para el admin; ya no es una entrada del menú, y la ruta vieja
-`/sucursal-sin-internet` redirige ahí. Las descargas y el alta aparecen con el adicional `offline` contratado; sin él, el texto
-para contratarlo y, si quedan nodos, su lista para darlos de baja) hace lo mismo que `registrar --carga` sin entrar al VPS: el
-admin da de alta el nodo de una sucursal y descarga la carga del nodo (con el secreto: se baja una sola vez y no se muestra),
-descarga el instalador (`libraedge-nodo-<producto>.exe` de los Releases de LibraEdge), ve los nodos con su última sincronización y los da de baja.
+`/sucursal-sin-internet` redirige ahí) hace lo mismo que `registrar --carga` sin entrar al VPS. **Desde libraedge v0.14.0 /
+libra-ui v0.171.0 (ADR-014 / ADR-085) LibraEdge está incluido en todos los planes** (no hay adicional `offline`) y el alta
+muestra **la dirección del sistema y un código de vinculación** (un solo uso, 15 minutos) que se escriben en el instalador; el
+instalador canjea el código por la carga en `POST /sync/v1/vinculacion` (público, sólo https, con límite de intentos). El
+archivo de carga queda para soporte («Archivo de carga» en cada nodo: se baja una sola vez y no se muestra). También se
+descarga el instalador (`libraedge-nodo-<producto>.exe` de los Releases de LibraEdge), se ven los nodos con su última
+sincronización, se pide otro código, se anula y se dan de baja.
 La URL del central que va en la carga sale de `LIBRAEDGE_CENTRAL_URL` o, si no está, del origen de `<PRODUCTO>_RESET_URL_BASE`.
 
-**En el central** (requiere el adicional `offline` contratado para la sucursal):
+**En el central** (sin adicional: LibraEdge está incluido en todos los planes):
 
 ```bash
 export LIBRAEDGE_APROVISIONAMIENTO=app.offline:aprovisionamiento

@@ -11,17 +11,15 @@ import pytest
 
 from app.offline import TABLAS_DE_REFERENCIA
 from scripts.nodo_offline import main as provisionar
-from tests.offline_helpers import cabeceras_del_nodo, contratar_offline, definir_sucursales, version_del_central
+from tests.offline_helpers import cabeceras_del_nodo, definir_sucursales, version_del_central
 
 
 @pytest.fixture(autouse=True)
-def _offline_contratado(request):
-    """Estos tests prueban el aprovisionamiento y la sincronizacion, no el contrato: registrar un nodo exige el adicional `offline` (ADR-048 de
-    libracore), asi que lo dejan contratado. El contrato en si (alta bloqueada sin el adicional o sobre el limite) esta en `test_adicional_offline.py`."""
+def _sucursales(request):
+    """Registrar un nodo no exige nada comercial (LibraEdge incluido en todos los planes, libraedge ADR-014)."""
     if "client" not in request.fixturenames and "admin_client" not in request.fixturenames:
         return
     request.getfixturevalue("client")
-    contratar_offline(5)
     # `registrar --sucursal` exige una sucursal que exista y este activa: las de estos tests, por nombre.
     definir_sucursales("centro", "norte", "sur")
 
@@ -702,19 +700,15 @@ def test_la_sucursal_validada_sigue_pasando_por_la_guarda_de_un_nodo_por_sucursa
     assert codigo == 1 and "ya tiene un nodo activo" in salida and "nodo-1" in salida and "'Centro'" in salida
 
 
-def test_la_sucursal_se_valida_antes_que_el_adicional(admin_client, capsys):
-    """Sin el adicional y con una sucursal inexistente, el error es el de la sucursal: es lo que hay que corregir primero."""
-    from tests.offline_helpers import dar_de_baja_offline
-
+def test_una_sucursal_inexistente_se_rechaza_y_sin_adicional_el_alta_pasa(admin_client, capsys):
+    """La sucursal se valida; nada comercial frena el alta: LibraEdge está incluido en todos los planes (libraedge ADR-014)."""
     definir_sucursales("Centro")
-    dar_de_baja_offline()
 
     assert provisionar(["registrar", "nodo-1", "--sucursal", "Inexistente"]) == 1
-    salida = _salida(capsys)
-    assert "no existe" in salida and "Modo offline" not in salida
+    assert "no existe" in _salida(capsys)
 
-    assert provisionar(["registrar", "nodo-1", "--sucursal", "Centro"]) == 1
-    assert "Modo offline" in _salida(capsys)
+    assert provisionar(["registrar", "nodo-1", "--sucursal", "Centro"]) == 0
+    assert "Modo offline" not in _salida(capsys)
 
 
 def test_el_subcomando_sucursales_lista_id_nombre_estado_y_nodo(admin_client, capsys):
