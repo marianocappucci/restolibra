@@ -170,7 +170,8 @@ dependencies = [
     # v0.48.0 -> v0.49.0 (2026-10-12, ADR-022): `registrador_dbapi`, el formato del log de actividad para quien escribe en SQL crudo; con el middleware de usuario de este paquete, la fila dice quien fue. Sin migracion.
     # v0.49.0 -> v0.50.0 (2026-10-13, ADR-023): `UsadosEnBase`, el anti-replay del captcha en la base (varios procesos). **Migracion `0003_captcha_usados`** en la cadena de `libraauth-migrar`: `exigir_schema_al_dia` la exige al arrancar.
     # v0.50.0 -> v0.51.0 (2026-10-15, ADR-024): el responsable acepta por adelantado la proxima version de los Terminos (`GET /terminos` suma `proxima`, `POST /aceptar` acepta la vigente o la proxima). Sin migracion; el aviso pide libra-ui v0.153.0.
-    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.52.0",
+    # v0.52.0 -> v0.53.0 (2026-10-20): la marca Secure de la cookie de sesion es configurable (LIBRAAUTH_COOKIE_SECURE, ADR-026); sin la variable no cambia nada. Sin migracion.
+    "libraauth[migrations] @ git+https://github.com/marianocappucci/libraauth.git@v0.53.0",
     # Nodo offline. Entra como dependencia NORMAL y no como extra opcional, y la
     # razon es el schema: las tablas de LibraEdge se crean en la cadena de
     # Alembic, y una revision que las creara solo cuando el paquete estuviera
