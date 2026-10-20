@@ -113,9 +113,8 @@ const NAV_SECTIONS: NavSection<User>[] = [
     hideFor: esMozo,
     items: [
       { to: '/usuarios', label: 'Usuarios', icon: ICONOS.usuarios, adminOnly: true },
-      // LibraEdge (libra-ui ADR-080): sólo admin, y se ve con el adicional `offline` contratado o mientras queden nodos activos
-      // (para poder darlos de baja); lo decide el kit con una consulta por página. El backend corta igual.
-      { to: '/sucursal-sin-internet', label: 'Sucursal sin internet', icon: ICONOS.sucursalSinInternet, nodosOffline: true, adminOnly: true },
+      // «Sucursal sin internet» (LibraEdge) ya no es una entrada del menú: es una sección de Configuración, sólo para el admin
+      // (libra-ui ADR-082; ver pages/Config.tsx). La ruta vieja redirige desde App.tsx.
       { to: '/logs', label: 'Logs', icon: ICONOS.logDeActividad, adminOnly: true },
     ],
   },

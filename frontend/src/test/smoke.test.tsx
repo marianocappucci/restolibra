@@ -39,6 +39,14 @@ const MAPA_SALON = {
   mesas: [],
   reservas_por_mesa: {},
 }
+// «Sucursal sin internet» (LibraEdge): lo que contesta `GET /api/nodos-offline`; la pantalla no tolera un cuerpo vacío.
+const RUTA_NODOS = '/api/nodos-offline'
+const ESTADO_DE_NODOS = {
+  producto: 'restolibra', contratado: true,
+  instalador_url: 'https://github.com/marianocappucci/libraedge/releases/latest/download/libraedge-nodo-restolibra.exe',
+  central_url: 'https://demo.restolibra.com.ar', central_url_error: null, emisor_faltan: [], emisor_error: null,
+  umbral_minutos: 30, sucursales: [], nodos: [],
+}
 const RUTA_SESION = '/api/me'
 const RUTA_CAPTCHA = '/api/captcha'
 
@@ -89,7 +97,9 @@ function conSesion() {
           })
         : String(url).includes(RUTA_MAPA)
           ? json(MAPA_SALON)
-          : json([]),
+          : String(url).includes(RUTA_NODOS)
+            ? json(ESTADO_DE_NODOS)
+            : json([]),
     ),
   )
 }
@@ -151,6 +161,24 @@ describe('guard de rutas', () => {
     // Y que el usuario de la sesion llego hasta la UI, no solo que hubo shell.
     expect(await screen.findAllByText('Ana')).not.toHaveLength(0)
     expect(screen.queryByLabelText('Usuario')).not.toBeInTheDocument()
+  })
+})
+
+describe('«Sucursal sin internet» (LibraEdge)', () => {
+  // Dejó de ser una entrada del menú y una pantalla propia: es una sección de Configuración, sólo del administrador (libra-ui ADR-082).
+  // La ruta vieja redirige, para que los links guardados sigan andando.
+  it('la ruta vieja redirige a la sección de Configuración', async () => {
+    conSesion()
+    montar('/sucursal-sin-internet')
+    expect(await screen.findByRole('tab', { name: 'Sucursal sin internet' })).toBeInTheDocument()
+    expect(consultadas().some((u) => u.includes(RUTA_NODOS))).toBe(true)
+  })
+
+  it('el menú ya no tiene la entrada', async () => {
+    conSesion()
+    montar('/config')
+    await screen.findByRole('tab', { name: 'Sucursal sin internet' })
+    expect(screen.queryByRole('link', { name: 'Sucursal sin internet' })).not.toBeInTheDocument()
   })
 })
 

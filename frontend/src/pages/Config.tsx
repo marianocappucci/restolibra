@@ -34,10 +34,12 @@
  */
 import { Printer } from 'lucide-react'
 import { createConfiguracion } from 'libra-ui/Configuracion'
+import { seccionSucursalSinInternet } from 'libra-ui/SucursalSinInternet'
 
+import { useAuth } from '../context/AuthContext'
 import { TicketCard } from './config-secciones'
 
-export const Config = createConfiguracion({
+const opciones = {
   // Sin `icono`: el default del kit es el del catálogo (`ICONOS.configuracion`, ADR-035), el mismo que el sidebar.
   // Sale en el tutorial de Gmail y en el de Padrón A13.
   producto: 'Restolibra',
@@ -58,6 +60,21 @@ export const Config = createConfiguracion({
   propias: [
     { clave: 'ticket', label: 'Ticket / Impresora', icono: Printer, contenido: <TicketCard /> },
   ],
+}
+
+// 🟢 «Sucursal sin internet» (LibraEdge) es una sección de Configuración desde el 2026-10-20 (libra-ui ADR-082): dejó de ser una
+// entrada propia del menú. La ve **sólo el administrador** (el backend corta igual: `create_nodos_router`). A `/config` entran todos
+// los roles menos el mozo, que no ve la entrada del menú, así que hay dos Configuraciones armadas a nivel de módulo y `Config`
+// elige según el rol. La sección de `ruta` por defecto (`/api/nodos-offline`) no cambia.
+const ConfigDeTodos = createConfiguracion(opciones)
+const ConfigDelAdmin = createConfiguracion({
+  ...opciones,
+  propias: [...opciones.propias, seccionSucursalSinInternet()],
 })
+
+export function Config() {
+  const { user } = useAuth()
+  return user?.role === 'admin' ? <ConfigDelAdmin /> : <ConfigDeTodos />
+}
 
 export default Config
