@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from libraauth.auditoria import agregar_middleware_de_usuario, registrador_dbapi
-from libraauth.auth_events import AuthEventRepository
+from libraauth.auth_events import AuthEventRepository, ip_del_request
 from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.migrar import exigir_schema_al_dia
 from libraauth.session_auth import build_demo_codigos_router, demo_username
@@ -41,6 +41,7 @@ from libracore.db.cuenta_corriente import VENTAS_LIBRACOMMERCE
 from libracore.docs_api import cerrar_docs_de_la_api
 from libracore.egresos_router import build_egresos_router, build_proveedores_router
 from libracore.errores import instalar_registro_de_errores
+from libracore.estado_del_sistema import build_estado_del_sistema_router
 from libracore.facturas_router import smtp_efectivo
 from libracore.libros_iva_router import build_libros_iva_export_router, build_libros_iva_router
 from libracore.logs_router import build_logs_export_router, build_logs_router
@@ -51,17 +52,17 @@ from libracore.respaldo import Instancia
 from libracore.smtp_router import build_smtp_probe_router
 from libracore.tema_router import build_tema_admin_router, build_tema_router
 from libracore.tesoreria_router import build_tesoreria_router
-from libraedge.pantalla_del_central import create_nodos_router
+from libraedge.pantalla_del_central import create_canje_router, create_nodos_router
 from starlette.concurrency import run_in_threadpool
 from starlette.middleware.base import BaseHTTPMiddleware
 
 import plans
-from app import config_manager, db_usuarios
+from app import config_manager, db_usuarios, venta_facturacion
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
 from app.offline import aprovisionamiento as aprovisionamiento_offline
-from app.offline import sucursales_con_nodo
+from app.offline import nodos_del_central
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -351,14 +352,18 @@ app.include_router(kds_router.router)
 # instalado que no puede sincronizar contra un central que debería tener el
 # endpoint—.
 app.include_router(sincronizacion_offline.router)
-# «Sucursal sin internet» (libraedge ADR-011, libra-ui ADR-080): el admin da de alta el nodo de una sucursal y descarga su
-# carga (`carga-nodo-….json`, con el secreto del nodo: sólo viaja como adjunto de ese POST), ve los nodos y los da de baja.
-# Toda la lógica es de LibraEdge (las mismas funciones que `libraedge-central nodo registrar --carga`); acá sólo la guarda
-# de admin y el aprovisionamiento de este producto (`app/offline.py`). El adicional `offline` lo hace cumplir el alta.
+# «Sucursal sin internet» (libraedge ADR-011 y ADR-014, libra-ui ADR-080 y ADR-085): el admin da de alta el nodo de una
+# sucursal y se lleva la dirección y un código de vinculación (o, para soporte, el archivo de carga), ve los nodos y los
+# da de baja. LibraEdge está incluido en todos los planes: no hay adicional que lo frene. Toda la lógica es de LibraEdge;
+# acá sólo la guarda de admin y el aprovisionamiento de este producto (`app/offline.py`).
 app.include_router(
     create_nodos_router(aprovisionamiento_offline, _abrir_conexion),
     dependencies=[Depends(require_admin_json)],
 )
+# El canje del código (libraedge ADR-014): `POST /sync/v1/vinculacion`. **Sin guarda a propósito**: lo llama el instalador
+# del nodo, que no tiene sesión; lo protegen el código (un solo uso, 15 minutos) y el límite de intentos del motor. La IP
+# real detrás del proxy es la de libraauth.
+app.include_router(create_canje_router(aprovisionamiento_offline, _abrir_conexion, ip_del_request=ip_del_request))
 
 # --- API JSON para la SPA React (ver wiki/entities/restolibra.md, migracion
 # a React) -- ahora es la interfaz real, ya no convive con paginas HTML
@@ -455,10 +460,10 @@ app.include_router(build_empresa_admin_router(), dependencies=[Depends(require_a
 app.include_router(build_tema_router())
 app.include_router(build_tema_admin_router(), dependencies=[Depends(require_admin_o_servicio_json)])
 # Los adicionales contratados (libracore ADR-048): `GET /api/adicionales` lo ve el admin o el backoffice; `PUT /api/adicionales/{clave}` SOLO el token
-# de servicio (🔴 un adicional es un limite comercial: si lo cargara el admin del cliente, contratar no costaria nada). `offline` se mide en sucursales
-# DISTINTAS con un nodo activo, que es lo que cobra y lo que hace cumplir `libraedge-central nodo registrar` (`app/offline.py`).
+# de servicio (🔴 un adicional es un limite comercial: si lo cargara el admin del cliente, contratar no costaria nada). LibraEdge ya no es un
+# adicional (libraedge ADR-014: incluido en todos los planes).
 app.include_router(build_adicionales_router(
-    require_admin_o_servicio_json, require_solo_servicio_json, medir={"offline": sucursales_con_nodo}, plans=plans,
+    require_admin_o_servicio_json, require_solo_servicio_json, plans=plans,
     leer_modulos=db.get_modulos, escribir_modulo=db.set_addon,
 ))
 # MercadoPago, del motor. Reemplaza al `PUT /api/config/mp` propio.
@@ -560,6 +565,13 @@ app.include_router(
     api_ventas_router.nodo,
     dependencies=[_auth_json, Depends(require_module("ventas"))],
 )
+# La barra de estado del pie (libracore ADR-075, libra-ui ADR-083): LibraEdge (el nodo con su bandeja, o los nodos del
+# central), usuario, versión, el certificado de ARCA y el último respaldo, en una consulta. Cualquier usuario logueado; lo
+# que ve cada rol lo decide el motor (ARCA y respaldo, sólo admin). Sin `require_module`: la barra es de todas las pantallas.
+app.include_router(build_estado_del_sistema_router(
+    usuario_actual=get_current_user_json, ventas=venta_facturacion.PUERTO,
+    nodos_del_central=nodos_del_central, backups_dir=config_router.BACKUPS_DIR,
+))
 app.include_router(
     api_mp_bandeja_router.router,
     dependencies=[_auth_json],
