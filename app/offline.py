@@ -9,6 +9,7 @@ central es de LibraEdge (ADR-008, `libraedge-central nodo ...`), las ventas sube
 |---|---|
 | `aprovisionamiento` | las tablas de referencia (el reparto de autoridad) y las sucursales |
 | `OUTBOX` | la identidad del nodo, si está en línea y el pedido que viaja con la venta (`extra_de_venta`) |
+| `GANCHOS_DE_CAJA` | la caja del nodo (turnos y movimientos a mano) sube al central como operaciones |
 | `al_materializar` | en el central, el pedido del nodo apuntando a su venta (para el reporte por canal) |
 | `CONEXION` / `numerar_en_el_nodo` | en el nodo, facturar con el ticket de ARCA que presta el central |
 
@@ -41,6 +42,8 @@ from collections.abc import Mapping
 from typing import Any
 
 from libracommerce.erp.offline import NodoLocal, Outbox
+from libracommerce.erp.offline_caja import caja_con_outbox
+from libracore.ganchos_de_caja import GanchosDeCaja
 from libracore.nodo_offline import VARIABLE_ESTADO, ConexionDelNodo, esta_en_linea
 from libraedge.identidad import nodo_actual, prefijo_actual
 
@@ -125,6 +128,15 @@ def extra_de_venta(conn, venta: Mapping[str, Any]) -> dict | None:
 #: El outbox de LibraEdge para `libracommerce.erp.offline.con_outbox`. El mismo en el nodo y en el central: fuera de un
 #: nodo (`nodo_local()` es `None`) no encola nada.
 OUTBOX = Outbox(nodo=nodo_local, en_linea=en_linea, extra_de_venta=extra_de_venta)
+
+#: Los ganchos de la caja para `build_caja_router` y `build_turnos_router` (`ganchos_de_caja=`): en un nodo encolan en el
+#: `OUTBOX` el turno que se abre o se cierra y el movimiento que se anota o se anula a mano (libracore ADR-076,
+#: libracommerce ADR-069); **fuera de un nodo** (`nodo_local()` es `None`) no hacen nada, como `GanchosDeCaja()`. Se pasan
+#: por llamada y no se registran globalmente: la caja de una venta no sube acá sino con la venta. `OUTBOX` va con
+#: `caja_con_turno=False` (el default) porque `registrar_venta` (el cobro de la mesa y el mostrador) y `acreditar_pago_qr`
+#: de este producto no escriben el turno en los movimientos de caja de la venta. Este producto no monta el cierre diario
+#: (`build_cierre_diario_router`): no hay `dia.cerrado` que subir ni `reabrir` que proteger.
+GANCHOS_DE_CAJA = caja_con_outbox(GanchosDeCaja(), OUTBOX)
 
 
 def al_materializar(conn, venta_id: int, operacion) -> None:
