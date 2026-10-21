@@ -10,7 +10,8 @@ central es de LibraEdge (ADR-008, `libraedge-central nodo ...`), las ventas sube
 | `aprovisionamiento` | las tablas de referencia (el reparto de autoridad) y las sucursales |
 | `OUTBOX` | la identidad del nodo, si está en línea y el pedido que viaja con la venta (`extra_de_venta`) |
 | `GANCHOS_DE_CAJA` | la caja del nodo (turnos y movimientos a mano) sube al central como operaciones |
-| `al_materializar` | en el central, el pedido del nodo apuntando a su venta (para el reporte por canal) |
+| `altas_en_nodo` | los clientes que se dan de alta en el nodo (id provisorio y `cliente.alta`) suben al central |
+| `al_materializar` | en el central, el pedido del nodo apuntando a su venta y a su cliente (para el reporte por canal) |
 | `CONEXION` / `numerar_en_el_nodo` | en el nodo, facturar con el ticket de ARCA que presta el central |
 
 ## Identidad: `LIBRAEDGE_NODE_ID` (y `RESTOLIBRA_EDGE_NODE_ID` por compatibilidad)
@@ -43,6 +44,10 @@ from typing import Any
 
 from libracommerce.erp.offline import NodoLocal, Outbox
 from libracommerce.erp.offline_caja import caja_con_outbox
+from libracommerce.erp.offline_clientes import altas_en_nodo as altas_de_clientes
+from libracommerce.erp.offline_clientes import cliente_del_central
+from libracore import altas_en_nodo
+from libracore.altas_en_nodo import REFERENCIAS_DE_CLIENTES
 from libracore.ganchos_de_caja import GanchosDeCaja
 from libracore.nodo_offline import VARIABLE_ESTADO, ConexionDelNodo, esta_en_linea
 from libraedge.identidad import nodo_actual, prefijo_actual
@@ -129,6 +134,15 @@ def extra_de_venta(conn, venta: Mapping[str, Any]) -> dict | None:
 #: nodo (`nodo_local()` es `None`) no encola nada.
 OUTBOX = Outbox(nodo=nodo_local, en_linea=en_linea, extra_de_venta=extra_de_venta)
 
+#: Las altas de clientes en un nodo (libracore ADR-077, libracommerce ADR-070): en un nodo, cualquier alta de
+#: `libracore.db.clients` (`POST /api/clientes`, el alta rápida del cobro, el fiado) guarda al cliente con un **id
+#: provisorio negativo** y encola `cliente.alta` en el `OUTBOX`, en la misma transacción del alta; el central le asigna su
+#: id, y la venta y el pedido de ese cliente suben traducidos (`venta.registrada`, `al_materializar`). Se registra al
+#: importar este módulo, que importan la app y el CLI del central (`LIBRAEDGE_APROVISIONAMIENTO`): en las dos puntas.
+#: **Fuera de un nodo** (`nodo_local()` es `None`) el motor no pide ids provisorios ni avisa a nadie, y el alta es la de
+#: siempre.
+altas_en_nodo.configurar(altas_de_clientes(OUTBOX))
+
 #: Los ganchos de la caja para `build_caja_router` y `build_turnos_router` (`ganchos_de_caja=`): en un nodo encolan en el
 #: `OUTBOX` el turno que se abre o se cierra y el movimiento que se anota o se anula a mano (libracore ADR-076,
 #: libracommerce ADR-069); **fuera de un nodo** (`nodo_local()` es `None`) no hacen nada, como `GanchosDeCaja()`. Se pasan
@@ -150,6 +164,9 @@ def al_materializar(conn, venta_id: int, operacion) -> None:
     - **Sin mesa**: las mesas son del central y el salón de la sucursal lo maneja el nodo; un pedido `cobrando` con
       mesa haría que el mapa del central la mostrara esperando un pago.
     - Con el número del nodo: `get_next_pedido_numero` no cuenta los pedidos de ventas que subieron de un nodo.
+    - Con el cliente **del central**: si el nodo lo dio de alta (`cliente_id` negativo, su `cliente.alta`), el pedido se
+      escribe con el id que le asignó el central (`cliente_del_central`); sin eso `pedidos.cliente_id` apuntaría a un
+      cliente que no existe (o a otro).
     """
     from libracore import pagos as acreditacion
 
@@ -167,7 +184,8 @@ def al_materializar(conn, venta_id: int, operacion) -> None:
         "INSERT INTO pedidos (numero, canal, mesa_id, estado, comensales, usuario_id, cliente_id, cliente_nombre,"
         " observaciones, venta_id, created_at, updated_at) VALUES (?,?,NULL,?,?,?,?,?,?,?,?,?)",
         (pedido.get("numero") or "", pedido.get("canal") or "salon", "cobrando" if pendiente else "cobrado",
-         int(pedido.get("comensales") or 1), datos.get("usuario_id"), datos.get("cliente_id"),
+         int(pedido.get("comensales") or 1), datos.get("usuario_id"),
+         cliente_del_central(conn, operacion.node_id, datos.get("cliente_id"), "clients"),
          datos.get("cliente_nombre") or "", datos.get("observaciones") or "", venta_id, ahora, ahora),
     )
 
@@ -280,6 +298,9 @@ def _aprovisionamiento():
     return Aprovisionamiento(
         prefijo=PREFIJO, tablas_de_referencia=TABLAS_DE_REFERENCIA, listar_sucursales=_listar_sucursales,
         verificar_alta=sin_guarda, conectar=_conectar,
+        # Los clientes se dan de alta en el nodo (id provisorio): `clients` con lo que lo referencia sin FK
+        # (`cc_asientos.tercero_id`) y su `parties` espejo, a lo que apuntan las ventas.
+        altas_en_nodo=[("clients", REFERENCIAS_DE_CLIENTES), "parties"],
     )
 
 
