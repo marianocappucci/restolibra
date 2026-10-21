@@ -39,6 +39,9 @@ const NAV_SECTIONS: NavSection<User>[] = [
       { to: '/presupuestos', label: 'Presupuestos', icon: ICONOS.presupuestos, module: 'presupuestos' },
       { to: '/remitos', label: 'Remitos', icon: ICONOS.remitos, module: 'remitos' },
       { to: '/ventas', label: 'Ventas POS', icon: ICONOS.ventas, module: 'ventas' },
+      // La bandeja del nodo (libra-ui ADR-087): las ventas cobradas sin conexión que esperan su factura. La resuelve el
+      // admin (el backend la gatea igual); fuera de un nodo está vacía.
+      { to: '/comprobantes-pendientes', label: 'Comprobantes a facturar', icon: ICONOS.comprobantesAFacturar, module: 'ventas', adminOnly: true },
       {
         to: '/clientes', label: 'Clientes', icon: ICONOS.clientes, module: 'clientes',
         children: [{ to: '/cuenta-corriente', label: 'Cuenta Corriente', module: 'cuenta_corriente', icon: ICONOS.cuentaCorriente }],
