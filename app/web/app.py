@@ -1,7 +1,7 @@
 import os
 
 import httpx
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,6 +29,7 @@ from libracore.arca_router import build_arca_router
 from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
 from libracore.candados import una_vez_al_arrancar
 from libracore.clientes_router import build_clientes_router
+from libracore.comprobantes_router import build_comprobantes_bandeja_router
 from libracore.config_router import (
     build_backup_router,
     build_empresa_admin_router,
@@ -61,8 +62,8 @@ from app import config_manager, db_usuarios, venta_facturacion
 from app import database as db
 from app.db_core import get_connection as _abrir_conexion
 from app.db_reportes import REPORTES
+from app.offline import GANCHOS_DE_CAJA, nodos_del_central
 from app.offline import aprovisionamiento as aprovisionamiento_offline
-from app.offline import nodos_del_central
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
 from app.web import auth as web_auth
@@ -390,7 +391,9 @@ def _extras_del_tablero(hoy: str) -> dict:
 
 app.include_router(build_dashboard_router(usuario_actual=get_current_user_json, extra=_extras_del_tablero))
 app.include_router(
-    build_caja_router(usuario_actual=get_current_user_json),
+    # `ganchos_de_caja` (libracore ADR-076): en un nodo offline el movimiento que se anota o se anula a mano sube al
+    # central; fuera de un nodo no hace nada (`app/offline.py`).
+    build_caja_router(usuario_actual=get_current_user_json, ganchos_de_caja=GANCHOS_DE_CAJA),
     dependencies=[_auth_json, Depends(require_module("caja"))],
 )
 app.include_router(
@@ -399,10 +402,12 @@ app.include_router(
 )
 app.include_router(
     # El resumen y el cierre son de `db_turnos`: leen `sales`, no la tabla
-    # `ventas` de LibraCore (P9-M3).
+    # `ventas` de LibraCore (P9-M3). Abrir y cerrar un turno en un nodo offline sube al central (`ganchos_de_caja`,
+    # libracore ADR-076); `db.cerrar_turno` acepta `ganchos=` por eso.
     build_turnos_router(
         usuario_actual=get_current_user_json,
         resumen_turno=db.get_resumen_turno, cerrar_turno=db.cerrar_turno,
+        ganchos_de_caja=GANCHOS_DE_CAJA,
     ),
     dependencies=[_auth_json],
 )
@@ -606,6 +611,29 @@ app.include_router(
 app.include_router(
     api_facturas_router.router,
     dependencies=[_auth_json, Depends(require_module("facturacion"))],
+)
+
+
+def _quien_resolvio(request: Request) -> str:
+    """Con qué nombre se firma la resolución de un comprobante de la bandeja.
+
+    Se lee de la sesión y no del payload a propósito: es la trazabilidad de quién resolvió qué, y un campo del cuerpo lo
+    elige el cliente. Devuelve vacío en vez de romper si no hay sesión: el gate del router ya se ocupó de que la haya."""
+    try:
+        usuario = get_current_user_json(request)
+    except HTTPException:
+        return ""
+    return usuario.get("nombre") or usuario.get("username") or ""
+
+
+app.include_router(
+    # La bandeja de comprobantes pendientes (libracore ADR-074, libra-ui ADR-087): en un nodo offline son las ventas
+    # cobradas sin conexión que esperan su factura (`GET /api/comprobantes-pendientes`; «Facturar ahora» es
+    # `POST /api/nodo/facturar-pendientes`, arriba). Este producto no monta la ingesta de otros sistemas, así que fuera
+    # de un nodo está vacía. La resuelve una persona y decide facturar: sólo admin, y con el módulo de ventas, como el
+    # `nodo` de arriba.
+    build_comprobantes_bandeja_router(usuario_actual=_quien_resolvio),
+    dependencies=[Depends(require_admin_json), Depends(require_module("ventas"))],
 )
 app.include_router(
     api_remitos_router.router,

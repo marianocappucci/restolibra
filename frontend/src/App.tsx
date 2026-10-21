@@ -22,6 +22,7 @@ import { TesoreriaDetalle } from './pages/TesoreriaDetalle'
 import { Ventas } from './pages/Ventas'
 import { VentaDetalle } from './pages/VentaDetalle'
 import { MpBandeja } from './pages/MpBandeja'
+import { ComprobantesPendientes } from './pages/ComprobantesPendientes'
 import { Clientes } from './pages/Clientes'
 import { ClienteDetalle } from './pages/ClienteDetalle'
 import { Proveedores } from './pages/Proveedores'
@@ -179,6 +180,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <VentaDetalle />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/comprobantes-pendientes"
+        element={
+          <ProtectedRoute>
+            <ComprobantesPendientes />
           </ProtectedRoute>
         }
       />
