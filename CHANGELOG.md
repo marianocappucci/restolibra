@@ -1,5 +1,16 @@
 # Changelog
 
+## Sin publicar — 2026-10-21
+
+### Los clientes que se dan de alta en un nodo suben al central (libracore ADR-077, libracommerce ADR-070, libraedge ADR-021; sin migración)
+
+- **Decisión del humano (2026-10-21):** las altas de clientes en un nodo se permiten y suben; el central asigna su id y reescribe las referencias. Hasta hoy el cliente nacía con el id de la secuencia de la base del nodo, que no coincide con los del central: el espejo lo pisaba o la venta subía a nombre de otro cliente.
+- **`app/offline.py`:** `altas_en_nodo.configurar(altas_de_clientes(OUTBOX))` junto al `OUTBOX` (se registra al importar el módulo, que importan la app y el CLI del central: las dos puntas) y `Aprovisionamiento(altas_en_nodo=[("clients", REFERENCIAS_DE_CLIENTES), "parties"])`. En un nodo, cualquier alta de `libracore.db.clients` (`POST /api/clientes`, el alta del cobro, el fiado) guarda al cliente con un id provisorio negativo y encola `cliente.alta` en la misma transacción. Fuera de un nodo no cambia nada.
+- **`al_materializar`:** el pedido que deja el central lleva el `cliente_id` por su cuenta (no pasa por `venta.registrada`); ahora lo traduce con `cliente_del_central`. Sin eso, la venta de una mesa cobrada a un cliente dado de alta en el nodo se rechazaba en el central con `pedidos_cliente_id_fkey` (`cliente_id = -1`).
+- **Hay que republicar:** declarar las altas suma `libraedge_mapeo` al espejo y a las tablas de sólo lectura del nodo, así que los nodos ya registrados vuelven a publicarse (`libraedge-central nodo publicar`) y reinstalan su configuración para bajar el id definitivo.
+- **Tests:** `test_altas_en_el_nodo.py` (el cableado; fuera de un nodo el alta sigue igual y no encola; en un nodo ids negativos y `cliente.alta` en el outbox) y `test_libraedge_de_punta_a_punta.py` (con dos bases: alta en el nodo, cobro de una mesa y venta de mostrador a ese cliente, suben `cliente.alta` y las dos ventas en ese orden, el central crea al cliente con su id y venta y pedido quedan a su nombre, y el nodo reapunta cuando el id definitivo baja).
+- Pines: **libracore `v1.189.0`** (antes `v1.188.1`), **libracommerce `v0.70.0`** (antes `v0.69.1`) y **libraedge `v0.18.0`** (antes `v0.17.0`).
+
 ## Sin publicar — 2026-10-20
 
 ### LibraEdge incluido en todos los planes y el código de vinculación (libraedge ADR-014, libra-ui ADR-085; sin migración)

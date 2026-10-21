@@ -41,6 +41,20 @@ class _Escenario:
         self.autenticaciones = 0
         self.ultimo_cae = 0
 
+    def bajar(self, espejo, altas) -> int:
+        """Un ciclo de la bajada del espejo, con el reapuntado de las altas del nodo (libraedge ADR-021)."""
+        from libraedge.db.repository import NodeRepository
+        from libraedge.sync.esquema import version_de_alembic
+        from libraedge.sync.pull import HttpPullTransport, MirrorApplier, PullWorker
+
+        version = version_de_alembic(self.node_conn)
+        worker = PullWorker(NodeRepository(self.node_conn),
+                            HttpPullTransport(CENTRAL, NODO, self.secreto, version_esquema=version),
+                            MirrorApplier(self.node_conn, espejo, node_id=NODO, altas=altas))
+        aplicados = worker.run_once(NODO)
+        self.node_conn.commit()
+        return aplicados
+
     # ── la conexión del nodo con el central ──
     def en_linea(self, si: bool) -> None:
         with open(self.ruta_estado, "w", encoding="utf-8") as archivo:
@@ -69,21 +83,22 @@ class _Escenario:
         return NodeRepository(self.node_conn).listar_en_revision()
 
     # ── el nodo vende ──
-    def cobrar_mesa(self, mesa_id, producto, pagos, qty=2):
+    def cobrar_mesa(self, mesa_id, producto, pagos, qty=2, **cobro):
         pid = _abrir_pedido(self.client, mesa_id)
         r = self.client.post(f"/api/pedidos/{pid}/items", json={
             "producto_id": producto["id"], "nombre": producto["nombre"],
             "precio": 8000.0, "qty": qty, "estacion": "cocina"})
         assert r.status_code == 200, r.text
-        r = self.client.post(f"/api/pedidos/{pid}/cobrar", json={"pagos": pagos})
+        r = self.client.post(f"/api/pedidos/{pid}/cobrar", json={"pagos": pagos, **cobro})
         assert r.status_code == 200, r.text
         return r.json()["venta_id"], pid
 
-    def vender_en_mostrador(self, producto, monto=5000.0, fecha=None):
+    def vender_en_mostrador(self, producto, monto=5000.0, fecha=None, **venta):
         r = self.client.post("/api/ventas", json={
             "fecha": fecha or datetime.date.today().isoformat(),
             "items": [{"producto_id": producto["id"], "nombre": producto["nombre"], "qty": 1, "precio": monto}],
             "pagos": [{"medio": "efectivo", "monto": monto}],
+            **venta,
         })
         assert r.status_code == 200, r.text
         return r.json()
@@ -153,6 +168,7 @@ def escenario(admin_client, monkeypatch, tmp_path):
     from libracore.respaldo_postgres import con_base
     from libraedge.db.repository import NodeRepository
     from libraedge.sync import http as http_module
+    from libraedge.sync import pull as pull_module
     from libraedge.sync import ticket as ticket_module
 
     from app import db_core, db_usuarios, offline
@@ -197,6 +213,7 @@ def escenario(admin_client, monkeypatch, tmp_path):
     cable = _cable(esc)
     monkeypatch.setattr(http_module, "urlopen", cable)
     monkeypatch.setattr(ticket_module, "urlopen", cable)
+    monkeypatch.setattr(pull_module, "urlopen", cable)
 
     # ARCA, de mentira: el WSAA del central (con el certificado «en disco») y el WSFE del nodo.
     async def autenticar(cert, clave, ambiente, servicio):
@@ -282,6 +299,65 @@ def test_las_ventas_suben_y_el_central_las_materializa_con_su_pedido(escenario):
 
     with esc.central():
         assert get_next_pedido_numero() == "P-00001"
+
+
+def test_un_cliente_dado_de_alta_en_el_nodo_sube_antes_que_sus_ventas_y_el_central_lo_usa_en_el_pedido(escenario):
+    """Altas de clientes en el nodo (libracore ADR-077, libracommerce ADR-070, libraedge ADR-021): el mozo da de alta un
+    cliente sin ver al central y le cobra una mesa y una venta de mostrador. Suben `cliente.alta` y las dos ventas, en ese
+    orden; el central crea al cliente con **su** id y tanto las ventas como el **pedido** (`al_materializar`, que lleva el
+    `cliente_id` por su cuenta) quedan a su nombre. Cuando el id definitivo baja por el espejo, el nodo reapunta lo suyo."""
+    esc = escenario
+    from libraedge import aprovisionamiento as aprov
+    from libraedge.db.repository import NodeRepository
+
+    from app import offline
+
+    # El central publica la referencia (el trigger del mapeo tiene que estar antes del alta que lo escribe).
+    with esc.central():
+        from app.db_core import get_connection
+
+        with get_connection() as conn:
+            assert aprov.publicar(conn, offline.aprovisionamiento, salida=lambda _: None) == 0
+            espejo = aprov.espejo_del_nodo(conn, offline.aprovisionamiento)
+
+    r = esc.client.post("/api/clientes", json={"name": "Cliente Nodo Ficticio", "cuit_dni": "20-00000002-8"})
+    assert r.status_code in (200, 201), r.text
+    provisorio = r.json()["id"]
+    assert provisorio < 0, "en un nodo el alta lleva un id provisorio negativo, no el de la secuencia del nodo"
+    mesa, _ = esc.cobrar_mesa(esc.mesa, esc.producto, [{"medio": "efectivo", "monto": 16000.0}],
+                                   cliente_id=provisorio)
+    mostrador = esc.vender_en_mostrador(esc.producto, cliente_id=provisorio)["id"]
+
+    operaciones = NodeRepository(esc.node_conn).list_pending_operations()
+    esc.node_conn.commit()
+    assert [op.operation_type for op in operaciones] == ["cliente.alta", "venta.registrada", "venta.registrada"]
+    assert operaciones[0].aggregate_id == f"{NODO}:cliente:{provisorio}"
+    assert {op.payload["cliente_id"] for op in operaciones[1:]} == {provisorio}
+
+    resultado = esc.subir()
+    assert resultado.confirmadas == 3 and esc.en_revision_en_el_nodo() == ()
+    central = _en_el_central(esc, "SELECT id FROM clients WHERE name = ?", ("Cliente Nodo Ficticio",))
+    assert len(central) == 1 and central[0][0] > 0, "el central le asigna su id (positivo, el de su secuencia)"
+    id_central = central[0][0]
+    for venta in (mesa, mostrador):
+        vid = _venta_del_central(esc, venta)[0]
+        assert _en_el_central(esc, "SELECT customer_party_id FROM sales WHERE id = ?", (vid,)) == [(id_central,)]
+    vid_mesa = _venta_del_central(esc, mesa)[0]
+    assert _en_el_central(esc, "SELECT cliente_id FROM pedidos WHERE venta_id = ?", (vid_mesa,)) == [(id_central,)], (
+        "el pedido que materializa el central también va a nombre del cliente del central, no del provisorio")
+
+    # Un segundo ciclo no repite nada.
+    assert esc.subir().confirmadas == 0
+    assert len(_en_el_central(esc, "SELECT id FROM clients WHERE name = ?", ("Cliente Nodo Ficticio",))) == 1
+
+    # El id definitivo baja por el espejo: el nodo reapunta lo que tenía a nombre del provisorio y borra su fila.
+    assert esc.bajar(espejo, offline.aprovisionamiento.altas) > 0
+    en_el_nodo = lambda sql, *p: [tuple(f) for f in esc.node_conn.execute(sql, p).fetchall()]  # noqa: E731
+    assert en_el_nodo("SELECT id FROM clients WHERE id = ?", provisorio) == []
+    assert en_el_nodo("SELECT name FROM clients WHERE id = ?", id_central) == [("Cliente Nodo Ficticio",)]
+    assert en_el_nodo("SELECT customer_party_id FROM sales WHERE id IN (?, ?) ORDER BY id", mesa, mostrador) == [
+        (id_central,), (id_central,)]
+    esc.node_conn.commit()
 
 
 def test_con_internet_el_nodo_factura_con_el_ticket_prestado_y_la_factura_sube(escenario):
