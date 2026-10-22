@@ -612,6 +612,16 @@ más `LIBRAEDGE_CENTRAL_URL` y `LIBRAEDGE_ESTADO` (el archivo de estado del proc
 siempre «sin conexión» y no factura). La vieja `RESTOLIBRA_EDGE_NODE_ID` se sigue leyendo; si está junto con
 `LIBRAEDGE_NODE_ID` tienen que coincidir.
 
+**El stock de la sucursal del nodo lo mueve sólo el nodo (fase 2; libracommerce ADR-071, libraedge ADR-023).** Al vincular, el
+nodo trae las existencias de **su** sucursal del central (`GET /sync/v1/carga-inicial`; una vez por nodo, la corre el propio
+nodo con `LIBRAEDGE_CARGA_INICIAL`) y desde ahí manda él: sus ajustes (la entrada de mercadería es el ajuste en modo «entrada»;
+RestoLibra no tiene compras), mermas, producciones de recetas y transferencias entre depósitos de la sucursal suben como
+`stock.movimiento`; las salidas de las ventas suben con la venta. **El central contesta 409** (`deposito_de_sucursal_con_nodo`)
+a todo lo que mueva un depósito de esa sucursal desde la web: ajustes, mermas, producciones, transferencias, ventas y el cobro
+de una mesa; dar de baja el nodo le devuelve el stock al central. Antes de vincular, todo depósito activo tiene que tener
+sucursal (el registro se niega y dice cuáles). El central tiene que estar migrado con `libracommerce-migrar upgrade --prefijo
+restolibra` (revisión 0008; compose, `panel_admin.py` y `nuevo_cliente.py` ya lo corren).
+
 **Facturar en el nodo:** con conexión, el nodo pide a ARCA el número con el ticket que le presta el central (la clave
 no sale del VPS). Sin conexión, la venta queda en la bandeja con ticket «no válido como factura» y se factura sola al
 volver, con la fecha de la venta si ARCA todavía la admite (5 días). **El punto de venta de una sucursal con nodo lo usa

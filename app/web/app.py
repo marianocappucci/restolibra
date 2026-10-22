@@ -11,6 +11,7 @@ from libraauth.demo_codigos import DemoCodigoRepository
 from libraauth.migrar import exigir_schema_al_dia
 from libraauth.session_auth import build_demo_codigos_router, demo_username
 from libraauth.terminos import TerminosRepository, build_terminos_router
+from libracommerce.erp import offline_stock
 from libracommerce.web.catalogo_router import (
     MOTIVOS_MERMA_GASTRONOMICOS,
     OpcionesCatalogo,
@@ -282,6 +283,10 @@ app.add_middleware(SecurityHeadersMiddleware)
 # El registro de errores de la familia (ADR-045 de libracore): un 500 deja una linea en `DATA_DIR/errores/` con un `ref`
 # que el usuario puede dictar, y monta `POST /api/errores-cliente` para los errores del navegador (publico a proposito).
 instalar_registro_de_errores(app, "restolibra")
+# El stock de una sucursal con nodo lo mueve solo el nodo (libracommerce ADR-071): en el central, mover un deposito de esa
+# sucursal desde la web (ajuste, merma, transferencia, produccion, venta) levanta `DepositoDeSucursalConNodo`, que aca es 409
+# y no 422 ni 500.
+offline_stock.instalar_manejador_409(app)
 
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)

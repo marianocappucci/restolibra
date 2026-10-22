@@ -11,6 +11,7 @@ central es de LibraEdge (ADR-008, `libraedge-central nodo ...`), las ventas sube
 | `OUTBOX` | la identidad del nodo, si está en línea y el pedido que viaja con la venta (`extra_de_venta`) |
 | `GANCHOS_DE_CAJA` | la caja del nodo (turnos y movimientos a mano) sube al central como operaciones |
 | `altas_en_nodo` | los clientes que se dan de alta en el nodo (id provisorio y `cliente.alta`) suben al central |
+| `offline_stock` | el stock de la sucursal del nodo: sus ajustes suben (`stock.movimiento`), el central se niega a moverlo (409) y la carga inicial lo trae al vincular |
 | `al_materializar` | en el central, el pedido del nodo apuntando a su venta y a su cliente (para el reporte por canal) |
 | `CONEXION` / `numerar_en_el_nodo` | en el nodo, facturar con el ticket de ARCA que presta el central |
 
@@ -25,6 +26,15 @@ el catálogo ya no lo declara y el módulo no se siembra.
 El prefijo de numeración (`LIBRAEDGE_PREFIJO`, `S02`) lo asigna el central al registrar el nodo. **Un nodo sin prefijo no
 vende**: `NodoLocal` levanta `ValueError` en la primera venta, porque numeraría igual que el central. Los nodos
 registrados antes de libraedge v0.8 no lo tienen: se vuelven a registrar.
+
+## El stock de la sucursal del nodo (fase 2; libracommerce ADR-071, libraedge ADR-023)
+
+Decisión del humano (2026-10-21): al vincular, el nodo trae las existencias de **su** sucursal del central y desde ahí
+**el stock de esa sucursal lo mueve sólo el nodo**. Sus ajustes (la entrada de mercadería es el ajuste en modo «entrada»:
+RestoLibra no tiene compras ni recepciones), sus mermas, las producciones de recetas y las transferencias entre depósitos de
+la sucursal suben como `stock.movimiento`; las salidas de las ventas suben con la venta. **El central contesta 409** a todo
+lo que mueva un depósito de una sucursal con nodo desde la web (ajustes, mermas, transferencias, producciones y ventas). Un
+depósito activo sin sucursal no es de ningún nodo: el registro de un nodo se niega hasta que tenga una.
 
 ## Aprovisionar (en el central)
 
@@ -42,6 +52,7 @@ import os
 from collections.abc import Mapping
 from typing import Any
 
+from libracommerce.erp import offline_stock
 from libracommerce.erp.offline import NodoLocal, Outbox
 from libracommerce.erp.offline_caja import caja_con_outbox
 from libracommerce.erp.offline_clientes import altas_en_nodo as altas_de_clientes
@@ -142,6 +153,13 @@ OUTBOX = Outbox(nodo=nodo_local, en_linea=en_linea, extra_de_venta=extra_de_vent
 #: **Fuera de un nodo** (`nodo_local()` es `None`) el motor no pide ids provisorios ni avisa a nadie, y el alta es la de
 #: siempre.
 altas_en_nodo.configurar(altas_de_clientes(OUTBOX))
+
+#: El stock de la sucursal del nodo (libracommerce ADR-071). Una sola llamada, en las dos puntas: en un nodo cada movimiento
+#: del ledger que no es de una venta encola `stock.movimiento` (en la misma transacción); en el central, la guarda le niega
+#: a la web mover un depósito de una sucursal con nodo activo (`DepositoDeSucursalConNodo`, que `app/web/app.py` convierte
+#: en 409). Se registra al importar este módulo, como `altas_en_nodo`. RestoLibra no tiene compras: no hay
+#: `recepcion_con_outbox` que enchufar. **Fuera de un nodo y sin nodos registrados** (la demo) no hace nada.
+offline_stock.configurar(OUTBOX)
 
 #: Los ganchos de la caja para `build_caja_router` y `build_turnos_router` (`ganchos_de_caja=`): en un nodo encolan en el
 #: `OUTBOX` el turno que se abre o se cierra y el movimiento que se anota o se anula a mano (libracore ADR-076,
@@ -301,6 +319,9 @@ def _aprovisionamiento():
         # Los clientes se dan de alta en el nodo (id provisorio): `clients` con lo que lo referencia sin FK
         # (`cc_asientos.tercero_id`) y su `parties` espejo, a lo que apuntan las ventas.
         altas_en_nodo=[("clients", REFERENCIAS_DE_CLIENTES), "parties"],
+        # Un depósito activo sin sucursal no es de ningún nodo: la guarda del central no lo ve y la carga inicial no lo trae.
+        # El registro se niega hasta que tenga una (libracommerce ADR-071, libraedge ADR-023).
+        validar_registro=offline_stock.depositos_sin_sucursal,
     )
 
 

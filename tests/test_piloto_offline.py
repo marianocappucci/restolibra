@@ -272,6 +272,38 @@ def test_una_venta_de_mostrador_fuera_de_un_nodo_no_encola(admin_client, monkeyp
         assert _outbox(conn) == ()
 
 
+def test_el_stock_se_mueve_como_siempre_fuera_de_un_nodo_sin_encolar_ni_guardar(admin_client, monkeypatch):
+    """Libracommerce ADR-071 se cablea en las dos puntas, pero fuera de un nodo y sin nodos registrados no hace nada: los
+    ajustes, las mermas, las producciones y las transferencias de una instancia común son las de siempre (ni 409 ni outbox)."""
+    monkeypatch.delenv("LIBRAEDGE_NODE_ID", raising=False)
+    from app.db_core import get_connection
+
+    harina = _producto(admin_client, nombre="Harina")
+    pan = _producto(admin_client, nombre="Pan casero")
+    assert admin_client.put(f"/api/productos/{pan['id']}/receta", json={
+        "items": [{"ingrediente_id": harina["id"], "cantidad": 2}]}).status_code == 200
+    destino = admin_client.post("/api/depositos", json={"nombre": "Camioneta"}).json()
+    origen = next(d for d in admin_client.get("/api/depositos").json() if d["id"] != destino["id"])
+    ajustes = (
+        {"modo": "entrada", "cantidad": 20}, {"modo": "salida", "cantidad": 5}, {"modo": "merma", "cantidad": 1, "motivo": "Quemado"})
+    for ajuste in ajustes:
+        assert admin_client.post(f"/api/stock/{harina['id']}/ajuste", json=ajuste).status_code == 200
+    assert admin_client.post(f"/api/productos/{pan['id']}/receta/producir", json={"cantidad": 2}).status_code == 200
+    r = admin_client.post("/api/depositos/transferir", json={
+        "producto_id": harina["id"], "origen_id": origen["id"], "destino_id": destino["id"], "cantidad": 3})
+    assert r.status_code == 200, r.text
+    assert admin_client.get(f"/api/stock/{harina['id']}").json()["stock_actual"] == 10
+    assert admin_client.get(f"/api/stock/{pan['id']}").json()["stock_actual"] == 2
+    with get_connection() as conn:
+        assert _outbox(conn) == ()
+
+
+def test_la_carga_inicial_esta_montada_pero_sin_nodos_no_entra_nadie(client):
+    r = client.get("/sync/v1/carga-inicial", params={"node_id": "nodo-ficticio"},
+                   headers={"Authorization": "Bearer secreto-ficticio"})
+    assert r.status_code == 401
+
+
 def test_la_venta_de_mostrador_por_qr_sube_pendiente_y_despues_el_pago(admin_client, como_nodo):
     from app import database as db
     from app.db_core import get_connection
