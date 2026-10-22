@@ -25,10 +25,17 @@ que no tiene aplicador **no se marca aplicado**: va a revision manual
   `venta.facturada`; libracommerce ADR-067 y ADR-068), con los ganchos del
   producto y `offline.al_materializar`, que deja en el central el pedido de la
   venta que subio de una mesa.
+- Las dos de stock (`stock.movimiento` y `compra.recibida`; libracommerce ADR-071): `registrar_en` registra los trece tipos.
+  RestoLibra no tiene compras, asi que en la practica solo sube `stock.movimiento` (ajustes, mermas, producciones y
+  transferencias del nodo).
 - **`pedido.cobrado` v1, por compatibilidad**: es lo que encolaba el piloto
   hasta E5. Si un nodo de antes tuviera alguna en su outbox sin subir, se sigue
   aplicando como antes (`libraedge_integration.aplicar_pedido_cobrado`). Los
   nodos nuevos ya no la encolan.
+
+La carga inicial (`GET /sync/v1/carga-inicial`, libraedge ADR-023): al vincular, el nodo trae las existencias de **su**
+sucursal (`offline_stock.carga_inicial_del_central`); la sucursal sale del nodo autenticado, no del pedido. Desde ahi el
+stock de esa sucursal lo mueve solo el nodo: el central contesta 409 (`app/web/app.py`).
 
 El router ademas controla la version del esquema (`version_de_alembic`: 409 si
 el nodo no esta migrado igual que el central) y le presta al nodo el ticket de
@@ -36,6 +43,7 @@ ARCA (`libracore.nodo_offline.ta_para_el_nodo`, libraedge ADR-009): la clave
 no sale del VPS.
 """
 
+from libracommerce.erp import offline_stock
 from libracommerce.erp.offline import registrar_en
 from libracore.nodo_offline import ta_para_el_nodo
 from libraedge.sync.api import create_sync_router
@@ -59,5 +67,5 @@ despachador = armar_despachador()
 
 router = create_sync_router(
     get_connection, despachador=despachador, version_esquema=version_de_alembic,
-    prestar_ticket=ta_para_el_nodo,
+    prestar_ticket=ta_para_el_nodo, carga_inicial=offline_stock.carga_inicial_del_central,
 )
