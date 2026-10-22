@@ -15,6 +15,7 @@ from libracommerce.erp import offline_stock
 from libracommerce.web.catalogo_router import (
     MOTIVOS_MERMA_GASTRONOMICOS,
     OpcionesCatalogo,
+    OpcionesDepositos,
     OpcionesStock,
     build_depositos_router,
     build_productos_router,
@@ -27,7 +28,7 @@ from libracommerce.web.listas_router import (
 from libracore import auditoria as auditoria_del_motor
 from libracore.adicionales_router import build_adicionales_router
 from libracore.arca_router import build_arca_router
-from libracore.caja_router import build_caja_router, build_cajas_router, build_turnos_router
+from libracore.caja_router import OpcionesCajas, build_caja_router, build_cajas_router, build_turnos_router
 from libracore.candados import una_vez_al_arrancar
 from libracore.clientes_router import build_clientes_router
 from libracore.comprobantes_router import build_comprobantes_bandeja_router
@@ -67,6 +68,7 @@ from app.offline import GANCHOS_DE_CAJA, nodos_del_central
 from app.offline import aprovisionamiento as aprovisionamiento_offline
 from app.security_headers import SecurityHeadersMiddleware
 from app.spa import montar_spa
+from app.sucursal_unica import sucursal_predeterminada
 from app.web import auth as web_auth
 from app.web.api import auth as api_auth_router
 from app.web.api import config as api_config_router
@@ -402,7 +404,9 @@ app.include_router(
     dependencies=[_auth_json, Depends(require_module("caja"))],
 )
 app.include_router(
-    build_cajas_router(),
+    # `sucursal_por_defecto` (libracore ADR-062): una caja creada sin `sucursal_id` nace en «Casa central» (la sucursal
+    # única, `app/sucursal_unica.py`) y no queda en NULL hasta el próximo arranque.
+    build_cajas_router(opciones=OpcionesCajas(sucursal_por_defecto=sucursal_predeterminada)),
     dependencies=[_auth_json, Depends(require_module("cajas"))],
 )
 app.include_router(
@@ -421,7 +425,13 @@ app.include_router(
     dependencies=[Depends(require_admin_json), Depends(require_module("tesoreria"))],
 )
 app.include_router(
-    build_depositos_router(conexion=_abrir_conexion, usuario_actual=get_current_user_json),
+    # `sucursal_por_defecto`: un depósito nuevo cae en «Casa central» (la sucursal única, `app/sucursal_unica.py`) y
+    # no queda huérfano: uno activo sin sucursal impide vincular la PC del local. Nada visible: no hay pantalla de
+    # sucursales.
+    build_depositos_router(
+        conexion=_abrir_conexion, usuario_actual=get_current_user_json,
+        opciones=OpcionesDepositos(sucursal_por_defecto=True),
+    ),
     dependencies=[_auth_json, Depends(require_module("depositos"))],
 )
 app.include_router(

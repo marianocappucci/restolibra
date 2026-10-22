@@ -1,5 +1,16 @@
 # Changelog
 
+## Sin publicar — 2026-10-22
+
+### La sucursal única «Casa central»: depósitos, cajas y ventas bajo una sola sucursal (libracommerce ADR-063, revisión `0007_sucursal_unica`)
+
+- **Decisión del humano (2026-10-22):** Restolibra es de un solo local y adopta una sucursal única, como Contalibra. Desde libraedge v0.20.0 (`validar_registro=depositos_sin_sucursal`) un depósito activo sin sucursal impide vincular la PC del local, y este producto no monta el router de sucursales: el depósito de una instancia nueva quedaba sin sucursal y nadie podía asignársela (el «pendiente de producto» de la entrada de abajo). **Nada visible cambia** con una sola sucursal: no se monta ninguna ruta ni pantalla de sucursales (`/api/sucursales` sigue sin existir) y el kit sólo ofrece sucursal con dos o más.
+- **`app/sucursal_unica.py`** (nuevo): `adoptar` llama `catalogo.adoptar_sucursal_unica` («Casa central» predeterminada, con el depósito por defecto como el de venta y todos los depósitos bajo ella), pasa las cajas sin sucursal (`cajas.sucursal_id`, de LibraCore) a ella y completa `sales.branch_id` de las ventas de antes con `catalogo.completar_sucursal_de_ventas`. **Una instancia que ya tiene sucursales propias no se toca** (diferencia con Contalibra: acá soporte las creaba a mano para vincular un nodo): con dos o más, o con una sola que no es la predeterminada, no asigna nada y el informe trae `omitida`; sin eso el `ValueError` del motor habría impedido arrancar la instancia. `desadoptar` es el camino de vuelta, igual que el de Contalibra.
+- **`app/database.py`:** `init_db()` llama `adoptar` después de sembrar el «Depósito principal» (una instancia nueva nace con la sucursal; cada reinicio converge sin hacer nada). **Revisión de Alembic `0007_sucursal_unica`** (sin DDL; corre en `panel_admin actualizar` después de `libracommerce-migrar`): la MISMA función para la instancia que ya existe. Idempotente. `downgrade` la deshace sólo si es la única sucursal, la predeterminada y se llama «Casa central» (si no, se niega y lo dice).
+- **`app/web/app.py`:** el depósito que se crea (`OpcionesDepositos(sucursal_por_defecto=True)`) y la caja que se crea (`OpcionesCajas(sucursal_por_defecto=...)`, libracore ADR-062) caen en «Casa central» y no quedan sueltos; con un `branch_id`/`sucursal_id` explícito se respeta. Sin eso, un depósito creado después volvería a impedir el vínculo.
+- **Tests:** `tests/test_sucursal_unica.py` (instancia nueva con su sucursal y vincular un nodo no se niega —con el control de que sin la adopción se niega—, `init_db` y `adoptar` dos veces no hacen nada, una instancia con varias sucursales o con una no predeterminada no se toca ni deja de arrancar, depósito, caja y venta nuevos, la revisión en la cadena real con datos upgrade -> downgrade -> upgrade, el alta desde la cadena, el camino de vuelta). `tests/offline_helpers.py::definir_sucursales` sigue haciendo falta para los tests que necesitan varias sucursales, una inactiva o ninguna: ahora **reemplaza** la «Casa central» y deja los depósitos sin sucursal (NULL) si no pide ninguna activa, en vez de dejarlos apuntando a la sucursal borrada.
+- Sin cambio de pines.
+
 ## Sin publicar — 2026-10-21
 
 ### El stock de la sucursal del nodo lo mueve sólo el nodo (libracommerce ADR-071, libraedge ADR-023; sin migración propia, la 0008 es de `libracommerce-migrar`)
