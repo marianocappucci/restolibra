@@ -165,7 +165,8 @@ dependencies = [
     # v0.70.0 -> v0.70.1 (2026-10-21): el central recalcula el arqueo del turno como el nodo (ventas o caja); ya no marca [REVISAR ARQUEO] siempre en ContaLibra y RestoLibra. Sin migracion.
     # v0.70.1 -> v0.71.0 (2026-10-21): el stock de una sucursal con nodo lo mueve sólo el nodo; carga inicial del central y 409 en el central (ADR-071). Migracion 0008 (`libracommerce-migrar`).
     # v0.71.0 -> v0.72.0 (2026-10-22): en un nodo de LibraEdge el deposito por defecto es el de su sucursal. Migracion 0009 aditiva (nodo_local); fuera de un nodo no cambia nada.
-    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.72.0",
+    # v0.72.0 -> v0.72.1 (2026-10-22): la carga inicial lleva a cero los depositos ajenos del nodo (PC que cambia de sucursal). Sin migracion.
+    "libracommerce[migrations,erp,web] @ git+https://github.com/marianocappucci/libracommerce.git@v0.72.1",
     # v0.43.0 trae la sesion por inactividad de 8h con renovacion deslizante
     # (ADR-017) y el router de usuarios unico (`libraauth.usuarios.
     # build_users_router`, ADR-018) que reemplaza a `app/web/api/usuarios.py`
@@ -251,7 +252,8 @@ dependencies = [
     # v0.17.0 -> v0.18.0 (2026-10-21): altas en el nodo: id provisorio, mapeo y reapuntado en el espejo (ADR-021). Sin migracion.
     # v0.18.0 -> v0.19.0 (2026-10-21): `libraedge-central nodo conservar/restaurar` (ADR-022), para que el reset de la demo conserve los nodos. Sin migracion.
     # v0.19.0 -> v0.20.0 (2026-10-21): la carga inicial del central (`GET /sync/v1/carga-inicial`) y `validar_registro` en el aprovisionamiento (ADR-023). Sin migracion.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.20.0",
+    # v0.20.0 -> v0.21.0 (2026-10-22): libraedge-nodo revision descartar (ADR-024). Sin migracion.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.21.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
