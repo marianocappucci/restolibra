@@ -135,7 +135,8 @@ dependencies = [
     # v1.188.0 -> v1.188.1 (2026-10-21): `db.turnos.cerrar_turno_con`, el cierre comun de un turno, publico. Sin migracion.
     # v1.188.1 -> v1.189.0 (2026-10-21): altas de clientes en un nodo: id provisorio y gancho al crear (ADR-077). Sin migracion.
     # v1.189.0 -> v1.190.0 (2026-10-22): libracore-unir-bases para unir la base core dentro de la del dominio (ADR-078). Sin migracion.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.190.0",
+    # v1.190.0 -> v1.190.1 (2026-10-22): LibraCargo y LibraClub en _UNA_SOLA_BASE (ADR-078). Sin migracion.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.190.1",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
