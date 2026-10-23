@@ -4,8 +4,13 @@
 def definir_sucursales(*sucursales: str | tuple[str, bool]) -> list[int]:
     """Deja en la instancia de los tests exactamente estas sucursales y devuelve sus ids, en orden.
 
-    Cada una es un nombre (activa) o `(nombre, activa)`. `registrar --sucursal` exige que la sucursal exista y este activa, y una instancia nueva
-    no trae ninguna.
+    Cada una es un nombre (activa) o `(nombre, activa)`. `registrar --sucursal` exige que la sucursal exista y este activa. Una instancia
+    nueva ya trae su sucursal unica «Casa central» (`app/sucursal_unica.py`): esto la **reemplaza** por las pedidas, para los tests que
+    necesitan varias, una inactiva o ninguna (los que solo necesitan una sucursal no lo llaman).
+
+    Los depositos quedan asignados a la primera sucursal activa, y sin sucursal (NULL, como en una base de antes de la adopcion) si no hay
+    ninguna: desde libracommerce ADR-071 / libraedge ADR-023 el registro de un nodo se niega mientras haya un deposito activo sin sucursal
+    (`Aprovisionamiento.validar_registro`), y ya no puede quedar apuntando a la «Casa central» recien borrada.
     """
     from app.db_core import get_connection
 
@@ -16,6 +21,8 @@ def definir_sucursales(*sucursales: str | tuple[str, bool]) -> list[int]:
             nombre, activa = (sucursal, True) if isinstance(sucursal, str) else sucursal
             cur = conn.execute("INSERT INTO branches (name, active) VALUES (?, ?)", (nombre, 1 if activa else 0))
             ids.append(cur.lastrowid)
+        activas = [i for i, sucursal in zip(ids, sucursales, strict=True) if (sucursal if isinstance(sucursal, tuple) else (sucursal, True))[1]]
+        conn.execute("UPDATE locations SET branch_id = ?", (activas[0] if activas else None,))
         conn.commit()
     return ids
 

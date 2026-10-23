@@ -105,3 +105,26 @@ def test_el_archivo_de_soporte_y_la_baja(admin_client):
     assert admin_client.delete(f"{RUTA}/{node_id}").status_code == 200
     with get_connection() as conn:
         assert not NodeRepository(conn).verify_node_secret(node_id, secreto)
+
+
+# ── Un depósito sin sucursal no es de ningún nodo (libracommerce ADR-071, libraedge ADR-023) ───────────────────────
+
+
+def test_no_se_vincula_un_nodo_mientras_haya_un_deposito_sin_sucursal(admin_client):
+    """La guarda del central y la carga inicial se apoyan en la sucursal del depósito: uno sin sucursal quedaría fuera de las
+    dos. El registro se niega (por el código y por el archivo de soporte) hasta que se lo asigne, y no deja un nodo a medias."""
+    suelto = admin_client.post("/api/depositos", json={"nombre": "Depósito suelto"}).json()
+    sucursal = _sucursal(admin_client)
+    with get_connection() as conn:
+        assert conn.execute("SELECT branch_id FROM locations WHERE id = ?", (suelto["id"],)).fetchone()[0] is None
+
+    for ruta in (f"{RUTA}/vinculacion", RUTA):
+        r = admin_client.post(ruta, json={"sucursal_id": sucursal})
+        assert r.status_code == 409, r.text
+        assert "Depósito suelto" in r.text and "no tiene sucursal" in r.text
+    assert admin_client.get(RUTA).json()["nodos"] == [], "un registro negado no deja un nodo a medias"
+
+    with get_connection() as conn:
+        conn.execute("UPDATE locations SET branch_id = ? WHERE id = ?", (sucursal, suelto["id"]))
+        conn.commit()
+    assert admin_client.post(f"{RUTA}/vinculacion", json={"sucursal_id": sucursal}).status_code == 200

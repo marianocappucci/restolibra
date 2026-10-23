@@ -332,6 +332,7 @@ from app.db_ventas import (  # noqa: F401
     vincular_venta_remito,
 )
 from app.schema_propio import init_schema_propio  # noqa: F401  (lo usa init_db)
+from app.sucursal_unica import adoptar as adoptar_sucursal_unica  # (lo usa init_db)
 
 # Antes de P8, descontar_stock_venta (libracore.db.stock) era receta-aware
 # vía un hook inyectado acá (configure_resolver_receta), para no acoplar
@@ -365,6 +366,13 @@ def init_db():
                 "INSERT INTO locations (name, description, is_default, active)"
                 " VALUES ('Depósito principal', '', 1, 1)"
             )
+
+        # La sucursal única «Casa central» (decisión del humano, 2026-10-22): el depósito de arriba, las cajas y las
+        # ventas de antes cuelgan de ella. Sin sucursal, un depósito activo impide vincular la PC del local
+        # (libraedge `depositos_sin_sucursal`). LA MISMA función que corre la revisión de Alembic
+        # `0007_sucursal_unica` (la instancia que ya existe): una nueva y una vieja convergen por el mismo camino.
+        # Idempotente, y va DESPUÉS de sembrar el depósito para que la instancia nueva lo deje ya asignado.
+        adoptar_sucursal_unica(conn)
 
         # Las 9 tablas propias de este producto, con sus índices y los tres
         # ALTER históricos. El DDL vive en `app/schema_propio.py` y no acá desde
