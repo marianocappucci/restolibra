@@ -258,7 +258,8 @@ dependencies = [
     # v0.18.0 -> v0.19.0 (2026-10-21): `libraedge-central nodo conservar/restaurar` (ADR-022), para que el reset de la demo conserve los nodos. Sin migracion.
     # v0.19.0 -> v0.20.0 (2026-10-21): la carga inicial del central (`GET /sync/v1/carga-inicial`) y `validar_registro` en el aprovisionamiento (ADR-023). Sin migracion.
     # v0.20.0 -> v0.21.0 (2026-10-22): libraedge-nodo revision descartar (ADR-024). Sin migracion.
-    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.21.0",
+    # v0.21.0 -> v0.22.0 (2026-10-24): ticket de ARCA por servicio y LibraCargo/LibraClub en el instalador (ADR-025). Sin migracion.
+    "libraedge @ git+https://github.com/marianocappucci/libraedge.git@v0.22.0",
     # SQLAlchemy entra SOLO para el engine de `usuarios` de libraauth (ver
     # app/db_usuarios.py); el resto de Restolibra sigue en sqlite3 crudo.
     "sqlalchemy>=2.0",
