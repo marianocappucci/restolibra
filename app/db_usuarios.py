@@ -63,6 +63,7 @@ from libraauth.smtp_settings import (  # noqa: F401  (re-exportados para el rout
     resolver_smtp_config,
 )
 from libracore import config_manager as _lc_config_manager
+from libracore.marca_router import nombre_de_marca
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -164,7 +165,8 @@ def migrar_secretos() -> dict:
 
 _password_reset = PasswordResetService(
     _sessions,
-    product_name="Restolibra",
+    # CALLABLE: con marca propia el mail de recuperacion sale con el nombre del revendedor.
+    product_name=lambda: nombre_de_marca("Restolibra"),
     reset_url_base=os.environ.get(
         "RESTOLIBRA_RESET_URL_BASE", "https://dev.restolibra.com.ar/reset-password"
     ),
