@@ -157,7 +157,8 @@ dependencies = [
     # v1.202.0 -> v1.202.1 (2026-10-28): avisos: la demo no manda mails y espera entre reintentos (addendum ADR-090). Sin migracion.
     # v1.202.1 -> v1.206.0 (2026-10-30): la marca de la instancia y sus Terminos propios (ADR-092 y ADR-093, marca blanca); incluye v1.204.0 (un aviso por un solo canal y demos sin mails, ADR-090 y ADR-091). Sin migracion.
     # v1.206.0 -> v1.207.1 (2026-10-30): la marca y los Terminos propios se leen sin el almacen de secretos (addendum ADR-095); v1.207.0 trae el index.html con la marca (ADR-095) y la carpeta del resguardo con el nombre de la marca (ADR-094). Sin migracion.
-    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.207.1",
+    # v1.207.1 -> v1.207.2 (2026-10-30): index_con_marca deja un solo icono, el de la marca (addendum 2 ADR-095); v1.207.1 lee la marca sin el almacen de secretos; v1.207.0 trae el index.html con la marca (ADR-095) y la carpeta del resguardo con el nombre de la marca (ADR-094). Sin migracion.
+    "libracore[migrations] @ git+https://github.com/marianocappucci/libracore.git@v1.207.2",
     # v0.7.0 sube al motor las transferencias entre depositos y la guarda de
     # disponibilidad, que hasta ahora vivian en cada producto (`db_productos.
     # transferir_stock`, identico byte a byte al de Contalibra) y arrastraban
