@@ -1,5 +1,15 @@
 # Changelog
 
+## Sin publicar — 2026-10-30
+
+### Marca blanca: la instancia lleva el nombre, el logo, el color y los términos de un revendedor (sin migración)
+
+- `libracore` v1.202.1 → **v1.206.0** (incluye v1.204.0: un aviso por un solo canal y demos sin mails), `libraauth` v0.56.0 → **v0.57.0**, `libra-ui` v0.183.0 → **v0.185.0**.
+- `/api/marca` y `/manifest.webmanifest` (lectura pública; escribir es del admin o del token de servicio del backoffice). Con marca propia la instancia **exige** los Términos del revendedor y, sin ellos, queda frenada; nunca cae a los de la familia.
+- El mail de recuperación sale con el nombre de la marca. `app/frontend_dist.py` resuelve el dist una sola vez (`RESTOLIBRA_FRONTEND_DIST` lo pisa en los tests) y `main.tsx` espera `cargarMarca()` antes de montar.
+- ⚠️ `RESTOLIBRA_RESET_URL_BASE` tiene por defecto `dev.restolibra.com.ar`: una instancia de revendedor tiene que definirla.
+- Tests: `tests/test_marca_blanca.py`, `tests/test_marca_blanca_terminos.py`.
+
 ## Sin publicar — 2026-10-22
 
 ### La sucursal única «Casa central»: depósitos, cajas y ventas bajo una sola sucursal (libracommerce ADR-063, revisión `0007_sucursal_unica`)
