@@ -318,6 +318,26 @@ def test_la_venta_de_mostrador_por_qr_sube_pendiente_y_despues_el_pago(admin_cli
         assert _tipos(conn) == [erp_offline.TIPO_VENTA_REGISTRADA, erp_offline.TIPO_PAGO_ACREDITADO]
 
 
+def test_una_venta_de_mostrador_pagada_en_parte_sube_igual(admin_client, como_nodo):
+    """🔴 Lo que anotaban los pendientes del 2026-10-18 («una venta parcial nunca llega a `cobrada` y no sube») ya no
+    pasa desde libracommerce ADR-067: la venta sube al registrarse, con su estado y lo pagado, y el resto lo completa
+    `venta.pago_acreditado`. Este test lo fija para RestoLibra (decisión del humano del 2026-10-28)."""
+    from app.db_core import get_connection
+
+    r = admin_client.post("/api/ventas", json={
+        "fecha": "2026-10-18",
+        "items": [{"nombre": "Empanada", "qty": 2, "precio": 2500.0}],
+        "pagos": [{"medio": "efectivo", "monto": 2000.0}],
+    })
+    assert r.status_code == 200, r.text
+    assert r.json()["estado"] != "cobrada"
+    with get_connection() as conn:
+        (operacion,) = _outbox(conn)
+    assert operacion.operation_type == erp_offline.TIPO_VENTA_REGISTRADA
+    assert operacion.payload["estado"] == r.json()["estado"]
+    assert sum(float(p["monto"]) for p in operacion.payload["pagos"]) == 2000.0
+
+
 def test_anular_en_el_nodo_sube_la_anulacion(admin_client, como_nodo):
     from app.db_core import get_connection
 
